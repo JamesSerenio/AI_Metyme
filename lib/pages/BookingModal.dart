@@ -42,6 +42,17 @@ class _BookingModalPageState extends State<BookingModalPage>
   String? generatedBookingCode;
   String? aiFinalMessage;
 
+  String? fullNameError;
+  String? contactNumberError;
+  String? customerTypeError;
+  String? idTypeError;
+  String? reservationTypeError;
+  String? openTimeError;
+  String? reservationRangeError;
+  String? reservationStartTimeError;
+  String? seatNumberError;
+  String? timeAvailError;
+
   late final AnimationController pageController;
   late final Animation<double> fadeAnim;
   late final Animation<Offset> slideAnim;
@@ -100,6 +111,32 @@ class _BookingModalPageState extends State<BookingModalPage>
         );
 
     pageController.forward();
+
+    fullNameController.addListener(() {
+      if (fullNameError != null) {
+        setState(() {
+          fullNameError = validateFullName(fullNameController.text);
+        });
+      }
+    });
+
+    contactNumberController.addListener(() {
+      if (contactNumberError != null) {
+        setState(() {
+          contactNumberError = validatePhoneDetailed(
+            contactNumberController.text,
+          );
+        });
+      }
+    });
+
+    timeAvailController.addListener(() {
+      if (timeAvailError != null) {
+        setState(() {
+          timeAvailError = validateTimeAvailField();
+        });
+      }
+    });
 
     Future.delayed(const Duration(milliseconds: 250), () {
       if (!mounted) return;
@@ -188,38 +225,50 @@ class _BookingModalPageState extends State<BookingModalPage>
       selectedReservationType == ReservationType.yes;
   bool get shouldShowSeatField => selectedReservationType != null;
 
-  bool get isValid {
-    final fullName = fullNameController.text.trim();
-    final contact = normalizePhone(contactNumberController.text.trim());
+  String? validateFullName(String input) {
+    final value = input.trim();
 
-    if (fullName.isEmpty ||
-        contact == null ||
-        selectedCustomerType == null ||
-        selectedIdType == null ||
-        selectedReservationType == null) {
-      return false;
+    if (value.isEmpty) {
+      return 'Please enter your full name.';
     }
 
-    if (shouldShowOpenTime && selectedOpenTimeType == null) {
-      return false;
+    if (value.length < 3) {
+      return 'Your full name looks too short. Please enter your complete name.';
     }
 
-    if (shouldShowSeatField && selectedSeats.isEmpty) {
-      return false;
+    return null;
+  }
+
+  String? validatePhoneDetailed(String input) {
+    String value = input.trim().replaceAll(RegExp(r'\s+|-'), '');
+
+    if (value.isEmpty) {
+      return 'Please enter your contact number.';
     }
 
-    if (shouldShowTimeAvail && timeAvailController.text.trim().isEmpty) {
-      return false;
+    if (value.startsWith('+63')) {
+      value = '0${value.substring(3)}';
+    } else if (value.startsWith('63')) {
+      value = '0${value.substring(2)}';
     }
 
-    if (shouldShowReservationFields) {
-      if (selectedReservationRange == null ||
-          selectedReservationStartTime == null) {
-        return false;
-      }
+    if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+      return 'Your contact number must contain digits only.';
     }
 
-    return true;
+    if (!value.startsWith('09')) {
+      return 'Your contact number must start with 09.';
+    }
+
+    if (value.length < 11) {
+      return 'Your contact number is incomplete. Please enter all 11 digits.';
+    }
+
+    if (value.length > 11) {
+      return 'Your contact number is too long. Please enter only 11 digits.';
+    }
+
+    return null;
   }
 
   String? normalizePhone(String input) {
@@ -236,6 +285,21 @@ class _BookingModalPageState extends State<BookingModalPage>
     }
 
     return value;
+  }
+
+  String? validateTimeAvailField() {
+    if (!shouldShowTimeAvail) return null;
+
+    final value = timeAvailController.text.trim();
+    if (value.isEmpty) {
+      return 'Please select or enter the available time.';
+    }
+
+    if (parseTimeAvail(value) == null) {
+      return 'Please enter a valid time format, such as 02:00, 2 hours, or 30 mins.';
+    }
+
+    return null;
   }
 
   String formatDateOnly(DateTime value) {
@@ -311,23 +375,84 @@ class _BookingModalPageState extends State<BookingModalPage>
     }
   }
 
+  bool validateForm() {
+    final newFullNameError = validateFullName(fullNameController.text);
+    final newContactNumberError = validatePhoneDetailed(
+      contactNumberController.text,
+    );
+
+    final newCustomerTypeError = selectedCustomerType == null
+        ? 'Please select the customer type.'
+        : null;
+
+    final newIdTypeError = selectedIdType == null
+        ? 'Please select whether the customer has an ID.'
+        : null;
+
+    final newReservationTypeError = selectedReservationType == null
+        ? 'Please select whether this booking is for reservation.'
+        : null;
+
+    final newOpenTimeError = shouldShowOpenTime && selectedOpenTimeType == null
+        ? 'Please select whether this booking is open time or not.'
+        : null;
+
+    final newReservationRangeError =
+        shouldShowReservationFields && selectedReservationRange == null
+        ? 'Please select the reservation date range.'
+        : null;
+
+    final newReservationStartTimeError =
+        shouldShowReservationFields && selectedReservationStartTime == null
+        ? 'Please select the reservation start time.'
+        : null;
+
+    final newSeatNumberError = shouldShowSeatField && selectedSeats.isEmpty
+        ? 'Please select at least one seat.'
+        : null;
+
+    final newTimeAvailError = validateTimeAvailField();
+
+    setState(() {
+      fullNameError = newFullNameError;
+      contactNumberError = newContactNumberError;
+      customerTypeError = newCustomerTypeError;
+      idTypeError = newIdTypeError;
+      reservationTypeError = newReservationTypeError;
+      openTimeError = newOpenTimeError;
+      reservationRangeError = newReservationRangeError;
+      reservationStartTimeError = newReservationStartTimeError;
+      seatNumberError = newSeatNumberError;
+      timeAvailError = newTimeAvailError;
+    });
+
+    return [
+      newFullNameError,
+      newContactNumberError,
+      newCustomerTypeError,
+      newIdTypeError,
+      newReservationTypeError,
+      newOpenTimeError,
+      newReservationRangeError,
+      newReservationStartTimeError,
+      newSeatNumberError,
+      newTimeAvailError,
+    ].every((e) => e == null);
+  }
+
   Future<void> submitForm() async {
-    if (!isValid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please complete all booking information correctly.'),
-        ),
-      );
+    final isFormValid = validateForm();
+    if (!isFormValid) {
+      _scrollToBottom();
       return;
     }
 
     final normalizedPhone = normalizePhone(contactNumberController.text.trim());
     if (normalizedPhone == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Phone number must start with 09 and have 11 digits.'),
-        ),
-      );
+      setState(() {
+        contactNumberError =
+            'Please enter a valid 11-digit contact number that starts with 09.';
+      });
       return;
     }
 
@@ -423,8 +548,8 @@ class _BookingModalPageState extends State<BookingModalPage>
       await supabase.from('customer_sessions').insert(payload);
 
       final reminderText = isReservation
-          ? 'Please keep this code safe and make sure to copy it or take a screenshot/photo. You will need it for your IN/OUT attendance, add-ons, and for submitting suggestions or concerns to the staff.'
-          : 'Please keep this code safe. Copy it or take a screenshot/photo, as you will need it for add-ons and for submitting suggestions or concerns to the staff.';
+          ? 'Please keep this code safe and make sure to copy it or take a screenshot or photo. You will need it for your IN/OUT attendance, add-ons, and for submitting suggestions or concerns to the staff. Thank you and we look forward to serving you! 😊'
+          : 'Please keep this code safe. Copy it or take a screenshot or photo, as you will need it for add-ons and for submitting suggestions or concerns to the staff. Thank you and we look forward to serving you! 😊';
 
       setState(() {
         submitted = true;
@@ -435,12 +560,18 @@ class _BookingModalPageState extends State<BookingModalPage>
       _scrollToBottom();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Booking saved successfully.')),
+        const SnackBar(
+          content: Text('Your booking has been saved successfully.'),
+        ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to save booking: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'We were unable to save your booking at the moment. Please try again. Error: $e',
+          ),
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -459,6 +590,59 @@ class _BookingModalPageState extends State<BookingModalPage>
         curve: Curves.easeOut,
       );
     });
+  }
+
+  InputDecoration decoratedInput({
+    required String hintText,
+    String? errorText,
+    Widget? suffixIcon,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      hintStyle: const TextStyle(
+        color: Color(0xFF9BA3B2),
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      suffixIcon: suffixIcon,
+      errorText: errorText,
+      errorMaxLines: 3,
+      errorStyle: const TextStyle(
+        color: Color(0xFFD32F2F),
+        fontSize: 12.5,
+        fontWeight: FontWeight.w600,
+        height: 1.35,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(
+          color: errorText != null
+              ? const Color(0xFFD32F2F)
+              : Colors.black.withOpacity(0.07),
+          width: 1.2,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: BorderSide(
+          color: errorText != null
+              ? const Color(0xFFD32F2F)
+              : BookingModalStyles.primary,
+          width: 1.6,
+        ),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 1.4),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 1.6),
+      ),
+    );
   }
 
   Widget buildLogo(double size) {
@@ -563,12 +747,34 @@ class _BookingModalPageState extends State<BookingModalPage>
     );
   }
 
+  Widget buildTextField({
+    required String label,
+    required TextEditingController controller,
+    required String hintText,
+    String? errorText,
+    TextInputType? keyboardType,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: BookingModalStyles.label),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          decoration: decoratedInput(hintText: hintText, errorText: errorText),
+        ),
+      ],
+    );
+  }
+
   Widget buildDropdownField({
     required String label,
     required String valueText,
     required VoidCallback onTap,
     String? emptyText,
     IconData? icon,
+    String? errorText,
   }) {
     final bool hasValue = valueText.isNotEmpty;
 
@@ -581,20 +787,21 @@ class _BookingModalPageState extends State<BookingModalPage>
           borderRadius: BorderRadius.circular(18),
           onTap: onTap,
           child: InputDecorator(
-            decoration: BookingModalStyles.inputDecoration(
-              hintText: hasValue ? valueText : (emptyText ?? 'Select $label'),
+            decoration: decoratedInput(
+              hintText: emptyText ?? 'Select $label',
+              errorText: errorText,
               suffixIcon: Icon(icon ?? Icons.keyboard_arrow_down_rounded),
             ),
-            child: hasValue
-                ? Text(
-                    valueText,
-                    style: const TextStyle(
-                      color: BookingModalStyles.textDark,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  )
-                : const SizedBox.shrink(),
+            child: Text(
+              hasValue ? valueText : (emptyText ?? 'Select $label'),
+              style: TextStyle(
+                color: hasValue
+                    ? BookingModalStyles.textDark
+                    : const Color(0xFF9BA3B2),
+                fontWeight: hasValue ? FontWeight.w600 : FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
           ),
         ),
       ],
@@ -620,6 +827,7 @@ class _BookingModalPageState extends State<BookingModalPage>
     if (value != null) {
       setState(() {
         selectedCustomerType = value;
+        customerTypeError = null;
       });
     }
   }
@@ -642,6 +850,7 @@ class _BookingModalPageState extends State<BookingModalPage>
     if (value != null) {
       setState(() {
         selectedIdType = value;
+        idTypeError = null;
       });
     }
   }
@@ -672,6 +881,13 @@ class _BookingModalPageState extends State<BookingModalPage>
         submitted = false;
         generatedBookingCode = null;
         aiFinalMessage = null;
+
+        reservationTypeError = null;
+        openTimeError = null;
+        reservationRangeError = null;
+        reservationStartTimeError = null;
+        seatNumberError = null;
+        timeAvailError = null;
       });
     }
   }
@@ -694,8 +910,10 @@ class _BookingModalPageState extends State<BookingModalPage>
     if (value != null) {
       setState(() {
         selectedOpenTimeType = value;
+        openTimeError = null;
         if (value == OpenTimeType.yes) {
           timeAvailController.clear();
+          timeAvailError = null;
         }
       });
     }
@@ -754,6 +972,7 @@ class _BookingModalPageState extends State<BookingModalPage>
     if (picked != null) {
       setState(() {
         selectedReservationRange = picked;
+        reservationRangeError = null;
       });
     }
   }
@@ -792,6 +1011,7 @@ class _BookingModalPageState extends State<BookingModalPage>
     if (picked != null) {
       setState(() {
         selectedReservationStartTime = picked;
+        reservationStartTimeError = null;
       });
     }
   }
@@ -818,6 +1038,7 @@ class _BookingModalPageState extends State<BookingModalPage>
     if (result != null) {
       setState(() {
         timeAvailController.text = result;
+        timeAvailError = validateTimeAvailField();
       });
     }
   }
@@ -840,6 +1061,9 @@ class _BookingModalPageState extends State<BookingModalPage>
         selectedSeats
           ..clear()
           ..addAll(result);
+        seatNumberError = selectedSeats.isEmpty
+            ? 'Please select at least one seat.'
+            : null;
       });
     }
   }
@@ -936,7 +1160,7 @@ class _BookingModalPageState extends State<BookingModalPage>
                           children: [
                             buildSuccessBubble('You selected Booking ✅'),
                             buildAiBubble(
-                              text: 'Please fill up the information below.',
+                              text: 'Please fill in the booking details below.',
                             ),
                             if (showForm) ...[
                               const SizedBox(height: 8),
@@ -955,31 +1179,19 @@ class _BookingModalPageState extends State<BookingModalPage>
                                         style: BookingModalStyles.sectionTitle,
                                       ),
                                       const SizedBox(height: 14),
-                                      Text(
-                                        'Full Name',
-                                        style: BookingModalStyles.label,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      TextField(
+                                      buildTextField(
+                                        label: 'Full Name',
                                         controller: fullNameController,
-                                        decoration:
-                                            BookingModalStyles.inputDecoration(
-                                              hintText: 'Enter full name',
-                                            ),
+                                        hintText: 'Enter full name',
+                                        errorText: fullNameError,
                                       ),
                                       const SizedBox(height: 14),
-                                      Text(
-                                        'Contact Number',
-                                        style: BookingModalStyles.label,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      TextField(
+                                      buildTextField(
+                                        label: 'Contact Number',
                                         controller: contactNumberController,
+                                        hintText: 'Enter contact number',
+                                        errorText: contactNumberError,
                                         keyboardType: TextInputType.phone,
-                                        decoration:
-                                            BookingModalStyles.inputDecoration(
-                                              hintText: 'Enter contact number',
-                                            ),
                                       ),
                                       const SizedBox(height: 14),
                                       buildDropdownField(
@@ -988,12 +1200,14 @@ class _BookingModalPageState extends State<BookingModalPage>
                                           selectedCustomerType,
                                         ),
                                         onTap: pickCustomerType,
+                                        errorText: customerTypeError,
                                       ),
                                       const SizedBox(height: 14),
                                       buildDropdownField(
                                         label: 'ID',
                                         valueText: idTypeText(selectedIdType),
                                         onTap: pickIdType,
+                                        errorText: idTypeError,
                                       ),
                                       const SizedBox(height: 14),
                                       buildDropdownField(
@@ -1002,6 +1216,7 @@ class _BookingModalPageState extends State<BookingModalPage>
                                           selectedReservationType,
                                         ),
                                         onTap: pickReservationType,
+                                        errorText: reservationTypeError,
                                       ),
                                       if (shouldShowOpenTime) ...[
                                         const SizedBox(height: 14),
@@ -1011,6 +1226,7 @@ class _BookingModalPageState extends State<BookingModalPage>
                                             selectedOpenTimeType,
                                           ),
                                           onTap: pickOpenTimeType,
+                                          errorText: openTimeError,
                                         ),
                                       ],
                                       if (shouldShowReservationFields) ...[
@@ -1024,6 +1240,7 @@ class _BookingModalPageState extends State<BookingModalPage>
                                               'Pick reservation date range',
                                           onTap: pickReservationRange,
                                           icon: Icons.calendar_month_rounded,
+                                          errorText: reservationRangeError,
                                         ),
                                         const SizedBox(height: 14),
                                         buildDropdownField(
@@ -1034,6 +1251,7 @@ class _BookingModalPageState extends State<BookingModalPage>
                                           emptyText: 'Pick reservation time',
                                           onTap: pickReservationStartTime,
                                           icon: Icons.access_time_rounded,
+                                          errorText: reservationStartTimeError,
                                         ),
                                       ],
                                       if (shouldShowSeatField) ...[
@@ -1044,6 +1262,7 @@ class _BookingModalPageState extends State<BookingModalPage>
                                           emptyText: 'Pick seat number',
                                           onTap: pickSeats,
                                           icon: Icons.event_seat_rounded,
+                                          errorText: seatNumberError,
                                         ),
                                       ],
                                       if (shouldShowTimeAvail) ...[
@@ -1054,6 +1273,7 @@ class _BookingModalPageState extends State<BookingModalPage>
                                           emptyText: 'Pick time available',
                                           onTap: pickTimeAvail,
                                           icon: Icons.schedule_rounded,
+                                          errorText: timeAvailError,
                                         ),
                                       ],
                                       const SizedBox(height: 18),
@@ -1090,7 +1310,7 @@ class _BookingModalPageState extends State<BookingModalPage>
                               const SizedBox(height: 12),
                               buildAiBubble(
                                 text:
-                                    'Booking information received successfully.',
+                                    'Your booking information has been received successfully.',
                               ),
                               buildCodeBubble(generatedBookingCode!),
                               if (aiFinalMessage != null)
@@ -1246,8 +1466,33 @@ class _TimeAvailSheet extends StatelessWidget {
             const SizedBox(height: 14),
             TextField(
               controller: controller,
-              decoration: BookingModalStyles.inputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Example: 02:00 or 2 hours',
+                hintStyle: const TextStyle(
+                  color: Color(0xFF9BA3B2),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  borderSide: BorderSide(
+                    color: Colors.black.withOpacity(0.07),
+                    width: 1.2,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  borderSide: const BorderSide(
+                    color: BookingModalStyles.primary,
+                    width: 1.6,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 14),
