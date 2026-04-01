@@ -17,10 +17,10 @@ class _BookAddPageState extends State<BookAddPage>
   final List<Map<String, dynamic>> messages = [];
 
   late final AnimationController pageController;
-  late final AnimationController floatController;
+  late final AnimationController leafController;
   late final Animation<double> fadeAnim;
   late final Animation<Offset> slideAnim;
-  late final Animation<double> floatAnim;
+  late final Animation<double> leafFloatAnim;
 
   @override
   void initState() {
@@ -31,9 +31,9 @@ class _BookAddPageState extends State<BookAddPage>
       duration: const Duration(milliseconds: 850),
     );
 
-    floatController = AnimationController(
+    leafController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2600),
+      duration: const Duration(milliseconds: 3200),
     )..repeat(reverse: true);
 
     fadeAnim = CurvedAnimation(
@@ -41,14 +41,15 @@ class _BookAddPageState extends State<BookAddPage>
       curve: Curves.easeOutCubic,
     );
 
-    slideAnim = Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero)
+    slideAnim = Tween<Offset>(begin: const Offset(0, 0.035), end: Offset.zero)
         .animate(
           CurvedAnimation(parent: pageController, curve: Curves.easeOutCubic),
         );
 
-    floatAnim = Tween<double>(begin: -4, end: 4).animate(
-      CurvedAnimation(parent: floatController, curve: Curves.easeInOut),
-    );
+    leafFloatAnim = Tween<double>(
+      begin: -5,
+      end: 5,
+    ).animate(CurvedAnimation(parent: leafController, curve: Curves.easeInOut));
 
     pageController.forward();
   }
@@ -58,7 +59,7 @@ class _BookAddPageState extends State<BookAddPage>
     controller.dispose();
     scrollController.dispose();
     pageController.dispose();
-    floatController.dispose();
+    leafController.dispose();
     super.dispose();
   }
 
@@ -133,7 +134,7 @@ class _BookAddPageState extends State<BookAddPage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!scrollController.hasClients) return;
       scrollController.animateTo(
-        scrollController.position.maxScrollExtent + 120,
+        scrollController.position.maxScrollExtent + 140,
         duration: const Duration(milliseconds: 280),
         curve: Curves.easeOut,
       );
@@ -146,11 +147,11 @@ class _BookAddPageState extends State<BookAddPage>
       height: size,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(size / 2),
+        shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.07),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -167,34 +168,41 @@ class _BookAddPageState extends State<BookAddPage>
     );
   }
 
-  Widget _leaf({
+  Widget _cornerLeaf({
     required Alignment alignment,
-    required double width,
-    required double rotation,
     required EdgeInsets margin,
+    required double width,
+    required double angle,
+    required bool invertY,
   }) {
     return Align(
       alignment: alignment,
       child: Container(
         margin: margin,
         child: AnimatedBuilder(
-          animation: floatAnim,
+          animation: leafFloatAnim,
           builder: (context, child) {
             return Transform.translate(
-              offset: Offset(0, floatAnim.value),
-              child: Transform.rotate(
-                angle: rotation,
-                child: Opacity(opacity: 0.95, child: child),
+              offset: Offset(0, leafFloatAnim.value),
+              child: Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.identity()
+                  ..rotateZ(angle)
+                  ..scale(1.0, invertY ? -1.0 : 1.0),
+                child: child,
               ),
             );
           },
-          child: Image.asset(
-            "assets/leave.png",
-            width: width,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return const SizedBox.shrink();
-            },
+          child: Opacity(
+            opacity: 0.95,
+            child: Image.asset(
+              "assets/leave.png",
+              width: width,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return const SizedBox.shrink();
+              },
+            ),
           ),
         ),
       ),
@@ -204,41 +212,38 @@ class _BookAddPageState extends State<BookAddPage>
   Widget chatBubble(Map<String, dynamic> msg, bool isMobile) {
     final bool isAI = msg["isAI"] == true;
 
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 280),
-      opacity: 1,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          mainAxisAlignment: isAI
-              ? MainAxisAlignment.start
-              : MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (isAI) ...[
-              _buildLogo(isMobile ? 34 : 38),
-              const SizedBox(width: 8),
-            ],
-            Flexible(
-              child: Container(
-                constraints: BoxConstraints(maxWidth: isMobile ? 255 : 430),
-                padding: EdgeInsets.symmetric(
-                  horizontal: isMobile ? 14 : 16,
-                  vertical: isMobile ? 12 : 14,
-                ),
-                decoration: isAI
-                    ? BookAddStyles.chatBubbleAI
-                    : BookAddStyles.chatBubbleUser,
-                child: Text(
-                  msg["text"]?.toString() ?? "",
-                  style: isAI
-                      ? BookAddStyles.chatTextAI
-                      : BookAddStyles.chatTextUser,
-                ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        mainAxisAlignment: isAI
+            ? MainAxisAlignment.start
+            : MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (isAI) ...[
+            _buildLogo(isMobile ? 34 : 38),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 240),
+              constraints: BoxConstraints(maxWidth: isMobile ? 255 : 500),
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 14 : 16,
+                vertical: isMobile ? 12 : 14,
+              ),
+              decoration: isAI
+                  ? BookAddStyles.chatBubbleAI
+                  : BookAddStyles.chatBubbleUser,
+              child: Text(
+                msg["text"]?.toString() ?? "",
+                style: isAI
+                    ? BookAddStyles.chatTextAI
+                    : BookAddStyles.chatTextUser,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -246,29 +251,28 @@ class _BookAddPageState extends State<BookAddPage>
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
-    final bool isMobile = screen.width < 600;
-    final bool isTablet = screen.width >= 600 && screen.width < 1024;
+    final bool isMobile = screen.width < 640;
+    final bool isTablet = screen.width >= 640 && screen.width < 1100;
 
-    double cardWidth;
-    if (isMobile) {
-      cardWidth = screen.width;
-    } else if (isTablet) {
-      cardWidth = 760;
-    } else {
-      cardWidth = 900;
-    }
+    final double cardWidth = isMobile
+        ? screen.width - 20
+        : isTablet
+        ? 600
+        : 700;
 
-    double cardHeight;
-    if (isMobile) {
-      cardHeight = screen.height * 0.88;
-    } else if (isTablet) {
-      cardHeight = 700;
-    } else {
-      cardHeight = 760;
-    }
+    final double cardHeight = isMobile
+        ? screen.height * 0.80
+        : isTablet
+        ? 500
+        : 520;
 
-    final horizontalPad = isMobile ? 12.0 : 20.0;
-    final leafWidth = isMobile ? 120.0 : 220.0;
+    final double leafWidth = isMobile
+        ? 120
+        : isTablet
+        ? 155
+        : 210;
+
+    final EdgeInsets leafMargin = EdgeInsets.all(isMobile ? 14 : 22);
 
     return Scaffold(
       backgroundColor: BookAddStyles.bgColor,
@@ -278,41 +282,42 @@ class _BookAddPageState extends State<BookAddPage>
             child: Container(decoration: BookAddStyles.pageBackground),
           ),
 
-          _leaf(
+          _cornerLeaf(
             alignment: Alignment.topLeft,
+            margin: EdgeInsets.only(top: leafMargin.top, left: leafMargin.left),
             width: leafWidth,
-            rotation: -0.1,
-            margin: EdgeInsets.only(
-              top: isMobile ? 10 : 14,
-              left: isMobile ? 6 : 12,
-            ),
+            angle: 0,
+            invertY: true,
           ),
-          _leaf(
+          _cornerLeaf(
             alignment: Alignment.topRight,
-            width: leafWidth,
-            rotation: 0.05,
             margin: EdgeInsets.only(
-              top: isMobile ? 10 : 14,
-              right: isMobile ? 6 : 12,
+              top: leafMargin.top,
+              right: leafMargin.right,
             ),
+            width: leafWidth,
+            angle: 3.14159,
+            invertY: false,
           ),
-          _leaf(
+          _cornerLeaf(
             alignment: Alignment.bottomLeft,
-            width: leafWidth,
-            rotation: 0.1,
             margin: EdgeInsets.only(
-              bottom: isMobile ? 10 : 14,
-              left: isMobile ? 6 : 12,
+              bottom: leafMargin.bottom,
+              left: leafMargin.left,
             ),
+            width: leafWidth,
+            angle: 0,
+            invertY: false,
           ),
-          _leaf(
+          _cornerLeaf(
             alignment: Alignment.bottomRight,
-            width: leafWidth,
-            rotation: -0.05,
             margin: EdgeInsets.only(
-              bottom: isMobile ? 10 : 14,
-              right: isMobile ? 6 : 12,
+              bottom: leafMargin.bottom,
+              right: leafMargin.right,
             ),
+            width: leafWidth,
+            angle: -1.5708,
+            invertY: false,
           ),
 
           SafeArea(
@@ -324,11 +329,11 @@ class _BookAddPageState extends State<BookAddPage>
                   child: Container(
                     width: cardWidth,
                     height: cardHeight,
-                    margin: EdgeInsets.all(horizontalPad),
-                    padding: EdgeInsets.all(isMobile ? 14 : 18),
+                    margin: EdgeInsets.all(isMobile ? 10 : 8),
+                    padding: EdgeInsets.all(isMobile ? 14 : 20),
                     decoration: BookAddStyles.mainCard,
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 450),
+                      duration: const Duration(milliseconds: 420),
                       switchInCurve: Curves.easeOutCubic,
                       switchOutCurve: Curves.easeInCubic,
                       child: !started
@@ -351,7 +356,7 @@ class _BookAddPageState extends State<BookAddPage>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          padding: EdgeInsets.all(isMobile ? 12 : 14),
+          padding: EdgeInsets.all(isMobile ? 12 : 16),
           decoration: BookAddStyles.headerCard,
           child: Row(
             children: [
@@ -399,27 +404,27 @@ class _BookAddPageState extends State<BookAddPage>
             ],
           ),
         ),
-        SizedBox(height: isMobile ? 30 : 40),
+        SizedBox(height: isMobile ? 34 : 46),
         Text(
           "Start Your Booking Assistant",
           textAlign: TextAlign.center,
           style: isMobile
-              ? BookAddStyles.bigTitle.copyWith(fontSize: 24)
+              ? BookAddStyles.bigTitle.copyWith(fontSize: 26)
               : BookAddStyles.bigTitle,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 42),
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 80),
           child: Text(
             "Click Start to choose Booking, Promo, Add-Ons, or Seat View through chat.",
             textAlign: TextAlign.center,
             style: BookAddStyles.subtitle,
           ),
         ),
-        SizedBox(height: isMobile ? 26 : 34),
+        SizedBox(height: isMobile ? 28 : 36),
         TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.95, end: 1),
-          duration: const Duration(milliseconds: 900),
+          duration: const Duration(milliseconds: 800),
           curve: Curves.easeOutBack,
           builder: (context, value, child) {
             return Transform.scale(scale: value, child: child);
@@ -439,11 +444,11 @@ class _BookAddPageState extends State<BookAddPage>
       key: const ValueKey("chat-state"),
       children: [
         Container(
-          padding: EdgeInsets.all(isMobile ? 12 : 14),
+          padding: EdgeInsets.all(isMobile ? 12 : 16),
           decoration: BookAddStyles.headerCard,
           child: Row(
             children: [
-              _buildLogo(isMobile ? 42 : 46),
+              _buildLogo(isMobile ? 40 : 46),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -469,15 +474,15 @@ class _BookAddPageState extends State<BookAddPage>
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         Expanded(
           child: Container(
             width: double.infinity,
-            padding: EdgeInsets.all(isMobile ? 12 : 16),
+            padding: EdgeInsets.all(isMobile ? 12 : 18),
             decoration: BookAddStyles.chatContainer,
             child: ListView.builder(
               controller: scrollController,
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: 10),
               itemCount: messages.length,
               itemBuilder: (context, index) {
                 return chatBubble(messages[index], isMobile);
@@ -485,7 +490,7 @@ class _BookAddPageState extends State<BookAddPage>
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -502,10 +507,10 @@ class _BookAddPageState extends State<BookAddPage>
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             SizedBox(
-              height: 54,
-              width: 54,
+              height: 56,
+              width: 56,
               child: ElevatedButton(
                 onPressed: () => sendMessage(controller.text),
                 style: BookAddStyles.sendButton,
