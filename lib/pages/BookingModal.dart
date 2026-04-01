@@ -423,8 +423,8 @@ class _BookingModalPageState extends State<BookingModalPage>
       await supabase.from('customer_sessions').insert(payload);
 
       final reminderText = isReservation
-          ? 'Dont forget this code. Please copy and picture this code for IN/OUT attendance.'
-          : 'Dont forget this code. Please copy and picture this code for add ons and for suggestion/complain to staff.';
+          ? 'Please keep this code safe and make sure to copy it or take a screenshot/photo. You will need it for your IN/OUT attendance, add-ons, and for submitting suggestions or concerns to the staff.'
+          : 'Please keep this code safe. Copy it or take a screenshot/photo, as you will need it for add-ons and for submitting suggestions or concerns to the staff.';
 
       setState(() {
         submitted = true;
