@@ -20,6 +20,7 @@ class _PromoModalPageState extends State<PromoModalPage>
   final ScrollController scrollController = ScrollController();
 
   String selectedArea = 'common_area';
+  String? selectedSeatNumber;
   String? selectedPackageId;
   String? selectedOptionId;
   DateTime? selectedStartDateTime;
@@ -34,6 +35,7 @@ class _PromoModalPageState extends State<PromoModalPage>
   String? fullNameError;
   String? phoneNumberError;
   String? areaError;
+  String? seatNumberError;
   String? packageError;
   String? optionError;
   String? startDateTimeError;
@@ -177,6 +179,8 @@ class _PromoModalPageState extends State<PromoModalPage>
         .where((e) => e.isNotEmpty)
         .toList();
   }
+
+  bool get requiresSeatNumber => selectedArea == 'common_area';
 
   String formatAreaText(String value) {
     switch (value) {
@@ -397,6 +401,12 @@ class _PromoModalPageState extends State<PromoModalPage>
         ? 'Please select the area.'
         : null;
 
+    final newSeatNumberError =
+        requiresSeatNumber &&
+            (selectedSeatNumber == null || selectedSeatNumber!.trim().isEmpty)
+        ? 'Please select the seat number.'
+        : null;
+
     final newPackageError = selectedPackageId == null
         ? 'Please select a promo package.'
         : null;
@@ -413,6 +423,7 @@ class _PromoModalPageState extends State<PromoModalPage>
       fullNameError = newFullNameError;
       phoneNumberError = newPhoneNumberError;
       areaError = newAreaError;
+      seatNumberError = newSeatNumberError;
       packageError = newPackageError;
       optionError = newOptionError;
       startDateTimeError = newStartDateTimeError;
@@ -422,6 +433,7 @@ class _PromoModalPageState extends State<PromoModalPage>
       newFullNameError,
       newPhoneNumberError,
       newAreaError,
+      newSeatNumberError,
       newPackageError,
       newOptionError,
       newStartDateTimeError,
@@ -550,7 +562,7 @@ class _PromoModalPageState extends State<PromoModalPage>
         'area': selectedArea,
         'package_id': package['id'],
         'package_option_id': option['id'],
-        'seat_number': null,
+        'seat_number': requiresSeatNumber ? selectedSeatNumber : null,
         'start_at': start.toUtc().toIso8601String(),
         'end_at': end.toUtc().toIso8601String(),
         'price': toDouble(option['price']),
@@ -881,6 +893,7 @@ class _PromoModalPageState extends State<PromoModalPage>
     if (value != null) {
       setState(() {
         selectedArea = value;
+        selectedSeatNumber = null;
         selectedPackageId = null;
         selectedOptionId = null;
         selectedStartDateTime = null;
@@ -889,9 +902,30 @@ class _PromoModalPageState extends State<PromoModalPage>
         aiFinalMessage = null;
 
         areaError = null;
+        seatNumberError = null;
         packageError = null;
         optionError = null;
         startDateTimeError = null;
+      });
+    }
+  }
+
+  Future<void> pickSeatNumber() async {
+    if (!requiresSeatNumber) return;
+
+    final value = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return SeatPickerModal(selectedSeat: selectedSeatNumber);
+      },
+    );
+
+    if (value != null) {
+      setState(() {
+        selectedSeatNumber = value;
+        seatNumberError = null;
       });
     }
   }
@@ -1094,6 +1128,17 @@ class _PromoModalPageState extends State<PromoModalPage>
                                           onTap: pickArea,
                                           errorText: areaError,
                                         ),
+                                        if (requiresSeatNumber) ...[
+                                          const SizedBox(height: 14),
+                                          buildDropdownField(
+                                            label: 'Seat Number',
+                                            valueText: selectedSeatNumber ?? '',
+                                            emptyText: 'Select seat number',
+                                            onTap: pickSeatNumber,
+                                            icon: Icons.event_seat_rounded,
+                                            errorText: seatNumberError,
+                                          ),
+                                        ],
                                         const SizedBox(height: 14),
                                         buildDropdownField(
                                           label: 'Promo Package',
@@ -1255,6 +1300,16 @@ class _PromoModalPageState extends State<PromoModalPage>
                                                   style:
                                                       PromoModalStyles.infoText,
                                                 ),
+                                                if (requiresSeatNumber &&
+                                                    selectedSeatNumber !=
+                                                        null) ...[
+                                                  const SizedBox(height: 6),
+                                                  Text(
+                                                    'Seat: $selectedSeatNumber',
+                                                    style: PromoModalStyles
+                                                        .infoText,
+                                                  ),
+                                                ],
                                               ],
                                             ),
                                           ),
@@ -1321,6 +1376,147 @@ class _PromoModalPageState extends State<PromoModalPage>
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SeatPickerModal extends StatefulWidget {
+  final String? selectedSeat;
+
+  const SeatPickerModal({super.key, this.selectedSeat});
+
+  @override
+  State<SeatPickerModal> createState() => _SeatPickerModalState();
+}
+
+class _SeatPickerModalState extends State<SeatPickerModal> {
+  String? selected;
+
+  final Map<String, List<String>> seatGroups = const {
+    '1stF': [
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7A',
+      '7B',
+      '8A',
+      '8B',
+      '9',
+      '10',
+      '11',
+    ],
+    'TATAMI AREA': ['12A', '12B', '12C'],
+    '2ndF': [
+      '13',
+      '14',
+      '15',
+      '16',
+      '17',
+      '18',
+      '19',
+      '20',
+      '21',
+      '22',
+      '23',
+      '24',
+      '25',
+    ],
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    selected = widget.selectedSeat?.toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: PromoModalStyles.cardBg,
+        borderRadius: BorderRadius.circular(26),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 52,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text('Seat Number', style: PromoModalStyles.seatPickerTitle),
+              const SizedBox(height: 14),
+              ...seatGroups.entries.map((group) {
+                return Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(14),
+                  decoration: PromoModalStyles.seatGroupCard,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(group.key, style: PromoModalStyles.seatGroupTitle),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: group.value.map((seat) {
+                          final bool isSelected = selected == seat;
+
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                selected = seat;
+                              });
+                            },
+                            child: Container(
+                              width: 70,
+                              height: 44,
+                              alignment: Alignment.center,
+                              decoration: isSelected
+                                  ? PromoModalStyles.selectedSeatBox
+                                  : PromoModalStyles.seatBox,
+                              child: Text(
+                                seat,
+                                style: isSelected
+                                    ? PromoModalStyles.selectedSeatText
+                                    : PromoModalStyles.seatText,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context, selected);
+                  },
+                  style: PromoModalStyles.primaryButton,
+                  child: const Text('Done'),
+                ),
+              ),
+            ],
           ),
         ),
       ),

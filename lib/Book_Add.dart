@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'styles/Book_Add_styles.dart';
 import 'pages/BookingModal.dart';
+import 'pages/PromoModal.dart';
 
 class BookAddPage extends StatefulWidget {
   const BookAddPage({super.key});
@@ -13,6 +14,7 @@ class _BookAddPageState extends State<BookAddPage>
     with TickerProviderStateMixin {
   bool started = false;
   bool openingBooking = false;
+  bool openingPromo = false;
 
   final TextEditingController controller = TextEditingController();
   final ScrollController scrollController = ScrollController();
@@ -65,6 +67,8 @@ class _BookAddPageState extends State<BookAddPage>
     super.dispose();
   }
 
+  bool get isBusy => openingBooking || openingPromo;
+
   void startChat() {
     if (started) return;
 
@@ -82,7 +86,7 @@ class _BookAddPageState extends State<BookAddPage>
 
   void sendMessage(String text) {
     final value = text.trim();
-    if (value.isEmpty || openingBooking) return;
+    if (value.isEmpty || isBusy) return;
 
     setState(() {
       messages.add({"isAI": false, "text": value});
@@ -97,7 +101,7 @@ class _BookAddPageState extends State<BookAddPage>
   }
 
   Future<void> _openBookingFlow() async {
-    if (!mounted || openingBooking) return;
+    if (!mounted || isBusy) return;
 
     setState(() {
       openingBooking = true;
@@ -129,7 +133,47 @@ class _BookAddPageState extends State<BookAddPage>
       messages.add({
         "isAI": true,
         "text":
-            "You may choose another service anytime.\n\nPlease select one of the following:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
+            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
+      });
+    });
+
+    _scrollToBottom();
+  }
+
+  Future<void> _openPromoFlow() async {
+    if (!mounted || isBusy) return;
+
+    setState(() {
+      openingPromo = true;
+    });
+
+    setState(() {
+      messages.add({
+        "isAI": true,
+        "text":
+            "You selected Promo 🎉\n\nOpening the promo booking form for you now...",
+      });
+    });
+
+    _scrollToBottom();
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const PromoModalPage()),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      openingPromo = false;
+      messages.add({
+        "isAI": true,
+        "text":
+            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
       });
     });
 
@@ -147,14 +191,7 @@ class _BookAddPageState extends State<BookAddPage>
 
       case "2":
       case "promo":
-        setState(() {
-          messages.add({
-            "isAI": true,
-            "text":
-                "You selected Promo 🎉\n\nPromo services will be available here soon.",
-          });
-        });
-        _scrollToBottom();
+        _openPromoFlow();
         return;
 
       case "3":
@@ -204,7 +241,7 @@ class _BookAddPageState extends State<BookAddPage>
           messages.add({
             "isAI": true,
             "text":
-                "I’m sorry, I could not recognize that selection. Please choose one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
+                "I’m sorry, I could not recognize that selection.\n\nPlease choose one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
           });
         });
         _scrollToBottom();
@@ -537,8 +574,8 @@ class _BookAddPageState extends State<BookAddPage>
                     Text("AI Assistant", style: BookAddStyles.title),
                     const SizedBox(height: 2),
                     Text(
-                      openingBooking
-                          ? "Opening booking form..."
+                      isBusy
+                          ? "Opening your selected form..."
                           : "Reply with 1 to 5 to continue.",
                       style: BookAddStyles.helperText,
                     ),
@@ -552,7 +589,7 @@ class _BookAddPageState extends State<BookAddPage>
                 ),
                 decoration: BookAddStyles.onlineChip,
                 child: Text(
-                  openingBooking ? "Loading" : "Online",
+                  isBusy ? "Loading" : "Online",
                   style: BookAddStyles.onlineText,
                 ),
               ),
@@ -584,13 +621,13 @@ class _BookAddPageState extends State<BookAddPage>
                 controller: controller,
                 minLines: 1,
                 maxLines: 4,
-                enabled: !openingBooking,
+                enabled: !isBusy,
                 textInputAction: TextInputAction.send,
                 onSubmitted: sendMessage,
                 style: BookAddStyles.inputText,
                 decoration: BookAddStyles.inputDecoration(
-                  hintText: openingBooking
-                      ? "Opening booking..."
+                  hintText: isBusy
+                      ? "Opening your selected form..."
                       : "Type 1-5...",
                 ),
               ),
@@ -600,9 +637,7 @@ class _BookAddPageState extends State<BookAddPage>
               height: 56,
               width: 56,
               child: ElevatedButton(
-                onPressed: openingBooking
-                    ? null
-                    : () => sendMessage(controller.text),
+                onPressed: isBusy ? null : () => sendMessage(controller.text),
                 style: BookAddStyles.sendButton,
                 child: const Icon(Icons.send_rounded),
               ),
