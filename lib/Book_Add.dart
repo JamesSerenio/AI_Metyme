@@ -73,7 +73,7 @@ class _BookAddPageState extends State<BookAddPage>
       messages.add({
         "isAI": true,
         "text":
-            "Welcome to Me Tyme Lounge!\n\nPlease choose:\n1 Booking\n2 Promo\n3 Add-Ons\n4 Seat View",
+            "Welcome to Me Tyme Lounge! ✨\n\nPlease choose one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
       });
     });
 
@@ -104,7 +104,11 @@ class _BookAddPageState extends State<BookAddPage>
     });
 
     setState(() {
-      messages.add({"isAI": true, "text": "You selected Booking ✅"});
+      messages.add({
+        "isAI": true,
+        "text":
+            "You selected Booking ✅\n\nOpening the booking form for you now...",
+      });
     });
 
     _scrollToBottom();
@@ -125,7 +129,7 @@ class _BookAddPageState extends State<BookAddPage>
       messages.add({
         "isAI": true,
         "text":
-            "Please choose again:\n1 Booking\n2 Promo\n3 Add-Ons\n4 Seat View",
+            "You may choose another service anytime.\n\nPlease select one of the following:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
       });
     });
 
@@ -144,7 +148,11 @@ class _BookAddPageState extends State<BookAddPage>
       case "2":
       case "promo":
         setState(() {
-          messages.add({"isAI": true, "text": "You selected Promo 🎉"});
+          messages.add({
+            "isAI": true,
+            "text":
+                "You selected Promo 🎉\n\nPromo services will be available here soon.",
+          });
         });
         _scrollToBottom();
         return;
@@ -154,7 +162,11 @@ class _BookAddPageState extends State<BookAddPage>
       case "addons":
       case "add ons":
         setState(() {
-          messages.add({"isAI": true, "text": "You selected Add-Ons 🍔"});
+          messages.add({
+            "isAI": true,
+            "text":
+                "You selected Add-Ons 🍔\n\nYou may proceed with food, drinks, and other available add-ons here soon.",
+          });
         });
         _scrollToBottom();
         return;
@@ -163,7 +175,26 @@ class _BookAddPageState extends State<BookAddPage>
       case "seat view":
       case "seatview":
         setState(() {
-          messages.add({"isAI": true, "text": "You selected Seat View 🪑"});
+          messages.add({
+            "isAI": true,
+            "text":
+                "You selected Seat View 🪑\n\nYou will be able to view available seats here soon.",
+          });
+        });
+        _scrollToBottom();
+        return;
+
+      case "5":
+      case "attendance":
+      case "attendance for reservation and promo":
+      case "reservation attendance":
+      case "promo attendance":
+        setState(() {
+          messages.add({
+            "isAI": true,
+            "text":
+                "You selected Attendance for Reservation and Promo ✅\n\nThis option will help you manage attendance for reservation and promo customers, including IN and OUT records.",
+          });
         });
         _scrollToBottom();
         return;
@@ -173,7 +204,7 @@ class _BookAddPageState extends State<BookAddPage>
           messages.add({
             "isAI": true,
             "text":
-                "Invalid choice ❌\n\nPlease choose:\n1 Booking\n2 Promo\n3 Add-Ons\n4 Seat View",
+                "I’m sorry, I could not recognize that selection. Please choose one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
           });
         });
         _scrollToBottom();
@@ -332,7 +363,6 @@ class _BookAddPageState extends State<BookAddPage>
           Positioned.fill(
             child: Container(decoration: BookAddStyles.pageBackground),
           ),
-
           _cornerLeaf(
             alignment: Alignment.topLeft,
             margin: EdgeInsets.only(top: leafMargin.top, left: leafMargin.left),
@@ -370,7 +400,6 @@ class _BookAddPageState extends State<BookAddPage>
             angle: -1.5708,
             invertY: false,
           ),
-
           SafeArea(
             child: FadeTransition(
               opacity: fadeAnim,
@@ -467,7 +496,7 @@ class _BookAddPageState extends State<BookAddPage>
         Padding(
           padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 80),
           child: Text(
-            "Click Start to choose Booking, Promo, Add-Ons, or Seat View through chat.",
+            "Click Start to choose Booking, Promo, Add-Ons, Seat View, or Attendance for Reservation and Promo through chat.",
             textAlign: TextAlign.center,
             style: BookAddStyles.subtitle,
           ),
@@ -510,7 +539,7 @@ class _BookAddPageState extends State<BookAddPage>
                     Text(
                       openingBooking
                           ? "Opening booking form..."
-                          : "Reply with 1 to 4 to continue.",
+                          : "Reply with 1 to 5 to continue.",
                       style: BookAddStyles.helperText,
                     ),
                   ],
@@ -562,7 +591,7 @@ class _BookAddPageState extends State<BookAddPage>
                 decoration: BookAddStyles.inputDecoration(
                   hintText: openingBooking
                       ? "Opening booking..."
-                      : "Type 1-4...",
+                      : "Type 1-5...",
                 ),
               ),
             ),
