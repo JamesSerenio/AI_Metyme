@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "git clone https://github.com/flutter/flutter.git --depth 1 -b stable /tmp/flutter && export PATH=\"$PATH:/tmp/flutter/bin\" && flutter config --enable-web && flutter pub get && flutter build web",
+  "outputDirectory": "build/web",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
