@@ -1,5 +1,8 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../styles/BookingModal_styles.dart';
+import '../utils/supabase_client.dart';
 
 enum CustomerType { reviewer, student, regular }
 
@@ -34,6 +37,10 @@ class _BookingModalPageState extends State<BookingModalPage>
 
   bool showForm = false;
   bool submitted = false;
+  bool isSubmitting = false;
+
+  String? generatedBookingCode;
+  String? aiFinalMessage;
 
   late final AnimationController pageController;
   late final Animation<double> fadeAnim;
@@ -179,13 +186,14 @@ class _BookingModalPageState extends State<BookingModalPage>
   bool get shouldShowTimeAvail => selectedOpenTimeType == OpenTimeType.no;
   bool get shouldShowReservationFields =>
       selectedReservationType == ReservationType.yes;
+  bool get shouldShowSeatField => selectedReservationType != null;
 
   bool get isValid {
     final fullName = fullNameController.text.trim();
-    final contact = contactNumberController.text.trim();
+    final contact = normalizePhone(contactNumberController.text.trim());
 
     if (fullName.isEmpty ||
-        contact.isEmpty ||
+        contact == null ||
         selectedCustomerType == null ||
         selectedIdType == null ||
         selectedReservationType == null) {
@@ -196,14 +204,17 @@ class _BookingModalPageState extends State<BookingModalPage>
       return false;
     }
 
+    if (shouldShowSeatField && selectedSeats.isEmpty) {
+      return false;
+    }
+
     if (shouldShowTimeAvail && timeAvailController.text.trim().isEmpty) {
       return false;
     }
 
     if (shouldShowReservationFields) {
       if (selectedReservationRange == null ||
-          selectedReservationStartTime == null ||
-          selectedSeats.isEmpty) {
+          selectedReservationStartTime == null) {
         return false;
       }
     }
@@ -211,28 +222,239 @@ class _BookingModalPageState extends State<BookingModalPage>
     return true;
   }
 
-  void submitForm() {
+  String? normalizePhone(String input) {
+    String value = input.trim().replaceAll(RegExp(r'\s+|-'), '');
+
+    if (value.startsWith('+63')) {
+      value = '0${value.substring(3)}';
+    } else if (value.startsWith('63')) {
+      value = '0${value.substring(2)}';
+    }
+
+    if (!RegExp(r'^09[0-9]{9}$').hasMatch(value)) {
+      return null;
+    }
+
+    return value;
+  }
+
+  String formatDateOnly(DateTime value) {
+    final year = value.year.toString().padLeft(4, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+
+  DateTime combineDateAndTime(DateTime date, TimeOfDay time) {
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
+  }
+
+  Duration? parseTimeAvail(String input) {
+    final value = input.trim().toLowerCase();
+
+    final hhmm = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(value);
+    if (hhmm != null) {
+      final hours = int.tryParse(hhmm.group(1)!);
+      final minutes = int.tryParse(hhmm.group(2)!);
+      if (hours != null && minutes != null) {
+        return Duration(hours: hours, minutes: minutes);
+      }
+    }
+
+    final hoursOnly = RegExp(
+      r'^(\d+)\s*(hour|hours|hr|hrs)$',
+    ).firstMatch(value);
+    if (hoursOnly != null) {
+      final hours = int.tryParse(hoursOnly.group(1)!);
+      if (hours != null) {
+        return Duration(hours: hours);
+      }
+    }
+
+    final minsOnly = RegExp(
+      r'^(\d+)\s*(minute|minutes|min|mins)$',
+    ).firstMatch(value);
+    if (minsOnly != null) {
+      final mins = int.tryParse(minsOnly.group(1)!);
+      if (mins != null) {
+        return Duration(minutes: mins);
+      }
+    }
+
+    final justNumber = int.tryParse(value);
+    if (justNumber != null) {
+      return Duration(hours: justNumber);
+    }
+
+    return null;
+  }
+
+  Future<String> generateUniqueBookingCode() async {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final random = Random.secure();
+
+    while (true) {
+      final code = List.generate(
+        4,
+        (_) => chars[random.nextInt(chars.length)],
+      ).join();
+
+      final existing = await supabase
+          .from('customer_sessions')
+          .select('id')
+          .eq('booking_code', code)
+          .limit(1);
+
+      if (existing is List && existing.isEmpty) {
+        return code;
+      }
+    }
+  }
+
+  Future<void> submitForm() async {
     if (!isValid) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please complete all booking information.'),
+          content: Text('Please complete all booking information correctly.'),
+        ),
+      );
+      return;
+    }
+
+    final normalizedPhone = normalizePhone(contactNumberController.text.trim());
+    if (normalizedPhone == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Phone number must start with 09 and have 11 digits.'),
         ),
       );
       return;
     }
 
     setState(() {
-      submitted = true;
+      isSubmitting = true;
     });
 
-    _scrollToBottom();
+    try {
+      final now = DateTime.now();
+      final isReservation = selectedReservationType == ReservationType.yes;
+      final isOpen = selectedOpenTimeType == OpenTimeType.yes;
+
+      DateTime timeStarted;
+      DateTime? timeEnded;
+      DateTime? expectedEndAt;
+      String? reservationDate;
+      String? reservationEndDate;
+
+      if (isReservation) {
+        final range = selectedReservationRange!;
+        final startTime = selectedReservationStartTime!;
+        timeStarted = combineDateAndTime(range.start, startTime);
+        reservationDate = formatDateOnly(range.start);
+        reservationEndDate = formatDateOnly(range.end);
+
+        if (isOpen) {
+          expectedEndAt = DateTime(
+            range.end.year,
+            range.end.month,
+            range.end.day,
+            23,
+            59,
+            59,
+          );
+          timeEnded = null;
+        } else {
+          final duration = parseTimeAvail(timeAvailController.text);
+          if (duration != null) {
+            final computedEnd = timeStarted.add(duration);
+            final latestAllowed = DateTime(
+              range.end.year,
+              range.end.month,
+              range.end.day,
+              23,
+              59,
+              59,
+            );
+
+            expectedEndAt = computedEnd.isAfter(latestAllowed)
+                ? latestAllowed
+                : computedEnd;
+            timeEnded = expectedEndAt;
+          }
+        }
+      } else {
+        timeStarted = now;
+        reservationDate = null;
+        reservationEndDate = null;
+
+        if (isOpen) {
+          expectedEndAt = null;
+          timeEnded = null;
+        } else {
+          final duration = parseTimeAvail(timeAvailController.text);
+          if (duration != null) {
+            expectedEndAt = now.add(duration);
+            timeEnded = expectedEndAt;
+          }
+        }
+      }
+
+      final bookingCode = await generateUniqueBookingCode();
+
+      final payload = <String, dynamic>{
+        'date': formatDateOnly(now),
+        'full_name': fullNameController.text.trim(),
+        'customer_type': customerTypeText(selectedCustomerType).toLowerCase(),
+        'has_id': selectedIdType == IdType.withId,
+        'hour_avail': isOpen ? 'OPEN' : timeAvailController.text.trim(),
+        'time_started': timeStarted.toUtc().toIso8601String(),
+        'time_ended': timeEnded?.toUtc().toIso8601String(),
+        'total_time': 0,
+        'total_amount': 0,
+        'reservation': isReservation ? 'yes' : 'no',
+        'reservation_date': reservationDate,
+        'reservation_end_date': reservationEndDate,
+        'seat_number': selectedSeats.join(', '),
+        'phone_number': normalizedPhone,
+        'expected_end_at': expectedEndAt?.toUtc().toIso8601String(),
+        'booking_code': bookingCode,
+      };
+
+      await supabase.from('customer_sessions').insert(payload);
+
+      final reminderText = isReservation
+          ? 'Dont forget this code. Please copy and picture this code for IN/OUT attendance.'
+          : 'Dont forget this code. Please copy and picture this code for add ons and for suggestion/complain to staff.';
+
+      setState(() {
+        submitted = true;
+        generatedBookingCode = bookingCode;
+        aiFinalMessage = reminderText;
+      });
+
+      _scrollToBottom();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Booking saved successfully.')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to save booking: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          isSubmitting = false;
+        });
+      }
+    }
   }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!scrollController.hasClients) return;
       scrollController.animateTo(
-        scrollController.position.maxScrollExtent + 240,
+        scrollController.position.maxScrollExtent + 260,
         duration: const Duration(milliseconds: 320),
         curve: Curves.easeOut,
       );
@@ -296,6 +518,44 @@ class _BookingModalPageState extends State<BookingModalPage>
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BookingModalStyles.successBubble,
               child: Text(text, style: BookingModalStyles.successText),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildCodeBubble(String code) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BookingModalStyles.successBubble,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'BOOKING CODE',
+                    style: BookingModalStyles.successText.copyWith(
+                      fontSize: 12,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    code,
+                    style: BookingModalStyles.successText.copyWith(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 4,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -409,6 +669,9 @@ class _BookingModalPageState extends State<BookingModalPage>
         selectedReservationStartTime = null;
         selectedSeats.clear();
         timeAvailController.clear();
+        submitted = false;
+        generatedBookingCode = null;
+        aiFinalMessage = null;
       });
     }
   }
@@ -772,6 +1035,8 @@ class _BookingModalPageState extends State<BookingModalPage>
                                           onTap: pickReservationStartTime,
                                           icon: Icons.access_time_rounded,
                                         ),
+                                      ],
+                                      if (shouldShowSeatField) ...[
                                         const SizedBox(height: 14),
                                         buildDropdownField(
                                           label: 'Seat Number',
@@ -796,10 +1061,22 @@ class _BookingModalPageState extends State<BookingModalPage>
                                         children: [
                                           Expanded(
                                             child: ElevatedButton(
-                                              onPressed: submitForm,
+                                              onPressed: isSubmitting
+                                                  ? null
+                                                  : submitForm,
                                               style: BookingModalStyles
                                                   .primaryButton,
-                                              child: const Text('Submit'),
+                                              child: isSubmitting
+                                                  ? const SizedBox(
+                                                      width: 22,
+                                                      height: 22,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                            strokeWidth: 2.4,
+                                                            color: Colors.white,
+                                                          ),
+                                                    )
+                                                  : const Text('Submit'),
                                             ),
                                           ),
                                         ],
@@ -809,12 +1086,15 @@ class _BookingModalPageState extends State<BookingModalPage>
                                 ),
                               ),
                             ],
-                            if (submitted) ...[
+                            if (submitted && generatedBookingCode != null) ...[
                               const SizedBox(height: 12),
                               buildAiBubble(
                                 text:
-                                    'Booking information received successfully. You can now proceed to the next booking step.',
+                                    'Booking information received successfully.',
                               ),
+                              buildCodeBubble(generatedBookingCode!),
+                              if (aiFinalMessage != null)
+                                buildAiBubble(text: aiFinalMessage!),
                             ],
                           ],
                         ),
