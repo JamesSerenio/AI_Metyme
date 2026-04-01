@@ -8,17 +8,57 @@ class BookAddPage extends StatefulWidget {
   State<BookAddPage> createState() => _BookAddPageState();
 }
 
-class _BookAddPageState extends State<BookAddPage> {
+class _BookAddPageState extends State<BookAddPage>
+    with TickerProviderStateMixin {
   bool started = false;
 
   final TextEditingController controller = TextEditingController();
   final ScrollController scrollController = ScrollController();
   final List<Map<String, dynamic>> messages = [];
 
+  late final AnimationController pageController;
+  late final AnimationController floatController;
+  late final Animation<double> fadeAnim;
+  late final Animation<Offset> slideAnim;
+  late final Animation<double> floatAnim;
+
+  @override
+  void initState() {
+    super.initState();
+
+    pageController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 850),
+    );
+
+    floatController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat(reverse: true);
+
+    fadeAnim = CurvedAnimation(
+      parent: pageController,
+      curve: Curves.easeOutCubic,
+    );
+
+    slideAnim = Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero)
+        .animate(
+          CurvedAnimation(parent: pageController, curve: Curves.easeOutCubic),
+        );
+
+    floatAnim = Tween<double>(begin: -4, end: 4).animate(
+      CurvedAnimation(parent: floatController, curve: Curves.easeInOut),
+    );
+
+    pageController.forward();
+  }
+
   @override
   void dispose() {
     controller.dispose();
     scrollController.dispose();
+    pageController.dispose();
+    floatController.dispose();
     super.dispose();
   }
 
@@ -48,7 +88,7 @@ class _BookAddPageState extends State<BookAddPage> {
     controller.clear();
     _scrollToBottom();
 
-    Future.delayed(const Duration(milliseconds: 400), () {
+    Future.delayed(const Duration(milliseconds: 420), () {
       handleAIResponse(value);
     });
   }
@@ -93,48 +133,113 @@ class _BookAddPageState extends State<BookAddPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!scrollController.hasClients) return;
       scrollController.animateTo(
-        scrollController.position.maxScrollExtent + 100,
-        duration: const Duration(milliseconds: 250),
+        scrollController.position.maxScrollExtent + 120,
+        duration: const Duration(milliseconds: 280),
         curve: Curves.easeOut,
       );
     });
   }
 
+  Widget _buildLogo(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(size / 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.07),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: Image.asset(
+          "assets/study_hub.png",
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return const Icon(Icons.image_not_supported_outlined);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _leaf({
+    required Alignment alignment,
+    required double width,
+    required double rotation,
+    required EdgeInsets margin,
+  }) {
+    return Align(
+      alignment: alignment,
+      child: Container(
+        margin: margin,
+        child: AnimatedBuilder(
+          animation: floatAnim,
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(0, floatAnim.value),
+              child: Transform.rotate(
+                angle: rotation,
+                child: Opacity(opacity: 0.95, child: child),
+              ),
+            );
+          },
+          child: Image.asset(
+            "assets/leave.png",
+            width: width,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget chatBubble(Map<String, dynamic> msg, bool isMobile) {
     final bool isAI = msg["isAI"] == true;
 
-    return Row(
-      mainAxisAlignment: isAI ? MainAxisAlignment.start : MainAxisAlignment.end,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (isAI) ...[
-          CircleAvatar(
-            radius: isMobile ? 16 : 18,
-            backgroundColor: Colors.white,
-            backgroundImage: const AssetImage("assets/study_hub.png"),
-          ),
-          const SizedBox(width: 8),
-        ],
-        Flexible(
-          child: Container(
-            constraints: BoxConstraints(maxWidth: isMobile ? 260 : 420),
-            margin: const EdgeInsets.symmetric(vertical: 6),
-            padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 12 : 14,
-              vertical: isMobile ? 10 : 12,
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 280),
+      opacity: 1,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisAlignment: isAI
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (isAI) ...[
+              _buildLogo(isMobile ? 34 : 38),
+              const SizedBox(width: 8),
+            ],
+            Flexible(
+              child: Container(
+                constraints: BoxConstraints(maxWidth: isMobile ? 255 : 430),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isMobile ? 14 : 16,
+                  vertical: isMobile ? 12 : 14,
+                ),
+                decoration: isAI
+                    ? BookAddStyles.chatBubbleAI
+                    : BookAddStyles.chatBubbleUser,
+                child: Text(
+                  msg["text"]?.toString() ?? "",
+                  style: isAI
+                      ? BookAddStyles.chatTextAI
+                      : BookAddStyles.chatTextUser,
+                ),
+              ),
             ),
-            decoration: isAI
-                ? BookAddStyles.chatBubbleAI
-                : BookAddStyles.chatBubbleUser,
-            child: Text(
-              msg["text"]?.toString() ?? "",
-              style: isAI
-                  ? BookAddStyles.chatTextAI
-                  : BookAddStyles.chatTextUser,
-            ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -148,187 +253,268 @@ class _BookAddPageState extends State<BookAddPage> {
     if (isMobile) {
       cardWidth = screen.width;
     } else if (isTablet) {
-      cardWidth = 700;
+      cardWidth = 760;
     } else {
       cardWidth = 900;
     }
 
     double cardHeight;
     if (isMobile) {
-      cardHeight = screen.height * 0.86;
+      cardHeight = screen.height * 0.88;
     } else if (isTablet) {
-      cardHeight = 660;
+      cardHeight = 700;
     } else {
-      cardHeight = 720;
+      cardHeight = 760;
     }
+
+    final horizontalPad = isMobile ? 12.0 : 20.0;
+    final leafWidth = isMobile ? 120.0 : 220.0;
 
     return Scaffold(
       backgroundColor: BookAddStyles.bgColor,
-      body: SafeArea(
-        child: Center(
-          child: Container(
-            width: cardWidth,
-            height: cardHeight,
-            margin: EdgeInsets.all(isMobile ? 12 : 20),
-            padding: EdgeInsets.all(isMobile ? 14 : 18),
-            decoration: BookAddStyles.mainCard,
-            child: !started
-                ? Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Container(decoration: BookAddStyles.pageBackground),
+          ),
+
+          _leaf(
+            alignment: Alignment.topLeft,
+            width: leafWidth,
+            rotation: -0.1,
+            margin: EdgeInsets.only(
+              top: isMobile ? 10 : 14,
+              left: isMobile ? 6 : 12,
+            ),
+          ),
+          _leaf(
+            alignment: Alignment.topRight,
+            width: leafWidth,
+            rotation: 0.05,
+            margin: EdgeInsets.only(
+              top: isMobile ? 10 : 14,
+              right: isMobile ? 6 : 12,
+            ),
+          ),
+          _leaf(
+            alignment: Alignment.bottomLeft,
+            width: leafWidth,
+            rotation: 0.1,
+            margin: EdgeInsets.only(
+              bottom: isMobile ? 10 : 14,
+              left: isMobile ? 6 : 12,
+            ),
+          ),
+          _leaf(
+            alignment: Alignment.bottomRight,
+            width: leafWidth,
+            rotation: -0.05,
+            margin: EdgeInsets.only(
+              bottom: isMobile ? 10 : 14,
+              right: isMobile ? 6 : 12,
+            ),
+          ),
+
+          SafeArea(
+            child: FadeTransition(
+              opacity: fadeAnim,
+              child: SlideTransition(
+                position: slideAnim,
+                child: Center(
+                  child: Container(
+                    width: cardWidth,
+                    height: cardHeight,
+                    margin: EdgeInsets.all(horizontalPad),
+                    padding: EdgeInsets.all(isMobile ? 14 : 18),
+                    decoration: BookAddStyles.mainCard,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 450),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      child: !started
+                          ? _buildStartState(isMobile)
+                          : _buildChatState(isMobile),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStartState(bool isMobile) {
+    return Column(
+      key: const ValueKey("start-state"),
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: EdgeInsets.all(isMobile ? 12 : 14),
+          decoration: BookAddStyles.headerCard,
+          child: Row(
+            children: [
+              _buildLogo(isMobile ? 46 : 52),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Welcome to Me Tyme Lounge!",
+                      style: BookAddStyles.title,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Rest, relax, and focus in a peaceful environment.",
+                      style: BookAddStyles.subtitle,
+                    ),
+                  ],
+                ),
+              ),
+              if (!isMobile)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  decoration: BookAddStyles.readyChip,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        padding: EdgeInsets.all(isMobile ? 12 : 14),
-                        decoration: BookAddStyles.headerCard,
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: isMobile ? 22 : 26,
-                              backgroundColor: Colors.white,
-                              backgroundImage: const AssetImage(
-                                "assets/study_hub.png",
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Welcome to Me Tyme Lounge!",
-                                    style: BookAddStyles.title,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "Rest, relax, and focus in a peaceful environment.",
-                                    style: BookAddStyles.subtitle,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: BookAddStyles.primary,
+                          shape: BoxShape.circle,
                         ),
                       ),
-                      SizedBox(height: isMobile ? 26 : 32),
-                      Text(
-                        "Start Your Booking Assistant",
-                        textAlign: TextAlign.center,
-                        style: isMobile
-                            ? BookAddStyles.bigTitle.copyWith(fontSize: 22)
-                            : BookAddStyles.bigTitle,
-                      ),
-                      const SizedBox(height: 10),
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isMobile ? 6 : 24,
-                        ),
-                        child: Text(
-                          "Click Start to choose Booking, Promo, Add-Ons, or Seat View through chat.",
-                          textAlign: TextAlign.center,
-                          style: BookAddStyles.subtitle,
-                        ),
-                      ),
-                      SizedBox(height: isMobile ? 26 : 34),
-                      ElevatedButton(
-                        onPressed: startChat,
-                        style: BookAddStyles.primaryButton,
-                        child: const Text("Start"),
-                      ),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(isMobile ? 12 : 14),
-                        decoration: BookAddStyles.headerCard,
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: isMobile ? 20 : 22,
-                              backgroundColor: Colors.white,
-                              backgroundImage: const AssetImage(
-                                "assets/study_hub.png",
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "AI Assistant",
-                                    style: BookAddStyles.title,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    "Reply with 1 to 4 to continue.",
-                                    style: BookAddStyles.helperText,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BookAddStyles.onlineChip,
-                              child: Text(
-                                "Online",
-                                style: BookAddStyles.onlineText,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(isMobile ? 10 : 14),
-                          decoration: BookAddStyles.chatContainer,
-                          child: ListView.builder(
-                            controller: scrollController,
-                            itemCount: messages.length,
-                            itemBuilder: (context, index) {
-                              return chatBubble(messages[index], isMobile);
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: controller,
-                              minLines: 1,
-                              maxLines: 4,
-                              textInputAction: TextInputAction.send,
-                              onSubmitted: sendMessage,
-                              style: BookAddStyles.inputText,
-                              decoration: BookAddStyles.inputDecoration(
-                                hintText: "Type 1-4...",
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          SizedBox(
-                            height: 52,
-                            width: 52,
-                            child: ElevatedButton(
-                              onPressed: () => sendMessage(controller.text),
-                              style: BookAddStyles.sendButton,
-                              child: const Icon(Icons.send),
-                            ),
-                          ),
-                        ],
-                      ),
+                      const SizedBox(width: 8),
+                      Text("Ready for booking", style: BookAddStyles.readyText),
                     ],
                   ),
+                ),
+            ],
           ),
         ),
-      ),
+        SizedBox(height: isMobile ? 30 : 40),
+        Text(
+          "Start Your Booking Assistant",
+          textAlign: TextAlign.center,
+          style: isMobile
+              ? BookAddStyles.bigTitle.copyWith(fontSize: 24)
+              : BookAddStyles.bigTitle,
+        ),
+        const SizedBox(height: 10),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 42),
+          child: Text(
+            "Click Start to choose Booking, Promo, Add-Ons, or Seat View through chat.",
+            textAlign: TextAlign.center,
+            style: BookAddStyles.subtitle,
+          ),
+        ),
+        SizedBox(height: isMobile ? 26 : 34),
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.95, end: 1),
+          duration: const Duration(milliseconds: 900),
+          curve: Curves.easeOutBack,
+          builder: (context, value, child) {
+            return Transform.scale(scale: value, child: child);
+          },
+          child: ElevatedButton(
+            onPressed: startChat,
+            style: BookAddStyles.primaryButton,
+            child: const Text("Start"),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChatState(bool isMobile) {
+    return Column(
+      key: const ValueKey("chat-state"),
+      children: [
+        Container(
+          padding: EdgeInsets.all(isMobile ? 12 : 14),
+          decoration: BookAddStyles.headerCard,
+          child: Row(
+            children: [
+              _buildLogo(isMobile ? 42 : 46),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("AI Assistant", style: BookAddStyles.title),
+                    const SizedBox(height: 2),
+                    Text(
+                      "Reply with 1 to 4 to continue.",
+                      style: BookAddStyles.helperText,
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                decoration: BookAddStyles.onlineChip,
+                child: Text("Online", style: BookAddStyles.onlineText),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(isMobile ? 12 : 16),
+            decoration: BookAddStyles.chatContainer,
+            child: ListView.builder(
+              controller: scrollController,
+              padding: const EdgeInsets.only(bottom: 6),
+              itemCount: messages.length,
+              itemBuilder: (context, index) {
+                return chatBubble(messages[index], isMobile);
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                minLines: 1,
+                maxLines: 4,
+                textInputAction: TextInputAction.send,
+                onSubmitted: sendMessage,
+                style: BookAddStyles.inputText,
+                decoration: BookAddStyles.inputDecoration(
+                  hintText: "Type 1-4...",
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              height: 54,
+              width: 54,
+              child: ElevatedButton(
+                onPressed: () => sendMessage(controller.text),
+                style: BookAddStyles.sendButton,
+                child: const Icon(Icons.send_rounded),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
