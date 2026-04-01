@@ -1,28 +1,33 @@
 import 'package:flutter/material.dart';
 
 class BookAddStyles {
-  static const Color bgColor = Color(0xFFF4F2EC);
-  static const Color cardColor = Color(0xFFF7EEDB);
+  static const Color bgColor = Color(0xFFF6F2E9);
+  static const Color cardColor = Color(0xFFF8EFDf);
   static const Color primary = Color(0xFF43A047);
   static const Color primaryDark = Color(0xFF2E7D32);
+  static const Color primarySoft = Color(0xFFE3F1DE);
   static const Color textDark = Color(0xFF1F1F1F);
-  static const Color textSoft = Color(0xFF616161);
+  static const Color textSoft = Color(0xFF6A6A6A);
   static const Color aiBubbleBg = Color(0xFFF8F8FB);
 
   static BoxDecoration pageBackground = const BoxDecoration(color: bgColor);
 
   static BoxDecoration mainCard = BoxDecoration(
-    color: cardColor.withOpacity(0.92),
-    borderRadius: BorderRadius.circular(30),
-    border: Border.all(color: Colors.black.withOpacity(0.08), width: 1),
+    color: cardColor.withOpacity(0.96),
+    borderRadius: BorderRadius.circular(32),
+    border: Border.all(
+      color: const Color(0xFFDCCFAF).withOpacity(0.75),
+      width: 1.2,
+    ),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withOpacity(0.12),
+        color: Colors.black.withOpacity(0.10),
         blurRadius: 34,
-        offset: const Offset(0, 16),
+        spreadRadius: 2,
+        offset: const Offset(0, 14),
       ),
       BoxShadow(
-        color: Colors.white.withOpacity(0.20),
+        color: Colors.white.withOpacity(0.35),
         blurRadius: 12,
         offset: const Offset(0, -2),
       ),
@@ -30,15 +35,32 @@ class BookAddStyles {
   );
 
   static BoxDecoration headerCard = BoxDecoration(
-    color: Colors.white.withOpacity(0.30),
+    color: Colors.white.withOpacity(0.34),
     borderRadius: BorderRadius.circular(22),
-    border: Border.all(color: Colors.black.withOpacity(0.08), width: 1),
+    border: Border.all(
+      color: const Color(0xFFD8CCB3).withOpacity(0.75),
+      width: 1,
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.white.withOpacity(0.15),
+        blurRadius: 8,
+        offset: const Offset(0, -1),
+      ),
+    ],
   );
 
   static BoxDecoration chatContainer = BoxDecoration(
-    color: Colors.white.withOpacity(0.20),
-    borderRadius: BorderRadius.circular(24),
-    border: Border.all(color: Colors.black.withOpacity(0.08), width: 1),
+    color: const Color(0xFFF3ECDC).withOpacity(0.72),
+    borderRadius: BorderRadius.circular(28),
+    border: Border.all(color: const Color(0xD9D1C0A8), width: 1),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.04),
+        blurRadius: 10,
+        offset: const Offset(0, 4),
+      ),
+    ],
   );
 
   static BoxDecoration chatBubbleAI = BoxDecoration(
@@ -46,12 +68,12 @@ class BookAddStyles {
     borderRadius: BorderRadius.circular(
       22,
     ).copyWith(topLeft: const Radius.circular(8)),
-    border: Border.all(color: Colors.black.withOpacity(0.05), width: 1),
+    border: Border.all(color: const Color(0xFFE7E6ED), width: 1),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withOpacity(0.05),
-        blurRadius: 12,
-        offset: const Offset(0, 5),
+        color: Colors.black.withOpacity(0.045),
+        blurRadius: 10,
+        offset: const Offset(0, 4),
       ),
     ],
   );
@@ -60,7 +82,7 @@ class BookAddStyles {
     gradient: const LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+      colors: [Color(0xFF52B857), Color(0xFF2E7D32)],
     ),
     borderRadius: BorderRadius.circular(
       22,
@@ -75,72 +97,83 @@ class BookAddStyles {
   );
 
   static BoxDecoration onlineChip = BoxDecoration(
-    color: primary.withOpacity(0.10),
+    color: primarySoft,
     borderRadius: BorderRadius.circular(999),
-    border: Border.all(color: primary.withOpacity(0.18), width: 1),
+    border: Border.all(color: primary.withOpacity(0.22), width: 1),
   );
 
   static BoxDecoration readyChip = BoxDecoration(
-    color: primary.withOpacity(0.10),
+    color: primarySoft,
     borderRadius: BorderRadius.circular(999),
-    border: Border.all(color: primary.withOpacity(0.18), width: 1),
+    border: Border.all(color: primary.withOpacity(0.22), width: 1),
   );
 
-  static InputDecoration inputDecoration({String hintText = "Type 1-4..."}) {
+  static InputDecoration inputDecoration({String hintText = "Type 1-5..."}) {
     return InputDecoration(
       hintText: hintText,
       hintStyle: TextStyle(
-        color: Colors.black.withOpacity(0.42),
+        color: Colors.black.withOpacity(0.38),
         fontSize: 14,
         fontWeight: FontWeight.w500,
       ),
       filled: true,
-      fillColor: Colors.white.withOpacity(0.94),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      fillColor: Colors.white.withOpacity(0.96),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 17),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: Colors.black.withOpacity(0.05), width: 1),
+        borderRadius: BorderRadius.circular(22),
+        borderSide: BorderSide(
+          color: const Color(0xFFE1D8C8).withOpacity(0.9),
+          width: 1,
+        ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: const BorderSide(color: primary, width: 1.4),
+        borderRadius: BorderRadius.circular(22),
+        borderSide: const BorderSide(color: primary, width: 1.5),
       ),
     );
   }
 
-  static ButtonStyle primaryButton = ElevatedButton.styleFrom(
-    backgroundColor: primary,
-    foregroundColor: Colors.white,
-    elevation: 0,
-    padding: const EdgeInsets.symmetric(horizontal: 42, vertical: 18),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-    textStyle: const TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 0.2,
-    ),
-  );
+  static ButtonStyle primaryButton =
+      ElevatedButton.styleFrom(
+        backgroundColor: primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 42, vertical: 18),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        textStyle: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+        ),
+      ).copyWith(
+        shadowColor: WidgetStateProperty.all(primary.withOpacity(0.20)),
+        elevation: WidgetStateProperty.all(4),
+      );
 
-  static ButtonStyle sendButton = ElevatedButton.styleFrom(
-    backgroundColor: primary,
-    foregroundColor: Colors.white,
-    elevation: 0,
-    padding: EdgeInsets.zero,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-  );
+  static ButtonStyle sendButton =
+      ElevatedButton.styleFrom(
+        backgroundColor: primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        padding: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ).copyWith(
+        shadowColor: WidgetStateProperty.all(primary.withOpacity(0.22)),
+        elevation: WidgetStateProperty.all(4),
+      );
 
-  static TextStyle title = const TextStyle(
+  static const TextStyle title = TextStyle(
     fontWeight: FontWeight.w800,
     fontSize: 17,
     color: textDark,
     letterSpacing: 0.2,
   );
 
-  static TextStyle bigTitle = const TextStyle(
+  static const TextStyle bigTitle = TextStyle(
     fontWeight: FontWeight.w800,
     fontSize: 32,
     color: textDark,
@@ -148,10 +181,11 @@ class BookAddStyles {
     letterSpacing: 0.2,
   );
 
-  static TextStyle subtitle = const TextStyle(
+  static const TextStyle subtitle = TextStyle(
     fontSize: 14,
     color: textSoft,
     height: 1.55,
+    fontWeight: FontWeight.w500,
   );
 
   static TextStyle helperText = TextStyle(
@@ -160,33 +194,33 @@ class BookAddStyles {
     fontWeight: FontWeight.w500,
   );
 
-  static TextStyle chatTextAI = const TextStyle(
+  static const TextStyle chatTextAI = TextStyle(
     fontSize: 14.5,
     color: textDark,
     height: 1.62,
     fontWeight: FontWeight.w500,
   );
 
-  static TextStyle chatTextUser = const TextStyle(
+  static const TextStyle chatTextUser = TextStyle(
     fontSize: 14.5,
     color: Colors.white,
     height: 1.62,
     fontWeight: FontWeight.w600,
   );
 
-  static TextStyle inputText = const TextStyle(
+  static const TextStyle inputText = TextStyle(
     fontSize: 14.5,
     color: textDark,
     fontWeight: FontWeight.w500,
   );
 
-  static TextStyle onlineText = const TextStyle(
+  static const TextStyle onlineText = TextStyle(
     fontSize: 12,
     color: primaryDark,
     fontWeight: FontWeight.w700,
   );
 
-  static TextStyle readyText = const TextStyle(
+  static const TextStyle readyText = TextStyle(
     fontSize: 12,
     color: primaryDark,
     fontWeight: FontWeight.w700,

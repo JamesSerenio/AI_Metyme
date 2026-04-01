@@ -287,41 +287,35 @@ class _BookAddPageState extends State<BookAddPage>
     );
   }
 
-  Widget _cornerLeaf({
-    required Alignment alignment,
-    required EdgeInsets margin,
+  Widget _leafInside({
     required double width,
     required double angle,
     required bool invertY,
   }) {
-    return Align(
-      alignment: alignment,
-      child: Container(
-        margin: margin,
-        child: AnimatedBuilder(
-          animation: leafFloatAnim,
-          builder: (context, child) {
-            return Transform.translate(
-              offset: Offset(0, leafFloatAnim.value),
-              child: Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.identity()
-                  ..rotateZ(angle)
-                  ..scale(1.0, invertY ? -1.0 : 1.0),
-                child: child,
-              ),
-            );
-          },
-          child: Opacity(
-            opacity: 0.95,
-            child: Image.asset(
-              "assets/leave.png",
-              width: width,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return const SizedBox.shrink();
-              },
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: leafFloatAnim,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, leafFloatAnim.value),
+            child: Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..rotateZ(angle)
+                ..scale(1.0, invertY ? -1.0 : 1.0),
+              child: child,
             ),
+          );
+        },
+        child: Opacity(
+          opacity: 0.95,
+          child: Image.asset(
+            "assets/leave.png",
+            width: width,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return const SizedBox.shrink();
+            },
           ),
         ),
       ),
@@ -386,83 +380,86 @@ class _BookAddPageState extends State<BookAddPage>
         : 520;
 
     final double leafWidth = isMobile
-        ? 120
+        ? 100
         : isTablet
-        ? 155
-        : 210;
-
-    final EdgeInsets leafMargin = EdgeInsets.all(isMobile ? 14 : 22);
+        ? 130
+        : 155;
 
     return Scaffold(
       backgroundColor: BookAddStyles.bgColor,
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(decoration: BookAddStyles.pageBackground),
-          ),
-          _cornerLeaf(
-            alignment: Alignment.topLeft,
-            margin: EdgeInsets.only(top: leafMargin.top, left: leafMargin.left),
-            width: leafWidth,
-            angle: 0,
-            invertY: true,
-          ),
-          _cornerLeaf(
-            alignment: Alignment.topRight,
-            margin: EdgeInsets.only(
-              top: leafMargin.top,
-              right: leafMargin.right,
-            ),
-            width: leafWidth,
-            angle: 3.14159,
-            invertY: false,
-          ),
-          _cornerLeaf(
-            alignment: Alignment.bottomLeft,
-            margin: EdgeInsets.only(
-              bottom: leafMargin.bottom,
-              left: leafMargin.left,
-            ),
-            width: leafWidth,
-            angle: 0,
-            invertY: false,
-          ),
-          _cornerLeaf(
-            alignment: Alignment.bottomRight,
-            margin: EdgeInsets.only(
-              bottom: leafMargin.bottom,
-              right: leafMargin.right,
-            ),
-            width: leafWidth,
-            angle: -1.5708,
-            invertY: false,
-          ),
-          SafeArea(
-            child: FadeTransition(
-              opacity: fadeAnim,
-              child: SlideTransition(
-                position: slideAnim,
-                child: Center(
-                  child: Container(
-                    width: cardWidth,
-                    height: cardHeight,
-                    margin: EdgeInsets.all(isMobile ? 10 : 8),
-                    padding: EdgeInsets.all(isMobile ? 14 : 20),
-                    decoration: BookAddStyles.mainCard,
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 420),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      child: !started
-                          ? _buildStartState(isMobile)
-                          : _buildChatState(isMobile),
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: fadeAnim,
+          child: SlideTransition(
+            position: slideAnim,
+            child: Center(
+              child: SizedBox(
+                width: cardWidth,
+                height: cardHeight,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned.fill(
+                      child: Container(
+                        margin: EdgeInsets.all(isMobile ? 10 : 8),
+                        padding: EdgeInsets.all(isMobile ? 14 : 20),
+                        decoration: BookAddStyles.mainCard,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 420),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          child: !started
+                              ? _buildStartState(isMobile)
+                              : _buildChatState(isMobile),
+                        ),
+                      ),
                     ),
-                  ),
+
+                    Positioned(
+                      top: isMobile ? -8 : -10,
+                      left: isMobile ? -6 : -10,
+                      child: _leafInside(
+                        width: leafWidth,
+                        angle: 0,
+                        invertY: true,
+                      ),
+                    ),
+
+                    Positioned(
+                      top: isMobile ? -8 : -10,
+                      right: isMobile ? -6 : -10,
+                      child: _leafInside(
+                        width: leafWidth,
+                        angle: 3.14159,
+                        invertY: false,
+                      ),
+                    ),
+
+                    Positioned(
+                      bottom: isMobile ? -8 : -10,
+                      left: isMobile ? -6 : -10,
+                      child: _leafInside(
+                        width: leafWidth,
+                        angle: 0,
+                        invertY: false,
+                      ),
+                    ),
+
+                    Positioned(
+                      bottom: isMobile ? -8 : -10,
+                      right: isMobile ? -6 : -10,
+                      child: _leafInside(
+                        width: leafWidth,
+                        angle: -1.5708,
+                        invertY: false,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
