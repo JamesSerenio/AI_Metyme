@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'styles/Book_Add_styles.dart';
+import 'pages/BookingModal.dart';
 
 class BookAddPage extends StatefulWidget {
   const BookAddPage({super.key});
@@ -11,6 +12,7 @@ class BookAddPage extends StatefulWidget {
 class _BookAddPageState extends State<BookAddPage>
     with TickerProviderStateMixin {
   bool started = false;
+  bool openingBooking = false;
 
   final TextEditingController controller = TextEditingController();
   final ScrollController scrollController = ScrollController();
@@ -80,7 +82,7 @@ class _BookAddPageState extends State<BookAddPage>
 
   void sendMessage(String text) {
     final value = text.trim();
-    if (value.isEmpty) return;
+    if (value.isEmpty || openingBooking) return;
 
     setState(() {
       messages.add({"isAI": false, "text": value});
@@ -94,40 +96,89 @@ class _BookAddPageState extends State<BookAddPage>
     });
   }
 
+  Future<void> _openBookingFlow() async {
+    if (!mounted || openingBooking) return;
+
+    setState(() {
+      openingBooking = true;
+    });
+
+    setState(() {
+      messages.add({"isAI": true, "text": "You selected Booking ✅"});
+    });
+
+    _scrollToBottom();
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const BookingModalPage()),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      openingBooking = false;
+      messages.add({
+        "isAI": true,
+        "text":
+            "Please choose again:\n1 Booking\n2 Promo\n3 Add-Ons\n4 Seat View",
+      });
+    });
+
+    _scrollToBottom();
+  }
+
   void handleAIResponse(String input) {
     final value = input.trim().toLowerCase();
-    String reply;
 
     switch (value) {
       case "1":
       case "booking":
-        reply = "You selected Booking ✅";
-        break;
+        _openBookingFlow();
+        return;
+
       case "2":
       case "promo":
-        reply = "You selected Promo 🎉";
-        break;
+        setState(() {
+          messages.add({"isAI": true, "text": "You selected Promo 🎉"});
+        });
+        _scrollToBottom();
+        return;
+
       case "3":
       case "add-ons":
       case "addons":
       case "add ons":
-        reply = "You selected Add-Ons 🍔";
-        break;
+        setState(() {
+          messages.add({"isAI": true, "text": "You selected Add-Ons 🍔"});
+        });
+        _scrollToBottom();
+        return;
+
       case "4":
       case "seat view":
       case "seatview":
-        reply = "You selected Seat View 🪑";
-        break;
+        setState(() {
+          messages.add({"isAI": true, "text": "You selected Seat View 🪑"});
+        });
+        _scrollToBottom();
+        return;
+
       default:
-        reply =
-            "Invalid choice ❌\n\nPlease choose:\n1 Booking\n2 Promo\n3 Add-Ons\n4 Seat View";
+        setState(() {
+          messages.add({
+            "isAI": true,
+            "text":
+                "Invalid choice ❌\n\nPlease choose:\n1 Booking\n2 Promo\n3 Add-Ons\n4 Seat View",
+          });
+        });
+        _scrollToBottom();
+        return;
     }
-
-    setState(() {
-      messages.add({"isAI": true, "text": reply});
-    });
-
-    _scrollToBottom();
   }
 
   void _scrollToBottom() {
@@ -457,7 +508,9 @@ class _BookAddPageState extends State<BookAddPage>
                     Text("AI Assistant", style: BookAddStyles.title),
                     const SizedBox(height: 2),
                     Text(
-                      "Reply with 1 to 4 to continue.",
+                      openingBooking
+                          ? "Opening booking form..."
+                          : "Reply with 1 to 4 to continue.",
                       style: BookAddStyles.helperText,
                     ),
                   ],
@@ -469,7 +522,10 @@ class _BookAddPageState extends State<BookAddPage>
                   vertical: 7,
                 ),
                 decoration: BookAddStyles.onlineChip,
-                child: Text("Online", style: BookAddStyles.onlineText),
+                child: Text(
+                  openingBooking ? "Loading" : "Online",
+                  style: BookAddStyles.onlineText,
+                ),
               ),
             ],
           ),
@@ -499,11 +555,14 @@ class _BookAddPageState extends State<BookAddPage>
                 controller: controller,
                 minLines: 1,
                 maxLines: 4,
+                enabled: !openingBooking,
                 textInputAction: TextInputAction.send,
                 onSubmitted: sendMessage,
                 style: BookAddStyles.inputText,
                 decoration: BookAddStyles.inputDecoration(
-                  hintText: "Type 1-4...",
+                  hintText: openingBooking
+                      ? "Opening booking..."
+                      : "Type 1-4...",
                 ),
               ),
             ),
@@ -512,7 +571,9 @@ class _BookAddPageState extends State<BookAddPage>
               height: 56,
               width: 56,
               child: ElevatedButton(
-                onPressed: () => sendMessage(controller.text),
+                onPressed: openingBooking
+                    ? null
+                    : () => sendMessage(controller.text),
                 style: BookAddStyles.sendButton,
                 child: const Icon(Icons.send_rounded),
               ),
