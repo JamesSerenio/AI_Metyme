@@ -121,10 +121,8 @@ class _PromoModalPageState extends State<PromoModalPage>
         packageOptions = List<Map<String, dynamic>>.from(optionRes);
       });
     } catch (e) {
-      _showInfoDialog(
-        title: 'Unable to Load Promo Data',
-        message:
-            'We were unable to load the available promo packages at the moment.\n\nError: $e',
+      _showInlineError(
+        'We were unable to load the available promo packages at the moment.\n\nError: $e',
       );
     } finally {
       if (mounted) {
@@ -401,14 +399,14 @@ class _PromoModalPageState extends State<PromoModalPage>
         ? 'Please select the area.'
         : null;
 
+    final newPackageError = selectedPackageId == null
+        ? 'Please select a promo package.'
+        : null;
+
     final newSeatNumberError =
         requiresSeatNumber &&
             (selectedSeatNumber == null || selectedSeatNumber!.trim().isEmpty)
         ? 'Please select the seat number.'
-        : null;
-
-    final newPackageError = selectedPackageId == null
-        ? 'Please select a promo package.'
         : null;
 
     final newOptionError = selectedOptionId == null
@@ -423,8 +421,8 @@ class _PromoModalPageState extends State<PromoModalPage>
       fullNameError = newFullNameError;
       phoneNumberError = newPhoneNumberError;
       areaError = newAreaError;
-      seatNumberError = newSeatNumberError;
       packageError = newPackageError;
+      seatNumberError = newSeatNumberError;
       optionError = newOptionError;
       startDateTimeError = newStartDateTimeError;
     });
@@ -433,8 +431,8 @@ class _PromoModalPageState extends State<PromoModalPage>
       newFullNameError,
       newPhoneNumberError,
       newAreaError,
-      newSeatNumberError,
       newPackageError,
+      newSeatNumberError,
       newOptionError,
       newStartDateTimeError,
     ].every((e) => e == null);
@@ -536,10 +534,8 @@ class _PromoModalPageState extends State<PromoModalPage>
     final end = computeEndDateTime();
 
     if (package == null || option == null || start == null || end == null) {
-      _showInfoDialog(
-        title: 'Incomplete Promo Details',
-        message:
-            'Please complete the promo details before saving your promo booking.',
+      _showInlineError(
+        'Please complete the promo details before saving your promo booking.',
       );
       return;
     }
@@ -580,9 +576,7 @@ class _PromoModalPageState extends State<PromoModalPage>
       });
 
       final reminderText =
-          'Please keep this code safe and make sure to copy it or take a screenshot or photo. '
-          'You will need it for your attendance (IN/OUT), add-ons, and for submitting suggestions or concerns to the staff. '
-          'Thank you and we look forward to serving you! 😊';
+          'Please keep this code safe. Copy it or take a screenshot or photo, as you will need it for attendance (IN/OUT), add-ons, and for submitting suggestions or concerns to the staff. Thank you and we look forward to serving you! 😊';
 
       setState(() {
         submitted = true;
@@ -591,24 +585,9 @@ class _PromoModalPageState extends State<PromoModalPage>
       });
 
       _scrollToBottom();
-
-      if (!mounted) return;
-
-      await _showInfoDialog(
-        title: 'Promo Booking Saved Successfully',
-        message:
-            'Your promo booking has been saved successfully.\n\n'
-            'PROMO CODE: $promoCode\n\n'
-            '$reminderText',
-      );
-
-      if (!mounted) return;
-      Navigator.pop(context);
     } catch (e) {
-      _showInfoDialog(
-        title: 'Unable to Save Promo Booking',
-        message:
-            'We were unable to save your promo booking at the moment. Please try again.\n\nError: $e',
+      _showInlineError(
+        'We were unable to save your promo booking at the moment. Please try again.\n\nError: $e',
       );
     } finally {
       if (mounted) {
@@ -619,33 +598,13 @@ class _PromoModalPageState extends State<PromoModalPage>
     }
   }
 
-  Future<void> _showInfoDialog({
-    required String title,
-    required String message,
-  }) async {
-    if (!mounted) return;
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-          ),
-          title: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w800),
-          ),
-          content: Text(message, style: const TextStyle(height: 1.4)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
+  void _showInlineError(String message) {
+    setState(() {
+      submitted = false;
+      generatedPromoCode = null;
+      aiFinalMessage = message;
+    });
+    _scrollToBottom();
   }
 
   void _scrollToBottom() {
@@ -902,30 +861,10 @@ class _PromoModalPageState extends State<PromoModalPage>
         aiFinalMessage = null;
 
         areaError = null;
-        seatNumberError = null;
         packageError = null;
+        seatNumberError = null;
         optionError = null;
         startDateTimeError = null;
-      });
-    }
-  }
-
-  Future<void> pickSeatNumber() async {
-    if (!requiresSeatNumber) return;
-
-    final value = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        return SeatPickerModal(selectedSeat: selectedSeatNumber);
-      },
-    );
-
-    if (value != null) {
-      setState(() {
-        selectedSeatNumber = value;
-        seatNumberError = null;
       });
     }
   }
@@ -956,11 +895,33 @@ class _PromoModalPageState extends State<PromoModalPage>
     if (value != null) {
       setState(() {
         selectedPackageId = value;
+        selectedSeatNumber = null;
         selectedOptionId = null;
         selectedStartDateTime = null;
         packageError = null;
+        seatNumberError = null;
         optionError = null;
         startDateTimeError = null;
+      });
+    }
+  }
+
+  Future<void> pickSeatNumber() async {
+    if (!requiresSeatNumber || selectedPackageId == null) return;
+
+    final value = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return SeatPickerModal(selectedSeat: selectedSeatNumber);
+      },
+    );
+
+    if (value != null) {
+      setState(() {
+        selectedSeatNumber = value;
+        seatNumberError = null;
       });
     }
   }
@@ -1128,17 +1089,6 @@ class _PromoModalPageState extends State<PromoModalPage>
                                           onTap: pickArea,
                                           errorText: areaError,
                                         ),
-                                        if (requiresSeatNumber) ...[
-                                          const SizedBox(height: 14),
-                                          buildDropdownField(
-                                            label: 'Seat Number',
-                                            valueText: selectedSeatNumber ?? '',
-                                            emptyText: 'Select seat number',
-                                            onTap: pickSeatNumber,
-                                            icon: Icons.event_seat_rounded,
-                                            errorText: seatNumberError,
-                                          ),
-                                        ],
                                         const SizedBox(height: 14),
                                         buildDropdownField(
                                           label: 'Promo Package',
@@ -1215,6 +1165,19 @@ class _PromoModalPageState extends State<PromoModalPage>
                                                   ),
                                               ],
                                             ),
+                                          ),
+                                        ],
+                                        if (requiresSeatNumber) ...[
+                                          const SizedBox(height: 14),
+                                          buildDropdownField(
+                                            label: 'Seat Number',
+                                            valueText: selectedSeatNumber ?? '',
+                                            emptyText: selectedPackageId == null
+                                                ? 'Select promo package first'
+                                                : 'Select seat number',
+                                            onTap: pickSeatNumber,
+                                            icon: Icons.event_seat_rounded,
+                                            errorText: seatNumberError,
                                           ),
                                         ],
                                         const SizedBox(height: 14),
@@ -1355,6 +1318,9 @@ class _PromoModalPageState extends State<PromoModalPage>
                                     buildCodeBubble(generatedPromoCode!),
                                     if (aiFinalMessage != null)
                                       buildAiBubble(text: aiFinalMessage!),
+                                  ] else if (aiFinalMessage != null) ...[
+                                    const SizedBox(height: 12),
+                                    buildAiBubble(text: aiFinalMessage!),
                                   ],
                                 ],
                               ),
