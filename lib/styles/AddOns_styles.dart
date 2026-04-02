@@ -88,9 +88,16 @@ class AddOnsStyles {
   );
 
   static BoxDecoration sectionCard = BoxDecoration(
-    color: Colors.white.withOpacity(0.65),
+    color: Colors.white.withOpacity(0.68),
     borderRadius: BorderRadius.circular(20),
     border: Border.all(color: Colors.black.withOpacity(0.05), width: 1),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.03),
+        blurRadius: 8,
+        offset: const Offset(0, 3),
+      ),
+    ],
   );
 
   static BoxDecoration statusChip = BoxDecoration(

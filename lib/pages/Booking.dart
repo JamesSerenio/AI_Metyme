@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import '../styles/BookingModal_styles.dart';
+import '../styles/Booking_styles.dart';
 import '../utils/supabase_client.dart';
 
 enum CustomerType { reviewer, student, regular }

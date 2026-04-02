@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../styles/PromoModal_styles.dart';
+import '../styles/Promo_styles.dart';
 
 class PromoModalPage extends StatefulWidget {
   const PromoModalPage({super.key});
