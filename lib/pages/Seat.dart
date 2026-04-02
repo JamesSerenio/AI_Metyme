@@ -436,8 +436,8 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
     final double modalWidth = isMobile
         ? screen.width - 20
         : isTablet
-        ? 860
-        : 900;
+        ? 500
+        : 600;
 
     final double modalHeight = isMobile
         ? screen.height * 0.92
@@ -557,9 +557,9 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
                                               scale: isMobile ? 1.0 : 1.0,
                                               child: Image.asset(
                                                 'assets/seats.png',
-                                                fit: BoxFit.contain,
                                                 width: constraints.maxWidth,
                                                 height: constraints.maxHeight,
+                                                fit: BoxFit.contain,
                                                 errorBuilder: (_, __, ___) {
                                                   return const Center(
                                                     child: Text(
