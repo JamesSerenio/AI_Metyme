@@ -103,15 +103,17 @@ class SeatStyles {
   );
 
   static TextStyle seatLabel = const TextStyle(
-    fontSize: 7.5,
+    fontSize: 7.8,
     fontWeight: FontWeight.w900,
     color: Color(0xFF141414),
+    height: 1,
   );
 
   static TextStyle roomLabel = const TextStyle(
-    fontSize: 9.5,
+    fontSize: 9.2,
     fontWeight: FontWeight.w900,
     color: Color(0xFF141414),
+    height: 1,
   );
 
   static BoxDecoration pinDecoration(Color color) {

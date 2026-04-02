@@ -264,7 +264,7 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
   }
 
   String normalizeSeatId(String value) {
-    return value.trim();
+    return value.trim().toUpperCase();
   }
 
   bool isTempMirrorRow(String? note) {
@@ -279,9 +279,11 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
     final nowIso = DateTime.now().toUtc().toIso8601String();
     final endIso = farFutureIso();
 
-    setState(() {
-      loading = true;
-    });
+    if (mounted) {
+      setState(() {
+        loading = true;
+      });
+    }
 
     try {
       final blockedData = await supabase
@@ -324,7 +326,7 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
         }
       }
 
-      for (final id in blockedIds) {
+      for (final id in blockedIds.map((e) => e.toUpperCase())) {
         if (bySeat[id] != null) {
           next[id] = bySeat[id]!;
         }
@@ -336,7 +338,7 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
         now = DateTime.now();
         loading = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() {
         loading = false;
@@ -380,31 +382,27 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
     }
   }
 
-  Widget buildPin(SeatPin pin, bool isMobile) {
+  Widget buildPinWidget(SeatPin pin, bool isMobile) {
     final status =
         pin.fixedStatus ?? statusBySeat[pin.id] ?? SeatStatus.tempAvailable;
     final color = statusColor(status);
+    final isRoom = pin.kind == PinKind.room;
 
-    final bool isRoom = pin.kind == PinKind.room;
-
-    return Positioned(
-      left: pin.x,
-      top: pin.y,
-      child: FractionalTranslation(
-        translation: const Offset(-0.5, -0.5),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          width: isRoom ? (isMobile ? 96 : 128) : (isMobile ? 14 : 13),
-          height: isRoom ? (isMobile ? 22 : 24) : (isMobile ? 14 : 13),
-          alignment: Alignment.center,
-          decoration: isRoom
-              ? SeatStyles.roomDecoration(color)
-              : SeatStyles.pinDecoration(color),
-          child: Text(
-            pin.label,
-            textAlign: TextAlign.center,
-            style: isRoom ? SeatStyles.roomLabel : SeatStyles.seatLabel,
-          ),
+    return FractionalTranslation(
+      translation: const Offset(-0.5, -0.5),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        width: isRoom ? (isMobile ? 110 : 138) : (isMobile ? 18 : 16),
+        height: isRoom ? (isMobile ? 28 : 30) : (isMobile ? 18 : 16),
+        alignment: Alignment.center,
+        decoration: isRoom
+            ? SeatStyles.roomDecoration(color)
+            : SeatStyles.pinDecoration(color),
+        child: Text(
+          pin.label,
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+          style: isRoom ? SeatStyles.roomLabel : SeatStyles.seatLabel,
         ),
       ),
     );
@@ -438,14 +436,14 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
     final double modalWidth = isMobile
         ? screen.width - 20
         : isTablet
-        ? 760
-        : 860;
+        ? 860
+        : 900;
 
     final double modalHeight = isMobile
         ? screen.height * 0.92
         : isTablet
-        ? 760
-        : 820;
+        ? 860
+        : 920;
 
     return Scaffold(
       backgroundColor: SeatStyles.pageBg,
@@ -549,44 +547,58 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
                             Expanded(
                               child: LayoutBuilder(
                                 builder: (context, constraints) {
-                                  return Stack(
-                                    children: [
-                                      Positioned.fill(
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            18,
-                                          ),
-                                          child: Image.asset(
-                                            'assets/seats.png',
-                                            fit: BoxFit.contain,
-                                            errorBuilder: (_, __, ___) {
-                                              return const Center(
-                                                child: Text(
-                                                  'seats.png not found',
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                      ...pins.map((pin) {
-                                        return Positioned(
-                                          left:
-                                              constraints.maxWidth *
-                                              (pin.x / 100),
-                                          top:
-                                              constraints.maxHeight *
-                                              (pin.y / 100),
-                                          child: buildPin(pin, isMobile),
-                                        );
-                                      }),
-                                      if (loading)
-                                        const Positioned.fill(
+                                  return ClipRRect(
+                                    borderRadius: BorderRadius.circular(18),
+                                    child: Stack(
+                                      children: [
+                                        Positioned.fill(
                                           child: Center(
-                                            child: CircularProgressIndicator(),
+                                            child: Transform.scale(
+                                              scale: isMobile ? 1.0 : 1.0,
+                                              child: Image.asset(
+                                                'assets/seats.png',
+                                                fit: BoxFit.contain,
+                                                width: constraints.maxWidth,
+                                                height: constraints.maxHeight,
+                                                errorBuilder: (_, __, ___) {
+                                                  return const Center(
+                                                    child: Text(
+                                                      'seats.png not found',
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                    ],
+                                        ...pins.map((pin) {
+                                          return Positioned(
+                                            left:
+                                                constraints.maxWidth *
+                                                (pin.x / 100),
+                                            top:
+                                                constraints.maxHeight *
+                                                (pin.y / 100),
+                                            child: buildPinWidget(
+                                              pin,
+                                              isMobile,
+                                            ),
+                                          );
+                                        }),
+                                        if (loading)
+                                          Positioned.fill(
+                                            child: Container(
+                                              color: Colors.white.withOpacity(
+                                                0.18,
+                                              ),
+                                              child: const Center(
+                                                child:
+                                                    CircularProgressIndicator(),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   );
                                 },
                               ),

@@ -22,6 +22,7 @@ class _BookAddPageState extends State<BookAddPage>
   bool openingBooking = false;
   bool openingPromo = false;
   bool openingAddOns = false;
+  bool openingSeat = false;
 
   final TextEditingController controller = TextEditingController();
   final ScrollController scrollController = ScrollController();
@@ -114,7 +115,8 @@ class _BookAddPageState extends State<BookAddPage>
     super.dispose();
   }
 
-  bool get isBusy => openingBooking || openingPromo || openingAddOns;
+  bool get isBusy =>
+      openingBooking || openingPromo || openingAddOns || openingSeat;
 
   void _startAutoSlide() {
     autoSlideTimer?.cancel();
@@ -267,6 +269,43 @@ class _BookAddPageState extends State<BookAddPage>
 
     setState(() {
       openingAddOns = false;
+      messages.add({
+        "isAI": true,
+        "text":
+            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
+      });
+    });
+
+    _scrollToBottom();
+  }
+
+  Future<void> _openSeatFlow() async {
+    if (!mounted || isBusy) return;
+
+    setState(() {
+      openingSeat = true;
+      messages.add({
+        "isAI": true,
+        "text":
+            "You selected Seat View 🪑\n\nOpening the seat map for you now...",
+      });
+    });
+
+    _scrollToBottom();
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const SeatPage()),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      openingSeat = false;
       messages.add({
         "isAI": true,
         "text":
@@ -890,7 +929,7 @@ class _BookAddPageState extends State<BookAddPage>
                     const SizedBox(height: 2),
                     Text(
                       isBusy
-                          ? "Opening your selected form..."
+                          ? "Opening your selected view..."
                           : "Reply with 1 to 5 to continue.",
                       style: BookAddStyles.helperText,
                     ),
@@ -942,7 +981,7 @@ class _BookAddPageState extends State<BookAddPage>
                 style: BookAddStyles.inputText,
                 decoration: BookAddStyles.inputDecoration(
                   hintText: isBusy
-                      ? "Opening your selected form..."
+                      ? "Opening your selected view..."
                       : "Type 1-5...",
                 ),
               ),
