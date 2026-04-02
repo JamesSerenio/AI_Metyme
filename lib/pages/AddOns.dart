@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../styles/AddOns_styles.dart';
 
-enum CatalogKind { addOn, consignment }
+enum CatalogKind { addOn, otherItems }
 
 class CatalogItem {
   final String id;
@@ -56,7 +56,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
   bool submitted = false;
 
   List<CatalogItem> addOnItems = [];
-  List<CatalogItem> consignmentItems = [];
+  List<CatalogItem> otherItems = [];
   List<OrderRowData> orderRows = [OrderRowData()];
 
   late final AnimationController pageController;
@@ -141,14 +141,17 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
   List<String> get categories {
     final values = <String>{};
+
     for (final item in addOnItems) {
       if (item.category.trim().isNotEmpty) {
         values.add(item.category.trim());
       }
     }
-    if (consignmentItems.isNotEmpty) {
-      values.add('Consignment');
+
+    if (otherItems.isNotEmpty) {
+      values.add('Other Items');
     }
+
     final list = values.toList()..sort((a, b) => a.compareTo(b));
     return list;
   }
@@ -179,7 +182,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           .order('category')
           .order('name');
 
-      final consignmentResponse = await supabase
+      final otherItemsResponse = await supabase
           .from('consignment')
           .select(
             'id, item_name, price, image_url, stocks, size, approval_status',
@@ -201,11 +204,11 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         );
       }).toList();
 
-      consignmentItems = (consignmentResponse as List<dynamic>).map((row) {
+      otherItems = (otherItemsResponse as List<dynamic>).map((row) {
         return CatalogItem(
           id: row['id'].toString(),
-          kind: CatalogKind.consignment,
-          category: 'Consignment',
+          kind: CatalogKind.otherItems,
+          category: 'Other Items',
           name: (row['item_name'] ?? '').toString(),
           price: _toDouble(row['price']),
           stocks: _toInt(row['stocks']),
@@ -238,7 +241,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
   }
 
   List<CatalogItem> itemsForCategory(String category) {
-    if (category == 'Consignment') return consignmentItems;
+    if (category == 'Other Items') return otherItems;
     return addOnItems.where((e) => e.category == category).toList();
   }
 
@@ -266,6 +269,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     final result = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
         return _SelectionSheet<String>(
           title: 'Select Category',
@@ -300,9 +304,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       isScrollControlled: true,
       builder: (context) {
         return _ItemPickerSheet(
-          title: category == 'Consignment'
-              ? 'Choose Consignment Item'
-              : 'Choose Item',
+          title: category == 'Other Items'
+              ? 'Choose Other Item'
+              : 'Choose Add-On',
           items: itemsForCategory(category),
         );
       },
@@ -359,7 +363,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
     try {
       final addOnPayload = <Map<String, dynamic>>[];
-      final consignmentPayload = <Map<String, dynamic>>[];
+      final otherItemsPayload = <Map<String, dynamic>>[];
 
       for (final row in orderRows) {
         if (row.item == null) continue;
@@ -370,7 +374,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
             'quantity': row.quantity,
           });
         } else {
-          consignmentPayload.add({
+          otherItemsPayload.add({
             'consignment_id': row.item!.id,
             'quantity': row.quantity,
           });
@@ -378,7 +382,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       }
 
       if (addOnPayload.isNotEmpty) {
-        final response = await supabase.rpc(
+        await supabase.rpc(
           'place_addon_order',
           params: {
             'p_full_name': fullNameController.text.trim(),
@@ -386,25 +390,17 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
             'p_items': addOnPayload,
           },
         );
-
-        if (response is PostgrestException) {
-          throw response;
-        }
       }
 
-      if (consignmentPayload.isNotEmpty) {
-        final response = await supabase.rpc(
+      if (otherItemsPayload.isNotEmpty) {
+        await supabase.rpc(
           'place_consignment_order',
           params: {
             'p_full_name': fullNameController.text.trim(),
             'p_seat_number': selectedSeat,
-            'p_items': consignmentPayload,
+            'p_items': otherItemsPayload,
           },
         );
-
-        if (response is PostgrestException) {
-          throw response;
-        }
       }
 
       await _loadCatalog();
@@ -727,14 +723,14 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     final double modalWidth = isMobile
         ? screen.width - 20
         : isTablet
-        ? 600
-        : 700;
+        ? 500
+        : 600;
 
     final double modalHeight = isMobile
         ? screen.height * 0.92
         : isTablet
         ? 500
-        : 520;
+        : 620;
 
     return Scaffold(
       backgroundColor: AddOnsStyles.pageBg,
@@ -945,7 +941,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                                     ),
                                     buildAiBubble(
                                       text: 'Thank you! 😊',
-                                      showAvatar: false,
+                                      showAvatar: true,
                                     ),
                                   ],
                                 ],
@@ -990,9 +986,13 @@ class _SelectionSheet<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final maxHeight = media.size.height * 0.72;
+
     return Container(
       margin: const EdgeInsets.all(10),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+      constraints: BoxConstraints(maxHeight: maxHeight),
       decoration: BoxDecoration(
         color: AddOnsStyles.cardBg,
         borderRadius: BorderRadius.circular(24),
@@ -1018,34 +1018,45 @@ class _SelectionSheet<T> extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            Text(title, style: AddOnsStyles.sectionTitle),
+            Text(
+              title,
+              style: AddOnsStyles.sectionTitle.copyWith(fontSize: 18),
+            ),
             const SizedBox(height: 14),
-            ...items.map(
-              (item) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(18),
-                  onTap: () => Navigator.pop(context, item.value),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Colors.black.withOpacity(0.06)),
-                    ),
-                    child: Text(
-                      item.label,
-                      style: const TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w700,
-                        color: AddOnsStyles.textDark,
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: items.map((item) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(18),
+                        onTap: () => Navigator.pop(context, item.value),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: Colors.black.withOpacity(0.06),
+                            ),
+                          ),
+                          child: Text(
+                            item.label,
+                            style: const TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w700,
+                              color: AddOnsStyles.textDark,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  }).toList(),
                 ),
               ),
             ),
@@ -1214,135 +1225,128 @@ class _ItemPickerSheetState extends State<_ItemPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return StatefulBuilder(
-      builder: (context, _) {
-        return Container(
-          margin: const EdgeInsets.all(10),
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-          decoration: BoxDecoration(
-            color: AddOnsStyles.cardBg,
-            borderRadius: BorderRadius.circular(26),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.16),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
+    return Container(
+      margin: const EdgeInsets.all(10),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+      decoration: BoxDecoration(
+        color: AddOnsStyles.cardBg,
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.16),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 680,
+          child: Column(
+            children: [
+              Container(
+                width: 48,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(widget.title, style: AddOnsStyles.sectionTitle),
+              const SizedBox(height: 14),
+              TextField(
+                controller: searchController,
+                onChanged: (_) => setState(() {}),
+                decoration: AddOnsStyles.inputDecoration(
+                  hintText: 'Search item...',
+                  suffixIcon: const Icon(Icons.search_rounded),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Expanded(
+                child: filteredItems.isEmpty
+                    ? const Center(child: Text('No available items.'))
+                    : ListView.separated(
+                        itemCount: filteredItems.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final item = filteredItems[index];
+
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(18),
+                            onTap: () => Navigator.pop(context, item),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: AddOnsStyles.sectionCard,
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: AddOnsStyles.imageBox,
+                                    clipBehavior: Clip.antiAlias,
+                                    child:
+                                        item.imageUrl != null &&
+                                            item.imageUrl!.trim().isNotEmpty
+                                        ? Image.network(
+                                            item.imageUrl!,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) {
+                                              return const Icon(
+                                                Icons
+                                                    .image_not_supported_outlined,
+                                              );
+                                            },
+                                          )
+                                        : const Icon(
+                                            Icons.image_outlined,
+                                            size: 30,
+                                          ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item.name,
+                                          style: AddOnsStyles.sectionTitle,
+                                        ),
+                                        if (item.size != null &&
+                                            item.size!.trim().isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Size: ${item.size}',
+                                            style: AddOnsStyles.mutedText,
+                                          ),
+                                        ],
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Remaining: ${item.stocks}',
+                                          style: AddOnsStyles.mutedText,
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          '₱${item.price.toStringAsFixed(2)}',
+                                          style: AddOnsStyles.priceText,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
               ),
             ],
           ),
-          child: SafeArea(
-            top: false,
-            child: SizedBox(
-              height: 680,
-              child: Column(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(widget.title, style: AddOnsStyles.sectionTitle),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: searchController,
-                    onChanged: (_) => setState(() {}),
-                    decoration: AddOnsStyles.inputDecoration(
-                      hintText: 'Search item...',
-                      suffixIcon: const Icon(Icons.search_rounded),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Expanded(
-                    child: filteredItems.isEmpty
-                        ? const Center(child: Text('No available items.'))
-                        : ListView.separated(
-                            itemCount: filteredItems.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 10),
-                            itemBuilder: (context, index) {
-                              final item = filteredItems[index];
-
-                              return InkWell(
-                                borderRadius: BorderRadius.circular(18),
-                                onTap: () => Navigator.pop(context, item),
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: AddOnsStyles.sectionCard,
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 64,
-                                        height: 64,
-                                        decoration: AddOnsStyles.imageBox,
-                                        clipBehavior: Clip.antiAlias,
-                                        child:
-                                            item.imageUrl != null &&
-                                                item.imageUrl!.trim().isNotEmpty
-                                            ? Image.network(
-                                                item.imageUrl!,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (_, __, ___) {
-                                                  return const Icon(
-                                                    Icons
-                                                        .image_not_supported_outlined,
-                                                  );
-                                                },
-                                              )
-                                            : const Icon(
-                                                Icons.image_outlined,
-                                                size: 30,
-                                              ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              item.name,
-                                              style: AddOnsStyles.sectionTitle,
-                                            ),
-                                            if (item.size != null &&
-                                                item.size!
-                                                    .trim()
-                                                    .isNotEmpty) ...[
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                'Size: ${item.size}',
-                                                style: AddOnsStyles.mutedText,
-                                              ),
-                                            ],
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              'Remaining: ${item.stocks}',
-                                              style: AddOnsStyles.mutedText,
-                                            ),
-                                            const SizedBox(height: 6),
-                                            Text(
-                                              '₱${item.price.toStringAsFixed(2)}',
-                                              style: AddOnsStyles.priceText,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
