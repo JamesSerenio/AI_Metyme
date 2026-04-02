@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class BookAddStyles {
   static const Color bgColor = Color(0xFFF6F2E9);
-  static const Color cardColor = Color(0xFFF8EFDf);
+  static const Color cardColor = Color(0xFFF8EFDF);
   static const Color primary = Color(0xFF43A047);
   static const Color primaryDark = Color(0xFF2E7D32);
   static const Color primarySoft = Color(0xFFE3F1DE);
@@ -10,13 +10,19 @@ class BookAddStyles {
   static const Color textSoft = Color(0xFF6A6A6A);
   static const Color aiBubbleBg = Color(0xFFF8F8FB);
 
-  static BoxDecoration pageBackground = const BoxDecoration(color: bgColor);
+  static BoxDecoration pageBackground = const BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [Color(0xFFF8F4EC), Color(0xFFF3EBDD), Color(0xFFF6F2E9)],
+    ),
+  );
 
   static BoxDecoration mainCard = BoxDecoration(
-    color: cardColor.withOpacity(0.96),
+    color: cardColor.withOpacity(0.78),
     borderRadius: BorderRadius.circular(32),
     border: Border.all(
-      color: const Color(0xFFDCCFAF).withOpacity(0.75),
+      color: const Color(0xFFDCCFAF).withOpacity(0.78),
       width: 1.2,
     ),
     boxShadow: [
@@ -34,24 +40,66 @@ class BookAddStyles {
     ],
   );
 
+  static BoxDecoration mainCardGlassOverlay = BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        Colors.white.withOpacity(0.10),
+        const Color(0xFFF7EEDB).withOpacity(0.14),
+        Colors.white.withOpacity(0.06),
+      ],
+    ),
+  );
+
+  static BoxDecoration displayImageWash = BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        Colors.white.withOpacity(0.15),
+        Colors.white.withOpacity(0.04),
+        Colors.white.withOpacity(0.16),
+      ],
+    ),
+  );
+
+  static BoxDecoration displayImageTint = BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        const Color(0xFFF8EFDF).withOpacity(0.70),
+        const Color(0xFFF8EFDF).withOpacity(0.42),
+        const Color(0xFFF3EBDD).withOpacity(0.66),
+      ],
+      stops: const [0.0, 0.45, 1.0],
+    ),
+  );
+
   static BoxDecoration headerCard = BoxDecoration(
-    color: Colors.white.withOpacity(0.34),
+    color: Colors.white.withOpacity(0.48),
     borderRadius: BorderRadius.circular(22),
     border: Border.all(
-      color: const Color(0xFFD8CCB3).withOpacity(0.75),
+      color: const Color(0xFFD8CCB3).withOpacity(0.78),
       width: 1,
     ),
     boxShadow: [
       BoxShadow(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withOpacity(0.14),
         blurRadius: 8,
         offset: const Offset(0, -1),
+      ),
+      BoxShadow(
+        color: Colors.black.withOpacity(0.03),
+        blurRadius: 10,
+        offset: const Offset(0, 5),
       ),
     ],
   );
 
   static BoxDecoration chatContainer = BoxDecoration(
-    color: const Color(0xFFF3ECDC).withOpacity(0.72),
+    color: const Color(0xFFF5EEDF).withOpacity(0.74),
     borderRadius: BorderRadius.circular(28),
     border: Border.all(color: const Color(0xD9D1C0A8), width: 1),
     boxShadow: [
@@ -64,7 +112,7 @@ class BookAddStyles {
   );
 
   static BoxDecoration chatBubbleAI = BoxDecoration(
-    color: aiBubbleBg,
+    color: aiBubbleBg.withOpacity(0.96),
     borderRadius: BorderRadius.circular(
       22,
     ).copyWith(topLeft: const Radius.circular(8)),
@@ -97,13 +145,13 @@ class BookAddStyles {
   );
 
   static BoxDecoration onlineChip = BoxDecoration(
-    color: primarySoft,
+    color: primarySoft.withOpacity(0.92),
     borderRadius: BorderRadius.circular(999),
     border: Border.all(color: primary.withOpacity(0.22), width: 1),
   );
 
   static BoxDecoration readyChip = BoxDecoration(
-    color: primarySoft,
+    color: primarySoft.withOpacity(0.92),
     borderRadius: BorderRadius.circular(999),
     border: Border.all(color: primary.withOpacity(0.22), width: 1),
   );
@@ -117,7 +165,7 @@ class BookAddStyles {
         fontWeight: FontWeight.w500,
       ),
       filled: true,
-      fillColor: Colors.white.withOpacity(0.96),
+      fillColor: Colors.white.withOpacity(0.94),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 17),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(22),

@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'styles/Book_Add_styles.dart';
 import 'pages/BookingModal.dart';
@@ -20,19 +23,33 @@ class _BookAddPageState extends State<BookAddPage>
   final ScrollController scrollController = ScrollController();
   final List<Map<String, dynamic>> messages = [];
 
-  late final AnimationController pageController;
+  late final AnimationController pageControllerAnim;
   late final AnimationController leafController;
+  late final AnimationController ambientController;
+
   late final Animation<double> fadeAnim;
   late final Animation<Offset> slideAnim;
   late final Animation<double> leafFloatAnim;
+  late final Animation<double> ambientFloatAnim;
+
+  late final PageController displayPageController;
+  Timer? autoSlideTimer;
+
+  late final List<String> displayImages;
+  int currentDisplayIndex = 0;
+
+  static final List<String> _allDisplayImages = List.generate(
+    20,
+    (index) => 'assets/${index + 1}.png',
+  );
 
   @override
   void initState() {
     super.initState();
 
-    pageController = AnimationController(
+    pageControllerAnim = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 850),
+      duration: const Duration(milliseconds: 900),
     );
 
     leafController = AnimationController(
@@ -40,14 +57,22 @@ class _BookAddPageState extends State<BookAddPage>
       duration: const Duration(milliseconds: 3200),
     )..repeat(reverse: true);
 
+    ambientController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 5200),
+    )..repeat(reverse: true);
+
     fadeAnim = CurvedAnimation(
-      parent: pageController,
+      parent: pageControllerAnim,
       curve: Curves.easeOutCubic,
     );
 
     slideAnim = Tween<Offset>(begin: const Offset(0, 0.035), end: Offset.zero)
         .animate(
-          CurvedAnimation(parent: pageController, curve: Curves.easeOutCubic),
+          CurvedAnimation(
+            parent: pageControllerAnim,
+            curve: Curves.easeOutCubic,
+          ),
         );
 
     leafFloatAnim = Tween<double>(
@@ -55,19 +80,49 @@ class _BookAddPageState extends State<BookAddPage>
       end: 5,
     ).animate(CurvedAnimation(parent: leafController, curve: Curves.easeInOut));
 
-    pageController.forward();
+    ambientFloatAnim = Tween<double>(begin: -10, end: 10).animate(
+      CurvedAnimation(parent: ambientController, curve: Curves.easeInOut),
+    );
+
+    displayImages = List<String>.from(_allDisplayImages)..shuffle(Random());
+    displayPageController = PageController(viewportFraction: 1);
+
+    pageControllerAnim.forward();
+    _startAutoSlide();
   }
 
   @override
   void dispose() {
+    autoSlideTimer?.cancel();
     controller.dispose();
     scrollController.dispose();
-    pageController.dispose();
+    pageControllerAnim.dispose();
     leafController.dispose();
+    ambientController.dispose();
+    displayPageController.dispose();
     super.dispose();
   }
 
   bool get isBusy => openingBooking || openingPromo;
+
+  void _startAutoSlide() {
+    autoSlideTimer?.cancel();
+    autoSlideTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted ||
+          !displayPageController.hasClients ||
+          displayImages.isEmpty) {
+        return;
+      }
+
+      final int nextIndex = (currentDisplayIndex + 1) % displayImages.length;
+
+      displayPageController.animateToPage(
+        nextIndex,
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.easeInOutCubic,
+      );
+    });
+  }
 
   void startChat() {
     if (started) return;
@@ -85,7 +140,7 @@ class _BookAddPageState extends State<BookAddPage>
   }
 
   void sendMessage(String text) {
-    final value = text.trim();
+    final String value = text.trim();
     if (value.isEmpty || isBusy) return;
 
     setState(() {
@@ -105,9 +160,6 @@ class _BookAddPageState extends State<BookAddPage>
 
     setState(() {
       openingBooking = true;
-    });
-
-    setState(() {
       messages.add({
         "isAI": true,
         "text":
@@ -145,9 +197,6 @@ class _BookAddPageState extends State<BookAddPage>
 
     setState(() {
       openingPromo = true;
-    });
-
-    setState(() {
       messages.add({
         "isAI": true,
         "text":
@@ -181,7 +230,7 @@ class _BookAddPageState extends State<BookAddPage>
   }
 
   void handleAIResponse(String input) {
-    final value = input.trim().toLowerCase();
+    final String value = input.trim().toLowerCase();
 
     switch (value) {
       case "1":
@@ -277,7 +326,7 @@ class _BookAddPageState extends State<BookAddPage>
       ),
       child: ClipOval(
         child: Image.asset(
-          "assets/study_hub.png",
+          'assets/study_hub.png',
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             return const Icon(Icons.image_not_supported_outlined);
@@ -310,7 +359,7 @@ class _BookAddPageState extends State<BookAddPage>
         child: Opacity(
           opacity: 0.95,
           child: Image.asset(
-            "assets/leave.png",
+            'assets/leave.png',
             width: width,
             fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
@@ -318,6 +367,134 @@ class _BookAddPageState extends State<BookAddPage>
             },
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingGlow({
+    required Alignment alignment,
+    required double size,
+    required double opacity,
+  }) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: ambientFloatAnim,
+        builder: (context, child) {
+          final double shift = ambientFloatAnim.value;
+          return Align(
+            alignment: alignment,
+            child: Transform.translate(
+              offset: Offset(alignment.x * shift * 0.8, alignment.y * shift),
+              child: child,
+            ),
+          );
+        },
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                Colors.white.withOpacity(opacity),
+                Colors.white.withOpacity(0.0),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDisplayBackground(bool isMobile) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(32),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          PageView.builder(
+            controller: displayPageController,
+            itemCount: displayImages.length,
+            onPageChanged: (index) {
+              setState(() {
+                currentDisplayIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return TweenAnimationBuilder<double>(
+                tween: Tween(begin: 1.08, end: 1.0),
+                duration: const Duration(milliseconds: 1200),
+                curve: Curves.easeOutCubic,
+                builder: (context, scale, child) {
+                  return Transform.scale(scale: scale, child: child);
+                },
+                child: Image.asset(
+                  displayImages[index],
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  gaplessPlayback: true,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Center(
+                      child: Text(
+                        'Image not found:\n${displayImages[index]}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.black54,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+          Container(decoration: BookAddStyles.displayImageWash),
+          Container(decoration: BookAddStyles.displayImageTint),
+          _buildFloatingGlow(
+            alignment: Alignment.topLeft,
+            size: isMobile ? 180 : 260,
+            opacity: 0.18,
+          ),
+          _buildFloatingGlow(
+            alignment: Alignment.bottomRight,
+            size: isMobile ? 220 : 300,
+            opacity: 0.14,
+          ),
+          _buildFloatingGlow(
+            alignment: Alignment.centerRight,
+            size: isMobile ? 120 : 170,
+            opacity: 0.09,
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 14,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(min(displayImages.length, 6), (dotIndex) {
+                final int activeVisualIndex =
+                    currentDisplayIndex % min(displayImages.length, 6);
+                final bool isActive = dotIndex == activeVisualIndex;
+
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOut,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: isActive ? 24 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? Colors.white.withOpacity(0.78)
+                        : Colors.white.withOpacity(0.28),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -363,7 +540,7 @@ class _BookAddPageState extends State<BookAddPage>
 
   @override
   Widget build(BuildContext context) {
-    final screen = MediaQuery.of(context).size;
+    final Size screen = MediaQuery.of(context).size;
     final bool isMobile = screen.width < 640;
     final bool isTablet = screen.width >= 640 && screen.width < 1100;
 
@@ -387,74 +564,88 @@ class _BookAddPageState extends State<BookAddPage>
 
     return Scaffold(
       backgroundColor: BookAddStyles.bgColor,
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: fadeAnim,
-          child: SlideTransition(
-            position: slideAnim,
-            child: Center(
-              child: SizedBox(
-                width: cardWidth,
-                height: cardHeight,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned.fill(
-                      child: Container(
-                        margin: EdgeInsets.all(isMobile ? 10 : 8),
-                        padding: EdgeInsets.all(isMobile ? 14 : 20),
-                        decoration: BookAddStyles.mainCard,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 420),
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeInCubic,
-                          child: !started
-                              ? _buildStartState(isMobile)
-                              : _buildChatState(isMobile),
+      body: Container(
+        decoration: BookAddStyles.pageBackground,
+        child: SafeArea(
+          child: FadeTransition(
+            opacity: fadeAnim,
+            child: SlideTransition(
+              position: slideAnim,
+              child: Center(
+                child: SizedBox(
+                  width: cardWidth,
+                  height: cardHeight,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned.fill(
+                        child: Container(
+                          margin: EdgeInsets.all(isMobile ? 10 : 8),
+                          decoration: BookAddStyles.mainCard,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(32),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                _buildDisplayBackground(isMobile),
+                                Container(
+                                  decoration:
+                                      BookAddStyles.mainCardGlassOverlay,
+                                ),
+                                Padding(
+                                  padding: EdgeInsets.all(isMobile ? 14 : 20),
+                                  child: AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 420),
+                                    switchInCurve: Curves.easeOutCubic,
+                                    switchOutCurve: Curves.easeInCubic,
+                                    child: !started
+                                        ? _buildStartState(isMobile)
+                                        : _buildChatState(isMobile),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-
-                    Positioned(
-                      top: isMobile ? -8 : -10,
-                      left: isMobile ? -6 : -10,
-                      child: _leafInside(
-                        width: leafWidth,
-                        angle: 0,
-                        invertY: true,
+                      Positioned(
+                        top: isMobile ? -8 : -10,
+                        left: isMobile ? -6 : -10,
+                        child: _leafInside(
+                          width: leafWidth,
+                          angle: 0,
+                          invertY: true,
+                        ),
                       ),
-                    ),
-
-                    Positioned(
-                      top: isMobile ? -8 : -10,
-                      right: isMobile ? -6 : -10,
-                      child: _leafInside(
-                        width: leafWidth,
-                        angle: 3.14159,
-                        invertY: false,
+                      Positioned(
+                        top: isMobile ? -8 : -10,
+                        right: isMobile ? -6 : -10,
+                        child: _leafInside(
+                          width: leafWidth,
+                          angle: 3.14159,
+                          invertY: false,
+                        ),
                       ),
-                    ),
-
-                    Positioned(
-                      bottom: isMobile ? -8 : -10,
-                      left: isMobile ? -6 : -10,
-                      child: _leafInside(
-                        width: leafWidth,
-                        angle: 0,
-                        invertY: false,
+                      Positioned(
+                        bottom: isMobile ? -8 : -10,
+                        left: isMobile ? -6 : -10,
+                        child: _leafInside(
+                          width: leafWidth,
+                          angle: 0,
+                          invertY: false,
+                        ),
                       ),
-                    ),
-
-                    Positioned(
-                      bottom: isMobile ? -8 : -10,
-                      right: isMobile ? -6 : -10,
-                      child: _leafInside(
-                        width: leafWidth,
-                        angle: -1.5708,
-                        invertY: false,
+                      Positioned(
+                        bottom: isMobile ? -8 : -10,
+                        right: isMobile ? -6 : -10,
+                        child: _leafInside(
+                          width: leafWidth,
+                          angle: -1.5708,
+                          invertY: false,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
