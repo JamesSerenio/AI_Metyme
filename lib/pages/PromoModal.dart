@@ -968,14 +968,14 @@ class _PromoModalPageState extends State<PromoModalPage>
     final double modalWidth = isMobile
         ? screen.width - 20
         : isTablet
-        ? 620
-        : 760;
+        ? 600
+        : 700;
 
     final double modalHeight = isMobile
         ? screen.height * 0.92
         : isTablet
-        ? 560
-        : 620;
+        ? 500
+        : 520;
 
     final computedEnd = computeEndDateTime();
 
