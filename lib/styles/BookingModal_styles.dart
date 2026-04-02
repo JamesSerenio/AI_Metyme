@@ -30,15 +30,40 @@ class BookingModalStyles {
     ],
   );
 
+  static BoxDecoration innerGlassCard = BoxDecoration(
+    color: cardBg.withOpacity(0.78),
+    borderRadius: BorderRadius.circular(22),
+    border: Border.all(color: Colors.white.withOpacity(0.40), width: 1.1),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.10),
+        blurRadius: 14,
+        offset: const Offset(0, 6),
+      ),
+    ],
+  );
+
+  static BoxDecoration frameFallback = BoxDecoration(
+    color: const Color(0xFF4E4B48),
+    borderRadius: BorderRadius.circular(28),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.18),
+        blurRadius: 24,
+        offset: const Offset(0, 12),
+      ),
+    ],
+  );
+
   static BoxDecoration headerCard = BoxDecoration(
     color: Colors.white.withOpacity(0.34),
-    borderRadius: BorderRadius.circular(22),
+    borderRadius: BorderRadius.circular(18),
     border: Border.all(color: Colors.black.withOpacity(0.08), width: 1),
   );
 
   static BoxDecoration chatArea = BoxDecoration(
     color: Colors.white.withOpacity(0.20),
-    borderRadius: BorderRadius.circular(24),
+    borderRadius: BorderRadius.circular(20),
     border: Border.all(color: Colors.black.withOpacity(0.08), width: 1),
   );
 
@@ -77,7 +102,7 @@ class BookingModalStyles {
 
   static BoxDecoration formCard = BoxDecoration(
     color: panelBg,
-    borderRadius: BorderRadius.circular(22),
+    borderRadius: BorderRadius.circular(20),
     border: Border.all(color: Colors.black.withOpacity(0.06), width: 1),
     boxShadow: [
       BoxShadow(
@@ -278,9 +303,9 @@ class BookingModalStyles {
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: Colors.black.withOpacity(0.06)),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: primary, width: 1.3),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(16)),
+          borderSide: BorderSide(color: primary, width: 1.3),
         ),
       ),
       cancelButtonStyle: datePickerActionButton,
