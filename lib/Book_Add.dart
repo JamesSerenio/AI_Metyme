@@ -7,6 +7,7 @@ import 'styles/Book_Add_styles.dart';
 import 'pages/Booking.dart';
 import 'pages/Promo.dart';
 import 'pages/AddOns.dart';
+import 'pages/Seat.dart';
 
 class BookAddPage extends StatefulWidget {
   const BookAddPage({super.key});
@@ -300,14 +301,7 @@ class _BookAddPageState extends State<BookAddPage>
       case "4":
       case "seat view":
       case "seatview":
-        setState(() {
-          messages.add({
-            "isAI": true,
-            "text":
-                "You selected Seat View 🪑\n\nYou will be able to view available seats here soon.",
-          });
-        });
-        _scrollToBottom();
+        _openSeatFlow();
         return;
 
       case "5":
