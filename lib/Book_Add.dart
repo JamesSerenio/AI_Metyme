@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'styles/Book_Add_styles.dart';
@@ -36,6 +37,9 @@ class _BookAddPageState extends State<BookAddPage>
   Timer? autoSlideTimer;
 
   late final List<String> displayImages;
+
+  static const int _loopStartPage = 10000;
+  int currentAbsolutePage = _loopStartPage;
   int currentDisplayIndex = 0;
 
   static final List<String> _allDisplayImages = List.generate(
@@ -59,7 +63,7 @@ class _BookAddPageState extends State<BookAddPage>
 
     ambientController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 5200),
+      duration: const Duration(milliseconds: 5600),
     )..repeat(reverse: true);
 
     fadeAnim = CurvedAnimation(
@@ -80,12 +84,16 @@ class _BookAddPageState extends State<BookAddPage>
       end: 5,
     ).animate(CurvedAnimation(parent: leafController, curve: Curves.easeInOut));
 
-    ambientFloatAnim = Tween<double>(begin: -10, end: 10).animate(
+    ambientFloatAnim = Tween<double>(begin: -12, end: 12).animate(
       CurvedAnimation(parent: ambientController, curve: Curves.easeInOut),
     );
 
     displayImages = List<String>.from(_allDisplayImages)..shuffle(Random());
-    displayPageController = PageController(viewportFraction: 1);
+
+    displayPageController = PageController(
+      initialPage: _loopStartPage,
+      viewportFraction: 1,
+    );
 
     pageControllerAnim.forward();
     _startAutoSlide();
@@ -107,18 +115,18 @@ class _BookAddPageState extends State<BookAddPage>
 
   void _startAutoSlide() {
     autoSlideTimer?.cancel();
-    autoSlideTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    autoSlideTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!mounted ||
           !displayPageController.hasClients ||
           displayImages.isEmpty) {
         return;
       }
 
-      final int nextIndex = (currentDisplayIndex + 1) % displayImages.length;
+      currentAbsolutePage += 1;
 
       displayPageController.animateToPage(
-        nextIndex,
-        duration: const Duration(milliseconds: 900),
+        currentAbsolutePage,
+        duration: const Duration(milliseconds: 1200),
         curve: Curves.easeInOutCubic,
       );
     });
@@ -414,87 +422,187 @@ class _BookAddPageState extends State<BookAddPage>
         children: [
           PageView.builder(
             controller: displayPageController,
-            itemCount: displayImages.length,
             onPageChanged: (index) {
               setState(() {
-                currentDisplayIndex = index;
+                currentAbsolutePage = index;
+                currentDisplayIndex = index % displayImages.length;
               });
             },
             itemBuilder: (context, index) {
-              return TweenAnimationBuilder<double>(
-                tween: Tween(begin: 1.08, end: 1.0),
-                duration: const Duration(milliseconds: 1200),
-                curve: Curves.easeOutCubic,
-                builder: (context, scale, child) {
-                  return Transform.scale(scale: scale, child: child);
+              final String imagePath =
+                  displayImages[index % displayImages.length];
+
+              return AnimatedBuilder(
+                animation: ambientFloatAnim,
+                builder: (context, child) {
+                  return Transform.translate(
+                    offset: Offset(ambientFloatAnim.value * 0.9, 0),
+                    child: child,
+                  );
                 },
-                child: Image.asset(
-                  displayImages[index],
-                  fit: BoxFit.cover,
-                  alignment: Alignment.center,
-                  gaplessPlayback: true,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Center(
-                      child: Text(
-                        'Image not found:\n${displayImages[index]}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.black54,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    );
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 1.10, end: 1.0),
+                  duration: const Duration(milliseconds: 1400),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, scale, child) {
+                    return Transform.scale(scale: scale, child: child);
                   },
+                  child: Image.asset(
+                    imagePath,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
+                    gaplessPlayback: true,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Center(
+                        child: Text(
+                          'Image not found:\n$imagePath',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.black54,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               );
             },
           ),
-          Container(decoration: BookAddStyles.displayImageWash),
-          Container(decoration: BookAddStyles.displayImageTint),
+
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withOpacity(0.36),
+                  Colors.white.withOpacity(0.16),
+                  Colors.white.withOpacity(0.34),
+                ],
+              ),
+            ),
+          ),
+
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFFF7EEDB).withOpacity(0.58),
+                  const Color(0xFFF7EEDB).withOpacity(0.25),
+                  const Color(0xFFF2E7D3).withOpacity(0.56),
+                ],
+                stops: const [0.0, 0.45, 1.0],
+              ),
+            ),
+          ),
+
+          Container(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0, 0.02),
+                radius: 0.88,
+                colors: [
+                  Colors.white.withOpacity(0.04),
+                  Colors.black.withOpacity(0.08),
+                ],
+              ),
+            ),
+          ),
+
           _buildFloatingGlow(
             alignment: Alignment.topLeft,
             size: isMobile ? 180 : 260,
-            opacity: 0.18,
+            opacity: 0.16,
           ),
           _buildFloatingGlow(
             alignment: Alignment.bottomRight,
             size: isMobile ? 220 : 300,
-            opacity: 0.14,
+            opacity: 0.13,
           ),
           _buildFloatingGlow(
             alignment: Alignment.centerRight,
             size: isMobile ? 120 : 170,
-            opacity: 0.09,
-          ),
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 14,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(min(displayImages.length, 6), (dotIndex) {
-                final int activeVisualIndex =
-                    currentDisplayIndex % min(displayImages.length, 6);
-                final bool isActive = dotIndex == activeVisualIndex;
-
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeOut,
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: isActive ? 24 : 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? Colors.white.withOpacity(0.78)
-                        : Colors.white.withOpacity(0.28),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                );
-              }),
-            ),
+            opacity: 0.08,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHeroPanel(bool isMobile) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 18 : 28,
+            vertical: isMobile ? 18 : 24,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.20),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.28),
+              width: 1.1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Text(
+                "Start Your Booking Assistant",
+                textAlign: TextAlign.center,
+                style:
+                    (isMobile
+                            ? BookAddStyles.bigTitle.copyWith(fontSize: 26)
+                            : BookAddStyles.bigTitle)
+                        .copyWith(
+                          color: const Color(0xFF1A1A1A),
+                          fontWeight: FontWeight.w800,
+                          shadows: [
+                            Shadow(
+                              color: Colors.white.withOpacity(0.55),
+                              blurRadius: 10,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: isMobile ? 2 : 22),
+                child: Text(
+                  "Click Start to choose Booking, Promo, Add-Ons, Seat View, or Attendance for Reservation and Promo through chat.",
+                  textAlign: TextAlign.center,
+                  style: BookAddStyles.subtitle.copyWith(
+                    color: Colors.black.withOpacity(0.72),
+                    fontWeight: FontWeight.w600,
+                    height: 1.6,
+                    shadows: [
+                      Shadow(
+                        color: Colors.white.withOpacity(0.45),
+                        blurRadius: 8,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -673,12 +781,24 @@ class _BookAddPageState extends State<BookAddPage>
                   children: [
                     Text(
                       "Welcome to Me Tyme Lounge!",
-                      style: BookAddStyles.title,
+                      style: BookAddStyles.title.copyWith(
+                        color: const Color(0xFF232323),
+                        shadows: [
+                          Shadow(
+                            color: Colors.white.withOpacity(0.50),
+                            blurRadius: 8,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       "Rest, relax, and focus in a peaceful environment.",
-                      style: BookAddStyles.subtitle,
+                      style: BookAddStyles.subtitle.copyWith(
+                        color: Colors.black.withOpacity(0.65),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -710,23 +830,8 @@ class _BookAddPageState extends State<BookAddPage>
           ),
         ),
         SizedBox(height: isMobile ? 34 : 46),
-        Text(
-          "Start Your Booking Assistant",
-          textAlign: TextAlign.center,
-          style: isMobile
-              ? BookAddStyles.bigTitle.copyWith(fontSize: 26)
-              : BookAddStyles.bigTitle,
-        ),
-        const SizedBox(height: 12),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 80),
-          child: Text(
-            "Click Start to choose Booking, Promo, Add-Ons, Seat View, or Attendance for Reservation and Promo through chat.",
-            textAlign: TextAlign.center,
-            style: BookAddStyles.subtitle,
-          ),
-        ),
-        SizedBox(height: isMobile ? 28 : 36),
+        _buildHeroPanel(isMobile),
+        SizedBox(height: isMobile ? 26 : 34),
         TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.95, end: 1),
           duration: const Duration(milliseconds: 800),
