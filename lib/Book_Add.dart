@@ -4,8 +4,9 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'styles/Book_Add_styles.dart';
-import 'pages/BookingModal.dart';
-import 'pages/PromoModal.dart';
+import 'pages/Booking.dart';
+import 'pages/Promo.dart';
+import 'pages/AddOns.dart';
 
 class BookAddPage extends StatefulWidget {
   const BookAddPage({super.key});
@@ -19,6 +20,7 @@ class _BookAddPageState extends State<BookAddPage>
   bool started = false;
   bool openingBooking = false;
   bool openingPromo = false;
+  bool openingAddOns = false;
 
   final TextEditingController controller = TextEditingController();
   final ScrollController scrollController = ScrollController();
@@ -111,7 +113,7 @@ class _BookAddPageState extends State<BookAddPage>
     super.dispose();
   }
 
-  bool get isBusy => openingBooking || openingPromo;
+  bool get isBusy => openingBooking || openingPromo || openingAddOns;
 
   void _startAutoSlide() {
     autoSlideTimer?.cancel();
@@ -237,6 +239,43 @@ class _BookAddPageState extends State<BookAddPage>
     _scrollToBottom();
   }
 
+  Future<void> _openAddOnsFlow() async {
+    if (!mounted || isBusy) return;
+
+    setState(() {
+      openingAddOns = true;
+      messages.add({
+        "isAI": true,
+        "text":
+            "You selected Add-Ons 🍔\n\nOpening the add-ons form for you now...",
+      });
+    });
+
+    _scrollToBottom();
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddOnsPage()),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      openingAddOns = false;
+      messages.add({
+        "isAI": true,
+        "text":
+            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
+      });
+    });
+
+    _scrollToBottom();
+  }
+
   void handleAIResponse(String input) {
     final String value = input.trim().toLowerCase();
 
@@ -255,14 +294,7 @@ class _BookAddPageState extends State<BookAddPage>
       case "add-ons":
       case "addons":
       case "add ons":
-        setState(() {
-          messages.add({
-            "isAI": true,
-            "text":
-                "You selected Add-Ons 🍔\n\nYou may proceed with food, drinks, and other available add-ons here soon.",
-          });
-        });
-        _scrollToBottom();
+        _openAddOnsFlow();
         return;
 
       case "4":
@@ -470,7 +502,6 @@ class _BookAddPageState extends State<BookAddPage>
               );
             },
           ),
-
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -484,7 +515,6 @@ class _BookAddPageState extends State<BookAddPage>
               ),
             ),
           ),
-
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -499,7 +529,6 @@ class _BookAddPageState extends State<BookAddPage>
               ),
             ),
           ),
-
           Container(
             decoration: BoxDecoration(
               gradient: RadialGradient(
@@ -512,7 +541,6 @@ class _BookAddPageState extends State<BookAddPage>
               ),
             ),
           ),
-
           _buildFloatingGlow(
             alignment: Alignment.topLeft,
             size: isMobile ? 180 : 260,
