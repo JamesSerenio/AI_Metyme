@@ -8,6 +8,7 @@ import 'pages/Booking.dart';
 import 'pages/Promo.dart';
 import 'pages/AddOns.dart';
 import 'pages/Seat.dart';
+import 'pages/Attendance.dart';
 
 class BookAddPage extends StatefulWidget {
   const BookAddPage({super.key});
@@ -23,6 +24,7 @@ class _BookAddPageState extends State<BookAddPage>
   bool openingPromo = false;
   bool openingAddOns = false;
   bool openingSeat = false;
+  bool openingAttendance = false;
 
   final TextEditingController controller = TextEditingController();
   final ScrollController scrollController = ScrollController();
@@ -116,7 +118,11 @@ class _BookAddPageState extends State<BookAddPage>
   }
 
   bool get isBusy =>
-      openingBooking || openingPromo || openingAddOns || openingSeat;
+      openingBooking ||
+      openingPromo ||
+      openingAddOns ||
+      openingSeat ||
+      openingAttendance;
 
   void _startAutoSlide() {
     autoSlideTimer?.cancel();
@@ -316,6 +322,43 @@ class _BookAddPageState extends State<BookAddPage>
     _scrollToBottom();
   }
 
+  Future<void> _openAttendanceFlow() async {
+    if (!mounted || isBusy) return;
+
+    setState(() {
+      openingAttendance = true;
+      messages.add({
+        "isAI": true,
+        "text":
+            "You selected Attendance for Reservation and Promo ✅\n\nOpening the attendance form for you now...",
+      });
+    });
+
+    _scrollToBottom();
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AttendancePage()),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      openingAttendance = false;
+      messages.add({
+        "isAI": true,
+        "text":
+            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
+      });
+    });
+
+    _scrollToBottom();
+  }
+
   void handleAIResponse(String input) {
     final String value = input.trim().toLowerCase();
 
@@ -348,14 +391,7 @@ class _BookAddPageState extends State<BookAddPage>
       case "attendance for reservation and promo":
       case "reservation attendance":
       case "promo attendance":
-        setState(() {
-          messages.add({
-            "isAI": true,
-            "text":
-                "You selected Attendance for Reservation and Promo ✅\n\nThis option will help you manage attendance for reservation and promo customers, including IN and OUT records.",
-          });
-        });
-        _scrollToBottom();
+        _openAttendanceFlow();
         return;
 
       default:
