@@ -87,17 +87,17 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
       const SeatPin(
         id: 'CONFERENCE_ROOM',
         label: 'CONFERENCE ROOM',
-        x: 13,
-        y: 21.6,
+        x: 38.5,
+        y: 23.5,
         kind: PinKind.room,
       ),
 
       const SeatPin(id: '6', label: '6', x: 39.3, y: 29, kind: PinKind.seat),
       const SeatPin(id: '5', label: '5', x: 45.8, y: 29, kind: PinKind.seat),
-      const SeatPin(id: '4', label: '4', x: 52.5, y: 29, kind: PinKind.seat),
-      const SeatPin(id: '3', label: '3', x: 58.9, y: 29, kind: PinKind.seat),
-      const SeatPin(id: '2', label: '2', x: 73.6, y: 29, kind: PinKind.seat),
-      const SeatPin(id: '1', label: '1', x: 80.2, y: 29, kind: PinKind.seat),
+      const SeatPin(id: '4', label: '4', x: 52.5, y: 31, kind: PinKind.seat),
+      const SeatPin(id: '3', label: '3', x: 58.9, y: 31, kind: PinKind.seat),
+      const SeatPin(id: '2', label: '2', x: 73.6, y: 31, kind: PinKind.seat),
+      const SeatPin(id: '1', label: '1', x: 65, y: 31, kind: PinKind.seat),
 
       const SeatPin(id: '11', label: '11', x: 13, y: 40.7, kind: PinKind.seat),
       const SeatPin(
@@ -392,7 +392,7 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
       translation: const Offset(-0.5, -0.5),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
-        width: isRoom ? (isMobile ? 110 : 138) : (isMobile ? 18 : 16),
+        width: isRoom ? (isMobile ? 100 : 120) : (isMobile ? 18 : 16),
         height: isRoom ? (isMobile ? 28 : 30) : (isMobile ? 18 : 16),
         alignment: Alignment.center,
         decoration: isRoom
