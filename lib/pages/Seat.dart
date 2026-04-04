@@ -137,7 +137,13 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
         y: 53.5,
         kind: PinKind.seat,
       ),
-      const SeatPin(id: '16', label: '16', x: 61, y: 53.5, kind: PinKind.seat),
+      const SeatPin(
+        id: '16',
+        label: '16',
+        x: 57.3,
+        y: 53.5,
+        kind: PinKind.seat,
+      ),
       const SeatPin(
         id: '17',
         label: '17',
