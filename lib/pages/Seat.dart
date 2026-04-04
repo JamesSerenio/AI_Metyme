@@ -94,7 +94,7 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
 
       const SeatPin(id: '6', label: '6', x: 39.3, y: 29, kind: PinKind.seat),
       const SeatPin(id: '5', label: '5', x: 45.8, y: 29, kind: PinKind.seat),
-      const SeatPin(id: '4', label: '4', x: 52.5, y: 31, kind: PinKind.seat),
+      const SeatPin(id: '4', label: '4', x: 52.4, y: 31, kind: PinKind.seat),
       const SeatPin(id: '3', label: '3', x: 56.2, y: 31, kind: PinKind.seat),
       const SeatPin(id: '2', label: '2', x: 64.6, y: 31, kind: PinKind.seat),
       const SeatPin(id: '1', label: '1', x: 68.4, y: 31, kind: PinKind.seat),
@@ -393,7 +393,7 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         width: isRoom ? (isMobile ? 100 : 120) : (isMobile ? 18 : 16),
-        height: isRoom ? (isMobile ? 28 : 30) : (isMobile ? 18 : 16),
+        height: isRoom ? (isMobile ? 20 : 20) : (isMobile ? 18 : 16),
         alignment: Alignment.center,
         decoration: isRoom
             ? SeatStyles.roomDecoration(color)
@@ -402,7 +402,9 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
           pin.label,
           textAlign: TextAlign.center,
           overflow: TextOverflow.ellipsis,
-          style: isRoom ? SeatStyles.roomLabel : SeatStyles.seatLabel,
+          style: isRoom
+              ? SeatStyles.roomLabel.copyWith(fontSize: 8)
+              : SeatStyles.seatLabel.copyWith(fontSize: 6.3),
         ),
       ),
     );
