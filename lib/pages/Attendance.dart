@@ -568,14 +568,14 @@ class _AttendancePageState extends State<AttendancePage>
     final double modalWidth = isMobile
         ? screen.width - 20
         : isTablet
-        ? 760
-        : 860;
+        ? 500
+        : 600;
 
     final double modalHeight = isMobile
         ? screen.height * 0.92
         : isTablet
-        ? 760
-        : 820;
+        ? 500
+        : 620;
 
     return Scaffold(
       backgroundColor: AttendanceStyles.pageBg,
