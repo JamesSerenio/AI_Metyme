@@ -24,6 +24,7 @@ class _AttendancePageState extends State<AttendancePage>
   late final Animation<Offset> slideAnim;
 
   bool isSubmitting = false;
+  bool hasSubmittedOnce = false;
 
   String attendanceAction = 'IN'; // IN / OUT
   final List<Map<String, dynamic>> messages = [];
@@ -51,6 +52,7 @@ class _AttendancePageState extends State<AttendancePage>
 
     addAI(
       'Welcome to Attendance Assistant.\n\nEnter your Booking Code or Promo Code, then choose IN or OUT.',
+      scroll: false,
     );
   }
 
@@ -63,27 +65,27 @@ class _AttendancePageState extends State<AttendancePage>
     super.dispose();
   }
 
-  void addAI(String text) {
+  void addAI(String text, {bool scroll = true}) {
     setState(() {
       messages.add({'isAI': true, 'text': text});
     });
-    _scrollToBottom();
+    if (scroll) _scrollToBottom();
   }
 
-  void addUser(String text) {
+  void addUser(String text, {bool scroll = true}) {
     setState(() {
       messages.add({'isAI': false, 'text': text});
     });
-    _scrollToBottom();
+    if (scroll) _scrollToBottom();
   }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!scrollController.hasClients) return;
       scrollController.animateTo(
-        scrollController.position.maxScrollExtent + 220,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOut,
+        scrollController.position.maxScrollExtent + 260,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
       );
     });
   }
@@ -269,6 +271,10 @@ class _AttendancePageState extends State<AttendancePage>
       addAI('⚠️ Please enter your code first.');
       return;
     }
+
+    setState(() {
+      hasSubmittedOnce = true;
+    });
 
     addUser('$attendanceAction • $code');
 
@@ -559,6 +565,34 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
+  Widget buildTopIntroArea(bool isMobile) {
+    if (messages.isEmpty) return const SizedBox.shrink();
+
+    final introMessages = hasSubmittedOnce ? [messages.first] : messages;
+
+    return Column(
+      children: [
+        ...introMessages.map((e) => bubble(e, isMobile)),
+        const SizedBox(height: 14),
+      ],
+    );
+  }
+
+  Widget buildResponseArea(bool isMobile) {
+    if (!hasSubmittedOnce || messages.length <= 1) {
+      return const SizedBox.shrink();
+    }
+
+    final responseMessages = messages.skip(1).toList();
+
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        ...responseMessages.map((e) => bubble(e, isMobile)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
@@ -644,6 +678,8 @@ class _AttendancePageState extends State<AttendancePage>
                         child: ListView(
                           controller: scrollController,
                           children: [
+                            buildTopIntroArea(isMobile),
+
                             Container(
                               padding: EdgeInsets.all(isMobile ? 14 : 18),
                               decoration: AttendanceStyles.formCard,
@@ -747,9 +783,7 @@ class _AttendancePageState extends State<AttendancePage>
                               ),
                             ),
 
-                            const SizedBox(height: 16),
-
-                            ...messages.map((e) => bubble(e, isMobile)),
+                            buildResponseArea(isMobile),
                           ],
                         ),
                       ),
