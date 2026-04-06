@@ -486,142 +486,128 @@ class _NoisyPageState extends State<NoisyPage> with TickerProviderStateMixin {
         ? 560
         : 680;
 
-    return Scaffold(
-      backgroundColor: NoisyStyles.pageBg,
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: fadeAnim,
-          child: SlideTransition(
-            position: slideAnim,
-            child: Center(
-              child: Container(
-                width: modalWidth,
-                height: modalHeight,
-                margin: EdgeInsets.all(isMobile ? 10 : 18),
-                padding: EdgeInsets.all(isMobile ? 14 : 20),
-                decoration: NoisyStyles.modalCard,
-                child: Column(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(isMobile ? 12 : 16),
-                      decoration: NoisyStyles.headerCard,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: isMobile ? 42 : 48,
-                            height: isMobile ? 42 : 48,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: Image.asset(
-                                'assets/study_hub.png',
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) {
-                                  return const Icon(Icons.volume_up_outlined);
-                                },
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Noisy Report Assistant',
-                                  style: NoisyStyles.title,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Code first, then submit your concern or report.',
-                                  style: NoisyStyles.subtitle,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 7,
-                            ),
-                            decoration: NoisyStyles.statusChip,
-                            child: Text(
-                              'AI REPORT',
-                              style: NoisyStyles.chipText,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(isMobile ? 12 : 18),
-                        decoration: NoisyStyles.chatArea,
-                        child: ListView(
-                          controller: scrollController,
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: NoisyStyles.pageBg,
+        body: SafeArea(
+          child: FadeTransition(
+            opacity: fadeAnim,
+            child: SlideTransition(
+              position: slideAnim,
+              child: Center(
+                child: Container(
+                  width: modalWidth,
+                  height: modalHeight,
+                  margin: EdgeInsets.all(isMobile ? 10 : 18),
+                  padding: EdgeInsets.all(isMobile ? 14 : 20),
+                  decoration: NoisyStyles.modalCard,
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(isMobile ? 12 : 16),
+                        decoration: NoisyStyles.headerCard,
+                        child: Row(
                           children: [
-                            buildUserBubble(
-                              'I want to report something noisy.',
+                            Container(
+                              width: isMobile ? 42 : 48,
+                              height: isMobile ? 42 : 48,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child: Image.asset(
+                                  'assets/study_hub.png',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) {
+                                    return const Icon(Icons.volume_up_outlined);
+                                  },
+                                ),
+                              ),
                             ),
-                            buildAiBubble(
-                              text:
-                                  'Hello! Please enter your walk-in, reservation, or promo code first so I can verify if your schedule is active.',
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Noisy Report Assistant',
+                                    style: NoisyStyles.title,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Code first, then submit your concern or report.',
+                                    style: NoisyStyles.subtitle,
+                                  ),
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 8),
-                            buildVerificationCard(isMobile),
-                            if (isVerified) ...[
-                              const SizedBox(height: 12),
-                              buildAiBubble(
-                                text:
-                                    'Hi $fullName, your code is active. You can now submit your report.',
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 7,
                               ),
-                              const SizedBox(height: 8),
-                              buildReportForm(isMobile),
-                            ],
-                            if (submitted) ...[
-                              const SizedBox(height: 12),
-                              buildAiBubble(
-                                text:
-                                    'Your report has been submitted successfully.',
+                              decoration: NoisyStyles.statusChip,
+                              child: Text(
+                                'AI REPORT',
+                                style: NoisyStyles.chipText,
                               ),
-                              buildAiBubble(
-                                text:
-                                    'Thank you. Our staff will review your message as soon as possible.',
-                              ),
-                            ],
+                            ),
                           ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: NoisyStyles.secondaryButton,
-                            child: const Text('Close'),
+                      const SizedBox(height: 14),
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(isMobile ? 12 : 18),
+                          decoration: NoisyStyles.chatArea,
+                          child: ListView(
+                            controller: scrollController,
+                            children: [
+                              buildUserBubble(
+                                'I want to report something noisy.',
+                              ),
+                              buildAiBubble(
+                                text:
+                                    'Hello! Please enter your walk-in, reservation, or promo code first so I can verify if your schedule is active.',
+                              ),
+                              const SizedBox(height: 8),
+                              buildVerificationCard(isMobile),
+                              if (isVerified) ...[
+                                const SizedBox(height: 12),
+                                buildAiBubble(
+                                  text:
+                                      'Hi $fullName, your code is active. You can now submit your report.',
+                                ),
+                                const SizedBox(height: 8),
+                                buildReportForm(isMobile),
+                              ],
+                              if (submitted) ...[
+                                const SizedBox(height: 12),
+                                buildAiBubble(
+                                  text:
+                                      'Your report has been submitted successfully.',
+                                ),
+                                buildAiBubble(
+                                  text:
+                                      'Thank you. Our staff will review your message as soon as possible.',
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
