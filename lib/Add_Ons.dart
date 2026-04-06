@@ -1177,121 +1177,107 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
     final String successName = verifiedCustomer?.fullName ?? 'Customer';
 
-    return Scaffold(
-      backgroundColor: AddOnsStyles.pageBg,
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: fadeAnim,
-          child: SlideTransition(
-            position: slideAnim,
-            child: Center(
-              child: Container(
-                width: modalWidth,
-                height: modalHeight,
-                margin: EdgeInsets.all(isMobile ? 10 : 18),
-                padding: EdgeInsets.all(isMobile ? 14 : 20),
-                decoration: AddOnsStyles.modalCard,
-                child: Column(
-                  children: <Widget>[
-                    Container(
-                      padding: EdgeInsets.all(isMobile ? 12 : 16),
-                      decoration: AddOnsStyles.headerCard,
-                      child: Row(
-                        children: <Widget>[
-                          buildLogo(isMobile ? 42 : 48),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Text(
-                                  'Add-Ons Assistant',
-                                  style: AddOnsStyles.title,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Code first, then order your add-ons.',
-                                  style: AddOnsStyles.subtitle,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 7,
-                            ),
-                            decoration: AddOnsStyles.statusChip,
-                            child: Text(
-                              'AI ORDER',
-                              style: AddOnsStyles.chipText,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(isMobile ? 12 : 18),
-                        decoration: AddOnsStyles.chatArea,
-                        child: isLoading
-                            ? const Center(child: CircularProgressIndicator())
-                            : ListView(
-                                controller: scrollController,
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: AddOnsStyles.pageBg,
+        body: SafeArea(
+          child: FadeTransition(
+            opacity: fadeAnim,
+            child: SlideTransition(
+              position: slideAnim,
+              child: Center(
+                child: Container(
+                  width: modalWidth,
+                  height: modalHeight,
+                  margin: EdgeInsets.all(isMobile ? 10 : 18),
+                  padding: EdgeInsets.all(isMobile ? 14 : 20),
+                  decoration: AddOnsStyles.modalCard,
+                  child: Column(
+                    children: <Widget>[
+                      Container(
+                        padding: EdgeInsets.all(isMobile ? 12 : 16),
+                        decoration: AddOnsStyles.headerCard,
+                        child: Row(
+                          children: <Widget>[
+                            buildLogo(isMobile ? 42 : 48),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: <Widget>[
-                                  buildUserBubble('I want to order add-ons.'),
-                                  buildAiBubble(
-                                    text:
-                                        'Hello! Please enter your walk-in, reservation, or promo code first so I can verify your account.',
+                                  Text(
+                                    'Add-Ons Assistant',
+                                    style: AddOnsStyles.title,
                                   ),
-                                  const SizedBox(height: 8),
-                                  buildVerificationCard(isMobile),
-                                  if (isVerified &&
-                                      verifiedCustomer != null) ...<Widget>[
-                                    const SizedBox(height: 12),
-                                    buildAiBubble(
-                                      text:
-                                          verifiedCustomer!.message ??
-                                          'You can order now.',
-                                    ),
-                                    const SizedBox(height: 8),
-                                    buildOrderForm(isMobile),
-                                  ],
-                                  if (submitted) ...<Widget>[
-                                    const SizedBox(height: 12),
-                                    buildAiBubble(
-                                      text:
-                                          'Your order, $successName, was successful.',
-                                    ),
-                                    buildAiBubble(
-                                      text:
-                                          'Kindly proceed to the counter for pickup and payment.',
-                                    ),
-                                  ],
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Code first, then order your add-ons.',
+                                    style: AddOnsStyles.subtitle,
+                                  ),
                                 ],
                               ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: AddOnsStyles.secondaryButton,
-                            child: const Text('Close'),
-                          ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 7,
+                              ),
+                              decoration: AddOnsStyles.statusChip,
+                              child: Text(
+                                'AI ORDER',
+                                style: AddOnsStyles.chipText,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 14),
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(isMobile ? 12 : 18),
+                          decoration: AddOnsStyles.chatArea,
+                          child: isLoading
+                              ? const Center(child: CircularProgressIndicator())
+                              : ListView(
+                                  controller: scrollController,
+                                  children: <Widget>[
+                                    buildUserBubble('I want to order add-ons.'),
+                                    buildAiBubble(
+                                      text:
+                                          'Hello! Please enter your walk-in, reservation, or promo code first so I can verify your account.',
+                                    ),
+                                    const SizedBox(height: 8),
+                                    buildVerificationCard(isMobile),
+                                    if (isVerified &&
+                                        verifiedCustomer != null) ...<Widget>[
+                                      const SizedBox(height: 12),
+                                      buildAiBubble(
+                                        text:
+                                            verifiedCustomer!.message ??
+                                            'You can order now.',
+                                      ),
+                                      const SizedBox(height: 8),
+                                      buildOrderForm(isMobile),
+                                    ],
+                                    if (submitted) ...<Widget>[
+                                      const SizedBox(height: 12),
+                                      buildAiBubble(
+                                        text:
+                                            'Your order, $successName, was successful.',
+                                      ),
+                                      buildAiBubble(
+                                        text:
+                                            'Kindly proceed to the counter for pickup and payment.',
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
