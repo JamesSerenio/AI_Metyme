@@ -593,59 +593,64 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     });
 
     try {
-      final List<Map<String, dynamic>> addOnPayload = <Map<String, dynamic>>[];
-      final List<Map<String, dynamic>> consignmentPayload =
-          <Map<String, dynamic>>[];
+      final List<Map<String, dynamic>> addOnPayload = [];
+      final List<Map<String, dynamic>> consignmentPayload = [];
 
-      for (final OrderRowData row in orderRows) {
-        final CatalogItem? item = row.item;
+      for (final row in orderRows) {
+        final item = row.item;
         if (item == null) continue;
 
         if (item.kind == CatalogKind.addOn) {
-          addOnPayload.add(<String, dynamic>{
-            'add_on_id': item.id,
-            'quantity': row.quantity,
-          });
+          addOnPayload.add({'add_on_id': item.id, 'quantity': row.quantity});
         } else {
-          consignmentPayload.add(<String, dynamic>{
+          consignmentPayload.add({
             'consignment_id': item.id,
             'quantity': row.quantity,
           });
         }
       }
 
-      final String fullName = verifiedCustomer!.fullName;
-      final String seatNumber = verifiedCustomer!.seatNumber;
+      final fullName = verifiedCustomer!.fullName;
+      final seatNumber = verifiedCustomer!.seatNumber;
+      final bookingCode = verifiedCustomer!.code; // ✅ IMPORTANT
 
+      // ✅ ADD-ONS
       if (addOnPayload.isNotEmpty) {
         await supabase.rpc(
           'place_addon_order',
-          params: <String, dynamic>{
+          params: {
             'p_full_name': fullName,
             'p_seat_number': seatNumber,
+            'p_booking_code': bookingCode, // 🔥 FIX
             'p_items': addOnPayload,
           },
         );
       }
 
+      // ✅ CONSIGNMENT
       if (consignmentPayload.isNotEmpty) {
         await supabase.rpc(
           'place_consignment_order',
-          params: <String, dynamic>{
+          params: {
             'p_full_name': fullName,
             'p_seat_number': seatNumber,
+            'p_booking_code': bookingCode, // 🔥 FIX
             'p_items': consignmentPayload,
           },
         );
       }
 
+      // reload items
       await _loadCatalog();
 
       if (!mounted) return;
+
       setState(() {
         submitted = true;
-        orderRows = <OrderRowData>[OrderRowData()];
+        orderRows = [OrderRowData()];
       });
+
+      _showSnack('Order submitted successfully!');
       _scrollToBottom();
     } catch (e) {
       if (!mounted) return;
