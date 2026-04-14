@@ -383,11 +383,11 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
       if (addOnPayload.isNotEmpty) {
         await supabase.rpc(
-          'place_addon_order',
+          'place_consignment_order',
           params: {
             'p_full_name': fullNameController.text.trim(),
             'p_seat_number': selectedSeat,
-            'p_items': addOnPayload,
+            'p_items': otherItemsPayload,
           },
         );
       }
