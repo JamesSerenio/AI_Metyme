@@ -149,7 +149,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     }
 
     if (otherItems.isNotEmpty) {
-      values.add('Other Items');
+      values.add('SPECIAL ITEM');
     }
 
     final list = values.toList()..sort((a, b) => a.compareTo(b));
@@ -208,7 +208,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         return CatalogItem(
           id: row['id'].toString(),
           kind: CatalogKind.otherItems,
-          category: 'Other Items',
+          category: 'SPECIAL ITEM',
           name: (row['item_name'] ?? '').toString(),
           price: _toDouble(row['price']),
           stocks: _toInt(row['stocks']),
@@ -241,7 +241,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
   }
 
   List<CatalogItem> itemsForCategory(String category) {
-    if (category == 'Other Items') return otherItems;
+    if (category == 'SPECIAL ITEM') return otherItems;
     return addOnItems.where((e) => e.category == category).toList();
   }
 
@@ -304,7 +304,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       isScrollControlled: true,
       builder: (context) {
         return _ItemPickerSheet(
-          title: category == 'Other Items'
+          title: category == 'SPECIAL ITEM'
               ? 'Choose Other Item'
               : 'Choose Add-On',
           items: itemsForCategory(category),
