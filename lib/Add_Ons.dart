@@ -42,14 +42,14 @@ class VerifiedCustomerData {
   final VerifiedSourceKind kind;
   final String code;
   final String fullName;
-  final String seatNumber;
+  final String phoneNumber;
   final String? message;
 
   const VerifiedCustomerData({
     required this.kind,
     required this.code,
     required this.fullName,
-    required this.seatNumber,
+    required this.phoneNumber,
     this.message,
   });
 }
@@ -67,6 +67,40 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
   final TextEditingController codeController = TextEditingController();
   final ScrollController scrollController = ScrollController();
 
+  final Map<String, List<String>> seatGroups = const {
+    '1stF': [
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7A',
+      '7B',
+      '8A',
+      '8B',
+      '9',
+      '10',
+      '11',
+    ],
+    'TATAMI AREA': ['12A', '12B', '12C'],
+    '2ndF': [
+      '13',
+      '14',
+      '15',
+      '16',
+      '17',
+      '18',
+      '19',
+      '20',
+      '21',
+      '22',
+      '23',
+      '24',
+      '25',
+    ],
+  };
+
   bool isLoading = true;
   bool isSubmitting = false;
   bool isVerifying = false;
@@ -74,6 +108,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
   bool submitted = false;
 
   VerifiedCustomerData? verifiedCustomer;
+  String? selectedSeatNumber;
 
   List<CatalogItem> addOnItems = <CatalogItem>[];
   List<CatalogItem> consignmentItems = <CatalogItem>[];
@@ -122,6 +157,14 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     });
   }
 
+  List<String> get allSeatNumbers {
+    final List<String> seats = <String>[];
+    for (final List<String> groupSeats in seatGroups.values) {
+      seats.addAll(groupSeats);
+    }
+    return seats;
+  }
+
   List<String> get categories {
     final Set<String> values = <String>{};
 
@@ -143,6 +186,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
   bool get isValidOrder {
     if (!isVerified || verifiedCustomer == null) return false;
+    if ((selectedSeatNumber ?? '').trim().isEmpty) return false;
     if (orderRows.isEmpty) return false;
 
     for (final OrderRowData row in orderRows) {
@@ -340,7 +384,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       final Map<String, dynamic>? sessionRow = await supabase
           .from('customer_sessions')
           .select(
-            'id, full_name, seat_number, booking_code, time_started, time_ended, reservation, reservation_date, reservation_end_date',
+            'id, full_name, phone_number, booking_code, time_started, time_ended, reservation, reservation_date, reservation_end_date',
           )
           .eq('booking_code', code)
           .limit(1)
@@ -350,9 +394,10 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         final String fullName = (sessionRow['full_name'] ?? '')
             .toString()
             .trim();
-        final String seatNumber = (sessionRow['seat_number'] ?? '')
+        final String phoneNumber = (sessionRow['phone_number'] ?? '')
             .toString()
             .trim();
+
         final DateTime? startAt = DateTime.tryParse(
           (sessionRow['time_started'] ?? '').toString(),
         );
@@ -375,6 +420,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           setState(() {
             isVerified = false;
             verifiedCustomer = null;
+            selectedSeatNumber = null;
           });
           _showSnack('This booking code is not active right now.');
           return;
@@ -384,7 +430,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           kind: VerifiedSourceKind.session,
           code: code,
           fullName: fullName,
-          seatNumber: seatNumber,
+          phoneNumber: phoneNumber,
           message: 'Hi $fullName, you can order now.',
         );
 
@@ -392,6 +438,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         setState(() {
           isVerified = true;
           verifiedCustomer = verified;
+          selectedSeatNumber = null;
           orderRows = <OrderRowData>[OrderRowData()];
         });
         _scrollToBottom();
@@ -401,7 +448,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       final Map<String, dynamic>? promoRow = await supabase
           .from('promo_bookings')
           .select(
-            'id, full_name, seat_number, area, promo_code, start_at, end_at, status',
+            'id, full_name, phone_number, promo_code, start_at, end_at, status',
           )
           .eq('promo_code', code)
           .limit(1)
@@ -409,13 +456,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
       if (promoRow != null) {
         final String fullName = (promoRow['full_name'] ?? '').toString().trim();
-        final String area = (promoRow['area'] ?? '').toString().trim();
-        final String seatNumberRaw = (promoRow['seat_number'] ?? '')
+        final String phoneNumber = (promoRow['phone_number'] ?? '')
             .toString()
             .trim();
-        final String seatNumber = area == 'conference_room'
-            ? 'CONFERENCE ROOM'
-            : seatNumberRaw;
 
         final DateTime? startAt = DateTime.tryParse(
           (promoRow['start_at'] ?? '').toString(),
@@ -434,6 +477,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           setState(() {
             isVerified = false;
             verifiedCustomer = null;
+            selectedSeatNumber = null;
           });
           _showSnack('This promo code is not active right now.');
           return;
@@ -443,7 +487,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           kind: VerifiedSourceKind.promo,
           code: code,
           fullName: fullName,
-          seatNumber: seatNumber,
+          phoneNumber: phoneNumber,
           message: 'Hi $fullName, you can order now.',
         );
 
@@ -451,6 +495,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         setState(() {
           isVerified = true;
           verifiedCustomer = verified;
+          selectedSeatNumber = null;
           orderRows = <OrderRowData>[OrderRowData()];
         });
         _scrollToBottom();
@@ -461,6 +506,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       setState(() {
         isVerified = false;
         verifiedCustomer = null;
+        selectedSeatNumber = null;
       });
       _showSnack(
         'Code not found. Please enter a valid walk-in, reservation, or promo code.',
@@ -481,6 +527,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       isVerified = false;
       submitted = false;
       verifiedCustomer = null;
+      selectedSeatNumber = null;
       orderRows = <OrderRowData>[OrderRowData()];
     });
   }
@@ -577,6 +624,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
   void resetOrder() {
     setState(() {
+      selectedSeatNumber = null;
       orderRows = <OrderRowData>[OrderRowData()];
       submitted = false;
     });
@@ -596,8 +644,8 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       final List<Map<String, dynamic>> addOnPayload = [];
       final List<Map<String, dynamic>> consignmentPayload = [];
 
-      for (final row in orderRows) {
-        final item = row.item;
+      for (final OrderRowData row in orderRows) {
+        final CatalogItem? item = row.item;
         if (item == null) continue;
 
         if (item.kind == CatalogKind.addOn) {
@@ -610,44 +658,41 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         }
       }
 
-      final fullName = verifiedCustomer!.fullName;
-      final seatNumber = verifiedCustomer!.seatNumber;
-      final bookingCode = verifiedCustomer!.code; // ✅ IMPORTANT
+      final String fullName = verifiedCustomer!.fullName;
+      final String seatNumber = selectedSeatNumber!.trim();
+      final String bookingCode = verifiedCustomer!.code;
 
-      // ✅ ADD-ONS
       if (addOnPayload.isNotEmpty) {
         await supabase.rpc(
           'place_addon_order',
           params: {
             'p_full_name': fullName,
             'p_seat_number': seatNumber,
-            'p_booking_code': bookingCode, // 🔥 FIX
+            'p_booking_code': bookingCode,
             'p_items': addOnPayload,
           },
         );
       }
 
-      // ✅ CONSIGNMENT
       if (consignmentPayload.isNotEmpty) {
         await supabase.rpc(
           'place_consignment_order',
           params: {
             'p_full_name': fullName,
             'p_seat_number': seatNumber,
-            'p_booking_code': bookingCode, // 🔥 FIX
+            'p_booking_code': bookingCode,
             'p_items': consignmentPayload,
           },
         );
       }
 
-      // reload items
       await _loadCatalog();
 
       if (!mounted) return;
 
       setState(() {
         submitted = true;
-        orderRows = [OrderRowData()];
+        orderRows = <OrderRowData>[OrderRowData()];
       });
 
       _showSnack('Order submitted successfully!');
@@ -777,6 +822,40 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     );
   }
 
+  Widget buildSeatDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text('Seat Number', style: AddOnsStyles.label),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: selectedSeatNumber,
+          isExpanded: true,
+          decoration: AddOnsStyles.inputDecoration(
+            hintText: 'Select seat number',
+            suffixIcon: const Icon(Icons.event_seat_rounded),
+          ),
+          items: seatGroups.entries.expand((entry) {
+            final String group = entry.key;
+            final List<String> seats = entry.value;
+
+            return seats.map((seat) {
+              return DropdownMenuItem<String>(
+                value: seat,
+                child: Text('$group - $seat'),
+              );
+            });
+          }).toList(),
+          onChanged: (String? value) {
+            setState(() {
+              selectedSeatNumber = value;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
   Widget buildInfoLockedCard() {
     final VerifiedCustomerData? customer = verifiedCustomer;
     if (customer == null) return const SizedBox.shrink();
@@ -803,14 +882,12 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           const SizedBox(height: 10),
           _infoRow('Full Name', customer.fullName),
           const SizedBox(height: 10),
-          _infoRow('Seat', customer.seatNumber),
-          const SizedBox(height: 10),
           _infoRow(
-            'Type',
-            customer.kind == VerifiedSourceKind.promo
-                ? 'Promo'
-                : 'Walk-In / Reservation',
+            'Phone Number',
+            customer.phoneNumber.trim().isEmpty ? '-' : customer.phoneNumber,
           ),
+          const SizedBox(height: 14),
+          buildSeatDropdown(),
         ],
       ),
     );
@@ -823,7 +900,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       child: Row(
         children: <Widget>[
           SizedBox(
-            width: 88,
+            width: 110,
             child: Text(
               label,
               style: AddOnsStyles.mutedText.copyWith(
