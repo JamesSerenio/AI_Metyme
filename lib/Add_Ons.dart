@@ -281,11 +281,11 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       final String msg = (error.message).trim();
 
       if (msg.contains('consignment_notifications')) {
-        return 'Database is still using old consignment_notifications. Update your SQL function to use public.add_on_notifications.';
+        return 'Consignment notification setup is incomplete. Check your public.consignment_notifications table and place_consignment_order function.';
       }
 
       if (msg.contains('add_on_notifications')) {
-        return 'Notification table setup is incomplete. Check your add_on_notifications migration and SQL function.';
+        return 'Add-on notification setup is incomplete. Check your public.add_on_notifications table and place_addon_order function.';
       }
 
       if (msg.contains('place_consignment_order')) {
@@ -533,6 +533,11 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
   }
 
   Future<void> pickCategory(int index) async {
+    if (categories.isEmpty) {
+      _showSnack('No available categories right now.');
+      return;
+    }
+
     final String? result = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -566,6 +571,11 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
     final List<CatalogItem> items = itemsForCategory(category);
 
+    if (items.isEmpty) {
+      _showSnack('No available items in this category right now.');
+      return;
+    }
+
     final CatalogItem? result = await showModalBottomSheet<CatalogItem>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -573,7 +583,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       builder: (BuildContext context) {
         return _ItemPickerSheet(
           title: category == 'SPECIAL ITEM'
-              ? 'Choose Other Item'
+              ? 'Choose Special Item'
               : 'Choose Add-On',
           items: items,
           remainingBuilder: (CatalogItem item) =>
@@ -616,6 +626,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
   void addMoreOrder() {
     setState(() {
+      submitted = false;
       orderRows.add(OrderRowData());
       normalizeRowQuantities();
     });
@@ -1167,7 +1178,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('Add-Ons Form', style: AddOnsStyles.sectionTitle),
+          Text('Add-Ons / Special Item Form', style: AddOnsStyles.sectionTitle),
           const SizedBox(height: 14),
           buildInfoLockedCard(),
           const SizedBox(height: 16),
@@ -1289,12 +1300,12 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: <Widget>[
                                   Text(
-                                    'Add-Ons Assistant',
+                                    'Add-Ons / Special Item Assistant',
                                     style: AddOnsStyles.title,
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Code first, then order your add-ons.',
+                                    'Code first, then order your add-ons or special items.',
                                     style: AddOnsStyles.subtitle,
                                   ),
                                 ],
@@ -1325,7 +1336,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                               : ListView(
                                   controller: scrollController,
                                   children: <Widget>[
-                                    buildUserBubble('I want to order add-ons.'),
+                                    buildUserBubble(
+                                      'I want to order add-ons or special items.',
+                                    ),
                                     buildAiBubble(
                                       text:
                                           'Hello! Please enter your walk-in, reservation, or promo code first so I can verify your account.',
