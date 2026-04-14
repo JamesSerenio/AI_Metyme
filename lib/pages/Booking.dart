@@ -528,6 +528,23 @@ class _BookingModalPageState extends State<BookingModalPage>
 
       final bookingCode = await generateUniqueBookingCode();
 
+      double computedTotalTime = 0;
+      double computedTotalAmount = 0;
+
+      if (!isOpen && timeEnded != null) {
+        final int minutesUsed = timeEnded.difference(timeStarted).inMinutes;
+        final int chargeMinutes = minutesUsed < 0 ? 0 : minutesUsed;
+
+        computedTotalTime = double.parse(
+          (chargeMinutes / 60).toStringAsFixed(2),
+        );
+
+        const double hourlyRate = 20;
+        final double perMinute = hourlyRate / 60;
+
+        computedTotalAmount = (chargeMinutes * perMinute).ceilToDouble();
+      }
+
       final payload = <String, dynamic>{
         'date': formatDateOnly(now),
         'full_name': fullNameController.text.trim(),
@@ -536,8 +553,8 @@ class _BookingModalPageState extends State<BookingModalPage>
         'hour_avail': isOpen ? 'OPEN' : timeAvailController.text.trim(),
         'time_started': timeStarted.toUtc().toIso8601String(),
         'time_ended': timeEnded?.toUtc().toIso8601String(),
-        'total_time': 0,
-        'total_amount': 0,
+        'total_time': computedTotalTime,
+        'total_amount': computedTotalAmount,
         'reservation': isReservation ? 'yes' : 'no',
         'reservation_date': reservationDate,
         'reservation_end_date': reservationEndDate,
