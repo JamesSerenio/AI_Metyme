@@ -383,11 +383,11 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
       if (addOnPayload.isNotEmpty) {
         await supabase.rpc(
-          'place_consignment_order',
+          'place_addon_order', // ✅ tamang function
           params: {
             'p_full_name': fullNameController.text.trim(),
             'p_seat_number': selectedSeat,
-            'p_items': otherItemsPayload,
+            'p_items': addOnPayload, // ✅ tamang payload
           },
         );
       }
@@ -935,10 +935,17 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                                   ],
                                   if (submitted) ...[
                                     const SizedBox(height: 12),
+
                                     buildAiBubble(
                                       text:
-                                          'Kindly proceed to the counter for pickup and payment.',
+                                          'We’ll notify you via beeper or message once your order is ready.',
                                     ),
+
+                                    buildAiBubble(
+                                      text:
+                                          'You may then proceed to the counter for pickup and payment.',
+                                    ),
+
                                     buildAiBubble(
                                       text: 'Thank you! 😊',
                                       showAvatar: true,
