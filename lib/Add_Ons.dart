@@ -1362,9 +1362,22 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                                         text:
                                             'Your order, $successName, was successful.',
                                       ),
+
                                       buildAiBubble(
                                         text:
-                                            'Kindly proceed to the counter for pickup and payment.',
+                                            'We’ll notify you via beeper or message once your order is ready.',
+                                        showAvatar: false,
+                                      ),
+
+                                      buildAiBubble(
+                                        text:
+                                            'You may then proceed to the counter for pickup and payment.',
+                                        showAvatar: false,
+                                      ),
+
+                                      buildAiBubble(
+                                        text: 'Thank you! 😊',
+                                        showAvatar: true,
                                       ),
                                     ],
                                   ],
