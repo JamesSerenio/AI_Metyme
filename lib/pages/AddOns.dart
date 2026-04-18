@@ -945,12 +945,12 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                                     buildAiBubble(
                                       text:
                                           'You may then proceed to the counter for pickup and payment.',
-                                      showAvatar: false,
+                                      showAvatar: true,
                                     ),
 
                                     buildAiBubble(
                                       text: 'Thank you! 😊',
-                                      showAvatar: false,
+                                      showAvatar: true,
                                     ),
                                   ],
                                 ],
