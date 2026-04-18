@@ -1366,13 +1366,13 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                                       buildAiBubble(
                                         text:
                                             'We’ll notify you via beeper or message once your order is ready.',
-                                        showAvatar: false,
+                                        showAvatar: true,
                                       ),
 
                                       buildAiBubble(
                                         text:
                                             'You may then proceed to the counter for pickup and payment.',
-                                        showAvatar: false,
+                                        showAvatar: true,
                                       ),
 
                                       buildAiBubble(
