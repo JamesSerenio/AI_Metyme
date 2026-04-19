@@ -420,6 +420,11 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           return;
         }
 
+        final String reservationType = (sessionRow['reservation'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
+
         final DateTime? startAt = DateTime.tryParse(
           (sessionRow['time_started'] ?? '').toString(),
         );
@@ -427,16 +432,44 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           (sessionRow['time_ended'] ?? '').toString(),
         );
 
+        final DateTime? reservationDate = DateTime.tryParse(
+          (sessionRow['reservation_date'] ?? '').toString(),
+        );
+        final DateTime? reservationEndDate = DateTime.tryParse(
+          (sessionRow['reservation_end_date'] ?? '').toString(),
+        );
+
         bool isActive = false;
 
-        if (startAt != null) {
-          if (endAt == null) {
-            isActive = !now.isBefore(startAt);
-          } else {
-            isActive = !now.isBefore(startAt) && now.isBefore(endAt);
+        if (reservationType == 'yes') {
+          final DateTime today = DateTime(now.year, now.month, now.day);
+
+          if (reservationDate != null) {
+            final DateTime startDay = DateTime(
+              reservationDate.year,
+              reservationDate.month,
+              reservationDate.day,
+            );
+
+            final DateTime endDay = reservationEndDate != null
+                ? DateTime(
+                    reservationEndDate.year,
+                    reservationEndDate.month,
+                    reservationEndDate.day,
+                  )
+                : startDay;
+
+            isActive = !today.isBefore(startDay) && !today.isAfter(endDay);
+          }
+        } else {
+          if (startAt != null) {
+            if (endAt == null) {
+              isActive = !now.isBefore(startAt);
+            } else {
+              isActive = !now.isBefore(startAt) && now.isBefore(endAt);
+            }
           }
         }
-
         if (!isActive) {
           if (!mounted) return;
           setState(() {
