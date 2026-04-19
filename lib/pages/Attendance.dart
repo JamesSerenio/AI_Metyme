@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../styles/Attendance_styles.dart';
+import 'ViewReceipt.dart';
 
 const double _hourlyRate = 20;
 const int _freeMinutes = 0;
@@ -196,18 +197,10 @@ class _AttendancePageState extends State<AttendancePage>
     final code = bookingCode.trim().toUpperCase();
 
     final List<Map<String, dynamic>> orderLines = [];
-    final List<Map<String, dynamic>> addOnRows = [];
-    final List<Map<String, dynamic>> consignmentRows = [];
-
     double orderDisplayTotal = 0;
 
     if (code.isEmpty) {
-      return {
-        'orderLines': orderLines,
-        'addOnRows': addOnRows,
-        'consignmentRows': consignmentRows,
-        'orderDisplayTotal': 0.0,
-      };
+      return {'orderLines': orderLines, 'orderDisplayTotal': 0.0};
     }
 
     try {
@@ -216,8 +209,6 @@ class _AttendancePageState extends State<AttendancePage>
           .select('''
         id,
         booking_code,
-        full_name,
-        seat_number,
         total_amount,
         addon_order_items (
           id,
@@ -280,8 +271,6 @@ class _AttendancePageState extends State<AttendancePage>
           .select('''
         id,
         booking_code,
-        full_name,
-        seat_number,
         total_amount,
         consignment_order_items (
           id,
@@ -340,35 +329,6 @@ class _AttendancePageState extends State<AttendancePage>
       }
     } catch (_) {}
 
-    try {
-      final addOnRes = await supabase
-          .from('customer_session_add_ons')
-          .select(
-            'id,total,is_paid,paid_at,gcash_amount,cash_amount,full_name,seat_number',
-          )
-          .eq('full_name', '')
-          .limit(0);
-
-      if (addOnRes is List) {
-        // no-op, just keeps shape predictable
-      }
-    } catch (_) {}
-
-    try {
-      final consignmentRes = await supabase
-          .from('customer_session_consignment')
-          .select(
-            'id,total,is_paid,voided,paid_at,gcash_amount,cash_amount,full_name,seat_number',
-          )
-          .eq('voided', false);
-
-      if (consignmentRes is List) {
-        for (final row in consignmentRes) {
-          consignmentRows.add(Map<String, dynamic>.from(row));
-        }
-      }
-    } catch (_) {}
-
     if (orderLines.isNotEmpty) {
       orderDisplayTotal = orderLines.fold<double>(
         0.0,
@@ -376,12 +336,7 @@ class _AttendancePageState extends State<AttendancePage>
       );
     }
 
-    return {
-      'orderLines': orderLines,
-      'addOnRows': addOnRows,
-      'consignmentRows': consignmentRows,
-      'orderDisplayTotal': orderDisplayTotal,
-    };
+    return {'orderLines': orderLines, 'orderDisplayTotal': orderDisplayTotal};
   }
 
   Future<void> showAttendanceReceiptIfNeeded({
@@ -405,24 +360,21 @@ class _AttendancePageState extends State<AttendancePage>
     final orderLines = List<Map<String, dynamic>>.from(
       bundle['orderLines'] ?? [],
     );
-    final addOnRows = List<Map<String, dynamic>>.from(
-      bundle['addOnRows'] ?? [],
-    );
-    final consignmentRows = List<Map<String, dynamic>>.from(
-      bundle['consignmentRows'] ?? [],
-    );
     final orderPaymentRow = await loadCustomerOrderPaymentRow(code);
 
     final double orderDisplayTotal = toDoubleSafe(bundle['orderDisplayTotal']);
-
-    final orderTotalFromPayment = toDoubleSafe(orderPaymentRow?['order_total']);
+    final double orderTotalFromPayment = toDoubleSafe(
+      orderPaymentRow?['order_total'],
+    );
     final double orderTotal = math
         .max(orderDisplayTotal, orderTotalFromPayment)
         .toDouble();
 
-    final orderGcashPaid = toDoubleSafe(orderPaymentRow?['gcash_amount']);
-    final orderCashPaid = toDoubleSafe(orderPaymentRow?['cash_amount']);
-    final orderPaidTotal = orderGcashPaid + orderCashPaid;
+    final double orderGcashPaid = toDoubleSafe(
+      orderPaymentRow?['gcash_amount'],
+    );
+    final double orderCashPaid = toDoubleSafe(orderPaymentRow?['cash_amount']);
+    final double orderPaidTotal = orderGcashPaid + orderCashPaid;
     final double orderRemaining = math
         .max(0.0, orderTotal - orderPaidTotal)
         .toDouble();
@@ -441,6 +393,7 @@ class _AttendancePageState extends State<AttendancePage>
           .trim()
           .toLowerCase();
       final discountValue = toDoubleSafe(row['discount_value']);
+
       systemBase = applyDiscountValue(
         base: rawPrice,
         kind: discountKind,
@@ -449,79 +402,114 @@ class _AttendancePageState extends State<AttendancePage>
       systemGcash = toDoubleSafe(row['gcash_amount']);
       systemCash = toDoubleSafe(row['cash_amount']);
       systemPaidTotal = systemGcash + systemCash;
-      systemRemaining = math.max(0, systemBase - systemPaidTotal).toDouble();
+      systemRemaining = math.max(0.0, systemBase - systemPaidTotal).toDouble();
       paidAtText = formatDateTimeLocal(row['paid_at']);
     } else {
       systemBase = toDoubleSafe(row['total_amount']);
       systemGcash = toDoubleSafe(row['gcash_amount']);
       systemCash = toDoubleSafe(row['cash_amount']);
       systemPaidTotal = systemGcash + systemCash;
-      systemRemaining = math.max(0, systemBase - systemPaidTotal).toDouble();
+      systemRemaining = math.max(0.0, systemBase - systemPaidTotal).toDouble();
       paidAtText = formatDateTimeLocal(row['paid_at']);
     }
 
+    final bool hasOrders = orderTotal > 0.0 || orderLines.isNotEmpty;
     final bool systemFullyPaid = systemRemaining <= 0;
-    final bool ordersFullyPaid = orderRemaining <= 0;
-    final bool fullyPaid = systemFullyPaid && ordersFullyPaid;
+    final bool ordersFullyPaid = !hasOrders ? false : orderRemaining <= 0;
+    final bool fullyPaid = systemFullyPaid && (!hasOrders || ordersFullyPaid);
 
-    // huwag ipakita kapag fully paid na lahat
-    if (fullyPaid) {
-      return;
-    }
+    if (fullyPaid) return;
 
-    final addonCount = orderLines
+    final int addonCount = orderLines
         .where((e) => (e['source'] ?? '') == 'addon')
         .length;
-    final specialItemCount = orderLines
+    final int specialItemCount = orderLines
         .where((e) => (e['source'] ?? '') == 'consignment')
         .length;
 
-    addAI('Receipt loaded successfully ✅');
-    addAI(
-      'System total: ${peso2(systemBase)}\n'
-      'Orders total: ${peso2(orderTotal)}\n'
-      'Add-Ons found: $addonCount\n'
-      'Special Item found: $specialItemCount\n'
-      'Remaining system: ${peso2(systemRemaining)}\n'
-      'Remaining orders: ${peso2(orderRemaining)}',
-    );
+    final String receiptLoadedMessage =
+        'Receipt loaded successfully ✅\n\n'
+        'System total: ${peso2(systemBase)}\n'
+        'Orders total: ${peso2(orderTotal)}\n'
+        'Add-Ons found: $addonCount\n'
+        'Special Item found: $specialItemCount\n'
+        'Remaining system: ${peso2(systemRemaining)}\n'
+        'Remaining orders: ${peso2(orderRemaining)}';
 
-    addAI(
-      '${source == AttendanceReceiptSource.promo ? "Promo Code" : "Booking Code"}: $code\n'
-      'Customer: $fullName\n'
-      'Seat: $seatNumber\n'
-      'System payment: ${systemFullyPaid ? "PAID" : "UNPAID"}\n'
-      'Order payment: ${ordersFullyPaid ? "PAID" : "UNPAID"}\n'
-      'Paid at: $paidAtText',
-    );
+    addAI(receiptLoadedMessage);
 
-    if (systemFullyPaid && !ordersFullyPaid) {
-      addAI('Promo / Reservation is already paid ✅');
-      addAI('But your order payment is not yet fully paid.');
-      addAI('Remaining order payment: ${peso2(orderRemaining)}');
-      addAI('Thank you! 😊');
+    final String infoMessage =
+        '${source == AttendanceReceiptSource.promo ? "Promo Code" : "Booking Code"}: $code\n'
+        'Customer: $fullName\n'
+        'Seat: $seatNumber\n'
+        'System payment: ${systemFullyPaid ? "PAID" : "UNPAID"}\n'
+        'Order payment: ${hasOrders ? (ordersFullyPaid ? "PAID" : "UNPAID") : "NO ORDER"}\n'
+        'Paid at: $paidAtText';
+
+    addAI(infoMessage);
+
+    if (hasOrders && systemFullyPaid && !ordersFullyPaid) {
+      addAI(
+        'Order payment successful ✅\n\n'
+        'Promo / Reservation is already paid.\n'
+        'Remaining order payment: ${peso2(orderRemaining)}\n\n'
+        'Thank you! 😊',
+      );
       return;
     }
 
-    if (!systemFullyPaid && ordersFullyPaid) {
-      addAI('Order payment is already fully paid ✅');
-      addAI('But your promo / reservation payment is not yet fully paid.');
-      addAI('Remaining system payment: ${peso2(systemRemaining)}');
-      addAI('Thank you! 😊');
+    if (!hasOrders && !systemFullyPaid) {
+      addAI(
+        'System payment pending.\n\n'
+        'Remaining system payment: ${peso2(systemRemaining)}\n\n'
+        'Thank you! 😊',
+      );
       return;
     }
 
-    addAI('Payment saved successfully ✅');
-    addAI(
-      'Remaining system payment: ${peso2(systemRemaining)}\n'
-      'Remaining order payment: ${peso2(orderRemaining)}',
-    );
-    addAI('Thank you! 😊');
+    if (hasOrders && !systemFullyPaid && ordersFullyPaid) {
+      addAI(
+        'Order payment is already fully paid ✅\n\n'
+        'But your promo / reservation payment is not yet fully paid.\n'
+        'Remaining system payment: ${peso2(systemRemaining)}\n\n'
+        'Thank you! 😊',
+      );
+      return;
+    }
+
+    if (hasOrders && !systemFullyPaid && !ordersFullyPaid) {
+      addAI(
+        'Payment saved successfully ✅\n\n'
+        'Remaining system payment: ${peso2(systemRemaining)}\n'
+        'Remaining order payment: ${peso2(orderRemaining)}\n\n'
+        'Thank you! 😊',
+      );
+      return;
+    }
   }
 
   String formatName(dynamic value) {
     final v = (value ?? '').toString().trim();
     return v.isEmpty ? 'Customer' : v;
+  }
+
+  Future<void> openReceiptAfterOut(String code) async {
+    final normalized = code.trim().toUpperCase();
+    if (normalized.isEmpty) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.92,
+          height: MediaQuery.of(context).size.height * 0.92,
+          child: ViewReceipt(initialCode: normalized, autoLoadOnOpen: true),
+        ),
+      ),
+    );
   }
 
   Future<Map<String, dynamic>?> findCustomerSessionByCode(String code) async {
@@ -835,12 +823,9 @@ class _AttendancePageState extends State<AttendancePage>
         .limit(1)
         .single();
 
-    await showAttendanceReceiptIfNeeded(
-      source: AttendanceReceiptSource.reservation,
-      row: Map<String, dynamic>.from(refreshedSession),
+    await openReceiptAfterOut(
+      (refreshedSession['booking_code'] ?? '').toString(),
     );
-
-    addAI('Thank you! 😊');
   }
 
   Future<void> handlePromoAttendance(
@@ -944,12 +929,7 @@ class _AttendancePageState extends State<AttendancePage>
         .limit(1)
         .single();
 
-    await showAttendanceReceiptIfNeeded(
-      source: AttendanceReceiptSource.promo,
-      row: Map<String, dynamic>.from(refreshedPromo),
-    );
-
-    addAI('Thank you! 😊');
+    await openReceiptAfterOut((refreshedPromo['promo_code'] ?? '').toString());
   }
 
   Widget buildLogo(double size) {

@@ -1,13 +1,15 @@
 import 'dart:math' as math;
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import '../styles/Attendance_styles.dart';
 import '../styles/ViewReceipt_styles.dart';
+import 'ViewReceipt.dart';
 
 class ViewReceipt extends StatefulWidget {
-  const ViewReceipt({super.key});
+  final String? initialCode;
+  final bool autoLoadOnOpen;
+
+  const ViewReceipt({super.key, this.initialCode, this.autoLoadOnOpen = false});
 
   @override
   State<ViewReceipt> createState() => _ViewReceiptState();
@@ -73,8 +75,20 @@ class _ViewReceiptState extends State<ViewReceipt>
       ),
     ]);
 
+    if ((widget.initialCode ?? '').trim().isNotEmpty) {
+      _codeController.text = widget.initialCode!.trim().toUpperCase();
+    }
+
     _animController.forward();
     _scrollToBottom();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (widget.autoLoadOnOpen &&
+          (widget.initialCode ?? '').trim().isNotEmpty) {
+        _loadReceipt();
+      }
+    });
   }
 
   @override
