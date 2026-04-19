@@ -9,6 +9,7 @@ import 'pages/Promo.dart';
 import 'pages/AddOns.dart';
 import 'pages/Seat.dart';
 import 'pages/Attendance.dart';
+import 'pages/ViewReceipt.dart';
 
 class BookAddPage extends StatefulWidget {
   const BookAddPage({super.key});
@@ -25,6 +26,7 @@ class _BookAddPageState extends State<BookAddPage>
   bool openingAddOns = false;
   bool openingSeat = false;
   bool openingAttendance = false;
+  bool openingReceipt = false;
 
   final TextEditingController controller = TextEditingController();
   final ScrollController scrollController = ScrollController();
@@ -122,7 +124,8 @@ class _BookAddPageState extends State<BookAddPage>
       openingPromo ||
       openingAddOns ||
       openingSeat ||
-      openingAttendance;
+      openingAttendance ||
+      openingReceipt;
 
   void _startAutoSlide() {
     autoSlideTimer?.cancel();
@@ -151,7 +154,7 @@ class _BookAddPageState extends State<BookAddPage>
       messages.add({
         "isAI": true,
         "text":
-            "Welcome to Me Tyme Lounge! ✨\n\nPlease choose one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
+            "Welcome to Me Tyme Lounge! ✨\n\nPlease choose one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo\n6. View Receipt",
       });
     });
 
@@ -204,7 +207,7 @@ class _BookAddPageState extends State<BookAddPage>
       messages.add({
         "isAI": true,
         "text":
-            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
+            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo\n6. View Receipt",
       });
     });
 
@@ -241,7 +244,7 @@ class _BookAddPageState extends State<BookAddPage>
       messages.add({
         "isAI": true,
         "text":
-            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
+            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo\n6. View Receipt",
       });
     });
 
@@ -278,7 +281,7 @@ class _BookAddPageState extends State<BookAddPage>
       messages.add({
         "isAI": true,
         "text":
-            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
+            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo\n6. View Receipt",
       });
     });
 
@@ -315,7 +318,7 @@ class _BookAddPageState extends State<BookAddPage>
       messages.add({
         "isAI": true,
         "text":
-            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
+            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo\n6. View Receipt",
       });
     });
 
@@ -352,7 +355,43 @@ class _BookAddPageState extends State<BookAddPage>
       messages.add({
         "isAI": true,
         "text":
-            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
+            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo\n6. View Receipt",
+      });
+    });
+
+    _scrollToBottom();
+  }
+
+  Future<void> _openReceiptFlow() async {
+    if (!mounted || isBusy) return;
+
+    setState(() {
+      openingReceipt = true;
+      messages.add({
+        "isAI": true,
+        "text": "You selected View Receipt 🧾\n\nOpening your receipt now...",
+      });
+    });
+
+    _scrollToBottom();
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ViewReceipt()),
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      openingReceipt = false;
+      messages.add({
+        "isAI": true,
+        "text":
+            "You may choose another service anytime.\n\nPlease select one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo\n6. View Receipt",
       });
     });
 
@@ -394,12 +433,18 @@ class _BookAddPageState extends State<BookAddPage>
         _openAttendanceFlow();
         return;
 
+      case "6":
+      case "view receipt":
+      case "receipt":
+        _openReceiptFlow();
+        return;
+
       default:
         setState(() {
           messages.add({
             "isAI": true,
             "text":
-                "I’m sorry, I could not recognize that selection.\n\nPlease choose one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo",
+                "I’m sorry, I could not recognize that selection.\n\nPlease choose one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo\n6. View Receipt",
           });
         });
         _scrollToBottom();
@@ -681,7 +726,7 @@ class _BookAddPageState extends State<BookAddPage>
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: isMobile ? 2 : 22),
                 child: Text(
-                  "Click Start to choose Booking, Promo, Add-Ons, Seat View, or Attendance for Reservation and Promo through chat.",
+                  "Click Start to choose Booking, Promo, Add-Ons, Seat View, Attendance for Reservation and Promo, or View Receipt through chat.",
                   textAlign: TextAlign.center,
                   style: BookAddStyles.subtitle.copyWith(
                     color: Colors.black.withOpacity(0.72),
@@ -966,7 +1011,7 @@ class _BookAddPageState extends State<BookAddPage>
                     Text(
                       isBusy
                           ? "Opening your selected view..."
-                          : "Reply with 1 to 5 to continue.",
+                          : "Reply with 1 to 6 to continue.",
                       style: BookAddStyles.helperText,
                     ),
                   ],
@@ -1018,7 +1063,7 @@ class _BookAddPageState extends State<BookAddPage>
                 decoration: BookAddStyles.inputDecoration(
                   hintText: isBusy
                       ? "Opening your selected view..."
-                      : "Type 1-5...",
+                      : "Type 1-6...",
                 ),
               ),
             ),
