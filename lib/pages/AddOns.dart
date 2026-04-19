@@ -79,7 +79,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       '10',
       '11',
     ],
+
     'TATAMI AREA': ['12A', '12B', '12C'],
+
     '2ndF': [
       '13',
       '14',
@@ -95,6 +97,8 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       '24',
       '25',
     ],
+
+    'CONFERENCE ROOM': ['CONFERENCE ROOM'],
   };
 
   @override
@@ -149,7 +153,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     }
 
     if (otherItems.isNotEmpty) {
-      values.add('SPECIAL ITEM');
+      values.add('SPECIAL ITEM !!!');
     }
 
     final list = values.toList()..sort((a, b) => a.compareTo(b));
@@ -1056,10 +1060,27 @@ class _SelectionSheet<T> extends StatelessWidget {
                           ),
                           child: Text(
                             item.label,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14.5,
-                              fontWeight: FontWeight.w700,
-                              color: AddOnsStyles.textDark,
+                              fontWeight: FontWeight.w900,
+                              color: item.label == 'SPECIAL ITEM !!!'
+                                  ? Colors.orangeAccent
+                                  : AddOnsStyles.textDark,
+
+                              shadows: item.label == 'SPECIAL ITEM !!!'
+                                  ? [
+                                      Shadow(
+                                        color: Colors.orange.withOpacity(0.8),
+                                        blurRadius: 12,
+                                      ),
+                                      Shadow(
+                                        color: Colors.deepOrange.withOpacity(
+                                          0.6,
+                                        ),
+                                        blurRadius: 20,
+                                      ),
+                                    ]
+                                  : [],
                             ),
                           ),
                         ),

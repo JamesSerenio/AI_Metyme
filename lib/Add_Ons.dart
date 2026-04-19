@@ -83,7 +83,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       '10',
       '11',
     ],
+
     'TATAMI AREA': ['12A', '12B', '12C'],
+
     '2ndF': [
       '13',
       '14',
@@ -99,6 +101,8 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       '24',
       '25',
     ],
+
+    'CONFERENCE ROOM': ['CONFERENCE ROOM'],
   };
 
   bool isLoading = true;
