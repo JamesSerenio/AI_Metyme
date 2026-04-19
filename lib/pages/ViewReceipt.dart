@@ -110,8 +110,16 @@ class _ViewReceiptState extends State<ViewReceipt>
 
   bool _isOpenSession(Map<String, dynamic> row) {
     final hourAvail = (row['hour_avail'] ?? '').toString().trim().toUpperCase();
-    final timeEnded = row['time_ended'];
-    return hourAvail == 'OPEN' || timeEnded == null;
+    final timeEndedRaw = row['time_ended']?.toString().trim() ?? '';
+
+    if (hourAvail == 'CLOSED') return false;
+    if (hourAvail == 'OPEN') return true;
+    if (timeEndedRaw.isEmpty) return true;
+
+    final parsedEnd = DateTime.tryParse(timeEndedRaw);
+    if (parsedEnd == null) return true;
+
+    return parsedEnd.year >= 2999;
   }
 
   Future<Map<String, dynamic>> _finalizeOpenSessionIfNeeded(
@@ -137,7 +145,8 @@ class _ViewReceiptState extends State<ViewReceipt>
           'time_ended': now.toIso8601String(),
           'total_time': totalMinutes,
           'total_amount': totalAmount,
-          'expected_end_at': now.toIso8601String(),
+          'hour_avail': 'CLOSED',
+          'expected_end_at': null,
         })
         .eq('id', sessionId);
 
