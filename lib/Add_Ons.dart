@@ -278,6 +278,118 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
+  void _pushAiInvalidCodeMessage(String text) {
+    setState(() {
+      submitted = false;
+    });
+
+    _scrollToBottom();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogContext) {
+          final Size screen = MediaQuery.of(dialogContext).size;
+          final bool isMobile = screen.width < 640;
+          final bool isTablet = screen.width >= 640 && screen.width < 1100;
+
+          final double modalWidth = isMobile
+              ? screen.width - 20
+              : isTablet
+              ? 500
+              : 620;
+
+          final double modalHeight = isMobile
+              ? screen.height * 0.92
+              : isTablet
+              ? 560
+              : 680;
+
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.all(10),
+            child: Container(
+              width: modalWidth,
+              height: modalHeight,
+              margin: EdgeInsets.all(isMobile ? 10 : 18),
+              padding: EdgeInsets.all(isMobile ? 14 : 20),
+              decoration: AddOnsStyles.modalCard,
+              child: Column(
+                children: <Widget>[
+                  Container(
+                    padding: EdgeInsets.all(isMobile ? 12 : 16),
+                    decoration: AddOnsStyles.headerCard,
+                    child: Row(
+                      children: <Widget>[
+                        buildLogo(isMobile ? 42 : 48),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                'Add-Ons / Special Item Assistant',
+                                style: AddOnsStyles.title,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Code first, then order your add-ons or special items.',
+                                style: AddOnsStyles.subtitle,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 7,
+                          ),
+                          decoration: AddOnsStyles.statusChip,
+                          child: Text('AI ORDER', style: AddOnsStyles.chipText),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(isMobile ? 12 : 18),
+                      decoration: AddOnsStyles.chatArea,
+                      child: ListView(
+                        controller: scrollController,
+                        children: <Widget>[
+                          buildUserBubble(
+                            'I want to order add-ons or special items.',
+                          ),
+                          buildAiBubble(
+                            text:
+                                'Hello! Please enter your walk-in, reservation, or promo code first so I can verify your account.',
+                          ),
+                          const SizedBox(height: 8),
+                          buildVerificationCard(isMobile),
+                          const SizedBox(height: 12),
+                          buildAiBubble(text: text),
+                          buildAiBubble(
+                            text: 'Thank you! 😊',
+                            showAvatar: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    });
+  }
+
   String _friendlyRpcError(Object error) {
     final String raw = error.toString();
 
@@ -414,7 +526,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
             verifiedCustomer = null;
             selectedSeatNumber = null;
           });
-          _showSnack(
+          _pushAiInvalidCodeMessage(
             'This booking code is already paid and can no longer be used for add-ons.',
           );
           return;
@@ -477,7 +589,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
             verifiedCustomer = null;
             selectedSeatNumber = null;
           });
-          _showSnack('This booking code is not active right now.');
+          _pushAiInvalidCodeMessage(
+            'This booking code is not active right now.',
+          );
           return;
         }
 
@@ -568,7 +682,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
             verifiedCustomer = null;
             selectedSeatNumber = null;
           });
-          _showSnack(
+          _pushAiInvalidCodeMessage(
             'This promo code cannot be used yet. You must be IN in attendance first.',
           );
           return;
@@ -581,7 +695,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
             verifiedCustomer = null;
             selectedSeatNumber = null;
           });
-          _showSnack(
+          _pushAiInvalidCodeMessage(
             'This promo code cannot be used right now because this promo is already OUT in attendance.',
           );
           return;
@@ -612,12 +726,14 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         verifiedCustomer = null;
         selectedSeatNumber = null;
       });
-      _showSnack(
+      _pushAiInvalidCodeMessage(
         'Code not found. Please enter a valid walk-in, reservation, or promo code.',
       );
     } catch (e) {
       if (!mounted) return;
-      _showSnack('Code verification failed: ${_friendlyRpcError(e)}');
+      _pushAiInvalidCodeMessage(
+        'Code verification failed: ${_friendlyRpcError(e)}',
+      );
     } finally {
       if (!mounted) return;
       setState(() {
