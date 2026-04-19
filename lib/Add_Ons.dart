@@ -503,7 +503,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       final Map<String, dynamic>? promoRow = await supabase
           .from('promo_bookings')
           .select(
-            'id, full_name, phone_number, promo_code, start_at, end_at, status, is_paid',
+            'id, full_name, phone_number, promo_code, start_at, end_at, status',
           )
           .eq('promo_code', code)
           .limit(1)
@@ -515,23 +515,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
             .toString()
             .trim();
 
-        final bool promoPaid =
-            promoRow['is_paid'] == true ||
-            promoRow['is_paid'] == 1 ||
-            promoRow['is_paid']?.toString().toLowerCase() == 'true';
-
-        if (promoPaid) {
-          if (!mounted) return;
-          setState(() {
-            isVerified = false;
-            verifiedCustomer = null;
-            selectedSeatNumber = null;
-          });
-          _showSnack(
-            'This promo code is already paid and can no longer be used for add-ons.',
-          );
-          return;
-        }
+        final String promoBookingId = (promoRow['id'] ?? '').toString().trim();
 
         final DateTime? startAt = DateTime.tryParse(
           (promoRow['start_at'] ?? '').toString(),
@@ -553,6 +537,53 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
             selectedSeatNumber = null;
           });
           _showSnack('This promo code is not active right now.');
+          return;
+        }
+
+        final DateTime today = DateTime(now.year, now.month, now.day);
+        final String todayYmd =
+            '${today.year.toString().padLeft(4, '0')}-'
+            '${today.month.toString().padLeft(2, '0')}-'
+            '${today.day.toString().padLeft(2, '0')}';
+
+        final Map<String, dynamic>? attendanceRow = await supabase
+            .from('promo_booking_attendance')
+            .select('id, local_day, in_at, out_at')
+            .eq('promo_booking_id', promoBookingId)
+            .eq('local_day', todayYmd)
+            .maybeSingle();
+
+        final bool hasInToday =
+            attendanceRow != null &&
+            (attendanceRow['in_at'] ?? '').toString().trim().isNotEmpty;
+
+        final bool hasOutToday =
+            attendanceRow != null &&
+            (attendanceRow['out_at'] ?? '').toString().trim().isNotEmpty;
+
+        if (!hasInToday) {
+          if (!mounted) return;
+          setState(() {
+            isVerified = false;
+            verifiedCustomer = null;
+            selectedSeatNumber = null;
+          });
+          _showSnack(
+            'This promo code cannot be used yet. You must be IN in attendance first.',
+          );
+          return;
+        }
+
+        if (hasOutToday) {
+          if (!mounted) return;
+          setState(() {
+            isVerified = false;
+            verifiedCustomer = null;
+            selectedSeatNumber = null;
+          });
+          _showSnack(
+            'This promo code cannot be used right now because this promo is already OUT in attendance.',
+          );
           return;
         }
 
