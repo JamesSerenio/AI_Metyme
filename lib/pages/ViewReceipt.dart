@@ -45,6 +45,7 @@ class _ViewReceiptState extends State<ViewReceipt>
   ReceiptData? _receipt;
   List<OrderRow> _addOnRows = [];
   List<OrderRow> _consignmentRows = [];
+  List<OrderLine> _orderLines = [];
 
   @override
   void initState() {
@@ -106,6 +107,18 @@ class _ViewReceiptState extends State<ViewReceipt>
     return double.tryParse(value.toString()) ?? 0;
   }
 
+  int _toInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString()) ?? 0;
+  }
+
+  String _toText(dynamic value) {
+    if (value == null) return '';
+    return value.toString();
+  }
+
   String _peso(double value) => '₱${value.toStringAsFixed(0)}';
   String _peso2(double value) => '₱${value.toStringAsFixed(2)}';
 
@@ -122,6 +135,34 @@ class _ViewReceiptState extends State<ViewReceipt>
     return '${local.month}/${local.day}/${local.year}, $hour:$minute $ampm';
   }
 
+  String _formatDateOnly(dynamic iso) {
+    if (iso == null) return '—';
+    final parsed = DateTime.tryParse(iso.toString());
+    if (parsed == null) return '—';
+    final local = parsed.toLocal();
+    return '${_monthShort(local.month)} ${local.day}, ${local.year}';
+  }
+
+  String _monthShort(int month) {
+    const months = [
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    if (month < 1 || month > 12) return '';
+    return months[month];
+  }
+
   int _minutesBetween(DateTime start, DateTime end) {
     final diff = end.difference(start).inMinutes;
     return diff < 0 ? 0 : diff;
@@ -135,8 +176,8 @@ class _ViewReceiptState extends State<ViewReceipt>
   }
 
   bool _isOpenSession(Map<String, dynamic> row) {
-    final hourAvail = (row['hour_avail'] ?? '').toString().trim().toUpperCase();
-    final timeEndedRaw = row['time_ended']?.toString().trim() ?? '';
+    final hourAvail = _toText(row['hour_avail']).trim().toUpperCase();
+    final timeEndedRaw = _toText(row['time_ended']).trim();
 
     if (hourAvail == 'CLOSED') return false;
     if (hourAvail == 'OPEN') return true;
@@ -153,7 +194,7 @@ class _ViewReceiptState extends State<ViewReceipt>
   ) async {
     if (!_isOpenSession(row)) return row;
 
-    final sessionId = (row['id'] ?? '').toString();
+    final sessionId = _toText(row['id']);
     final startedRaw = row['time_started'];
 
     if (sessionId.isEmpty || startedRaw == null) return row;
@@ -205,10 +246,16 @@ class _ViewReceiptState extends State<ViewReceipt>
   }
 
   ReceiptData _buildComposedReceipt(ReceiptLookupResult result) {
+    final paymentRow = result.orderPaymentRow;
+    final double finalOrderTotal = math.max(
+      result.orderDisplayTotal,
+      paymentRow?.orderTotal ?? 0,
+    );
+
     return result.receipt.copyWith(
-      orderTotal: _sumOrders(result.allRows),
-      orderGcashPaid: _sumOrderGcash(result.allRows),
-      orderCashPaid: _sumOrderCash(result.allRows),
+      orderTotal: finalOrderTotal,
+      orderGcashPaid: paymentRow?.gcashAmount ?? 0,
+      orderCashPaid: paymentRow?.cashAmount ?? 0,
     );
   }
 
@@ -218,18 +265,73 @@ class _ViewReceiptState extends State<ViewReceipt>
       _receipt = composed;
       _addOnRows = result.addOnRows;
       _consignmentRows = result.consignmentRows;
+      _orderLines = result.orderLines;
     });
   }
 
-  double _currentOrderRemainingFromRows(List<OrderRow> rows) {
-    return _sumUnpaidOrders(rows);
+  double _currentOrderRemainingFromRows(
+    List<OrderRow> rows,
+    ReceiptData? receipt,
+  ) {
+    if (receipt == null) return _sumUnpaidOrders(rows);
+
+    return math.max(0, receipt.orderTotal - receipt.orderPaidTotal);
+  }
+
+  Future<CustomerOrderPaymentRow?> _getExistingOrderPaymentRow(
+    String bookingCode,
+  ) async {
+    if (bookingCode.trim().isEmpty) return null;
+
+    final existing = await supabase
+        .from('customer_order_payments')
+        .select('*')
+        .eq('booking_code', bookingCode.trim().toUpperCase())
+        .maybeSingle();
+
+    if (existing == null) return null;
+    return CustomerOrderPaymentRow.fromMap(Map<String, dynamic>.from(existing));
+  }
+
+  Future<void> _syncFinalSessionPaidStatus({
+    required ReceiptData receipt,
+    required double systemPaidTotal,
+    required double orderPaidTotal,
+    required double systemDue,
+    required double orderDue,
+  }) async {
+    final bool systemPaid = systemDue <= 0
+        ? true
+        : systemPaidTotal >= systemDue;
+    final bool orderPaid = orderDue <= 0 ? true : orderPaidTotal >= orderDue;
+    final bool finalPaid = systemPaid && orderPaid;
+
+    final payload = {
+      'is_paid': finalPaid,
+      'paid_at': finalPaid ? DateTime.now().toIso8601String() : null,
+    };
+
+    if (receipt.source == ReceiptSource.customerSession) {
+      await supabase
+          .from('customer_sessions')
+          .update(payload)
+          .eq('id', receipt.id);
+    } else {
+      await supabase
+          .from('promo_bookings')
+          .update(payload)
+          .eq('id', receipt.id);
+    }
   }
 
   void _appendPaymentFeedback(ReceiptData receipt, List<OrderRow> allRows) {
     final systemRemaining = receipt.systemBalance;
-    final orderRemaining = _currentOrderRemainingFromRows(allRows);
+    final double computedOrderRemaining = math.max(
+      0,
+      receipt.orderTotal - receipt.orderPaidTotal,
+    );
 
-    if (systemRemaining <= 0 && orderRemaining <= 0) {
+    if (systemRemaining <= 0 && computedOrderRemaining <= 0) {
       _addAiMessage(
         'Payment received successfully ✅\n\nYour receipt is now fully paid.\n\nThank you! 😊',
       );
@@ -242,8 +344,8 @@ class _ViewReceiptState extends State<ViewReceipt>
       lines.add('System remaining: ${_peso2(systemRemaining)}');
     }
 
-    if (orderRemaining > 0) {
-      lines.add('Order remaining: ${_peso2(orderRemaining)}');
+    if (computedOrderRemaining > 0) {
+      lines.add('Order remaining: ${_peso2(computedOrderRemaining)}');
     }
 
     lines.add('');
@@ -274,6 +376,7 @@ class _ViewReceiptState extends State<ViewReceipt>
       _receipt = null;
       _addOnRows = [];
       _consignmentRows = [];
+      _orderLines = [];
     });
 
     try {
@@ -289,11 +392,30 @@ class _ViewReceiptState extends State<ViewReceipt>
       _syncReceiptState(result);
 
       final composed = _buildComposedReceipt(result);
-      final orderRemaining = _currentOrderRemainingFromRows(result.allRows);
 
-      _addAiMessage(
-        'Receipt loaded successfully ✅\n\nSystem total: ${_peso2(composed.systemTotal)}\nOrders total: ${_peso2(composed.orderTotal)}\nRemaining system: ${_peso2(composed.systemBalance)}\nRemaining orders: ${_peso2(orderRemaining)}',
+      final double orderRemainingValue = math.max(
+        0.0,
+        composed.orderTotal - composed.orderPaidTotal,
       );
+
+      final int addonCount = result.orderLines
+          .where((e) => e.source == OrderSource.addon)
+          .length;
+
+      final int specialItemCount = result.orderLines
+          .where((e) => e.source == OrderSource.consignment)
+          .length;
+
+      final String receiptLoadedMessage =
+          'Receipt loaded successfully ✅\n\n'
+          'System total: ${_peso2(composed.systemTotal)}\n'
+          'Orders total: ${_peso2(composed.orderTotal)}\n'
+          'Add-Ons found: $addonCount\n'
+          'Special Item found: $specialItemCount\n'
+          'Remaining system: ${_peso2(composed.systemBalance)}\n'
+          'Remaining orders: ${_peso2(orderRemainingValue)}';
+
+      _addAiMessage(receiptLoadedMessage);
     } catch (e) {
       _addAiMessage('Failed to load receipt.\n\nPlease try again.');
       if (!mounted) return;
@@ -323,11 +445,16 @@ class _ViewReceiptState extends State<ViewReceipt>
       );
 
       final receipt = ReceiptData.fromCustomerSession(finalizedWalkIn);
-      final orderBundle = await _loadOrderRowsForReceipt(receipt);
+      final bundle = await _loadOrderBundleForReceipt(receipt);
+      final orderPaymentRow = await _getExistingOrderPaymentRow(receipt.code);
+
       return ReceiptLookupResult(
         receipt: receipt,
-        addOnRows: orderBundle.addOnRows,
-        consignmentRows: orderBundle.consignmentRows,
+        addOnRows: bundle.addOnRows,
+        consignmentRows: bundle.consignmentRows,
+        orderLines: bundle.orderLines,
+        orderDisplayTotal: bundle.orderDisplayTotal,
+        orderPaymentRow: orderPaymentRow,
       );
     }
 
@@ -342,20 +469,330 @@ class _ViewReceiptState extends State<ViewReceipt>
       final receipt = ReceiptData.fromPromoBooking(
         Map<String, dynamic>.from(promo),
       );
-      final orderBundle = await _loadOrderRowsForReceipt(receipt);
+      final bundle = await _loadOrderBundleForReceipt(receipt);
+      final orderPaymentRow = await _getExistingOrderPaymentRow(receipt.code);
+
       return ReceiptLookupResult(
         receipt: receipt,
-        addOnRows: orderBundle.addOnRows,
-        consignmentRows: orderBundle.consignmentRows,
+        addOnRows: bundle.addOnRows,
+        consignmentRows: bundle.consignmentRows,
+        orderLines: bundle.orderLines,
+        orderDisplayTotal: bundle.orderDisplayTotal,
+        orderPaymentRow: orderPaymentRow,
       );
     }
 
     return null;
   }
 
-  Future<OrderRowsBundle> _loadOrderRowsForReceipt(ReceiptData receipt) async {
+  Future<_OrderBundleForReceipt> _loadOrderBundleForReceipt(
+    ReceiptData receipt,
+  ) async {
+    final bookingCode = receipt.code.trim().toUpperCase();
+    final List<OrderLine> orderLines = [];
     final List<OrderRow> addOnRows = [];
     final List<OrderRow> consignmentRows = [];
+
+    double orderDisplayTotal = 0;
+
+    if (bookingCode.isNotEmpty) {
+      try {
+        final addonOrdersRes = await supabase
+            .from('addon_orders')
+            .select('''
+            id,
+            booking_code,
+            full_name,
+            seat_number,
+            total_amount,
+            addon_order_items (
+              id,
+              created_at,
+              add_on_id,
+              item_name,
+              price,
+              quantity,
+              subtotal,
+              add_ons (
+                id,
+                name,
+                category,
+                size,
+                image_url
+              )
+            )
+          ''')
+            .eq('booking_code', bookingCode);
+
+        for (final raw in (addonOrdersRes as List<dynamic>)) {
+          final map = Map<String, dynamic>.from(raw as Map);
+          final items = (map['addon_order_items'] as List<dynamic>? ?? []);
+
+          for (final itemRaw in items) {
+            final item = Map<String, dynamic>.from(itemRaw as Map);
+            final addOnsRaw = item['add_ons'];
+            Map<String, dynamic>? addOns;
+
+            if (addOnsRaw is List && addOnsRaw.isNotEmpty) {
+              addOns = Map<String, dynamic>.from(addOnsRaw.first as Map);
+            } else if (addOnsRaw is Map) {
+              addOns = Map<String, dynamic>.from(addOnsRaw);
+            }
+
+            final qty = _toInt(item['quantity']);
+            final price = _toDouble(item['price']);
+            final subtotal = _toDouble(item['subtotal']) > 0
+                ? _toDouble(item['subtotal'])
+                : qty * price;
+
+            orderLines.add(
+              OrderLine(
+                source: OrderSource.addon,
+                name: _toText(item['item_name']).isNotEmpty
+                    ? _toText(item['item_name'])
+                    : _toText(addOns?['name']),
+                qty: qty,
+                price: price,
+                subtotal: subtotal,
+                category: _toText(addOns?['category']),
+                size: _toText(addOns?['size']).isEmpty
+                    ? null
+                    : _toText(addOns?['size']),
+                imageUrl: _toText(addOns?['image_url']).isEmpty
+                    ? null
+                    : _toText(addOns?['image_url']),
+              ),
+            );
+          }
+
+          orderDisplayTotal += _toDouble(map['total_amount']);
+        }
+      } catch (_) {}
+
+      try {
+        final consignmentOrdersRes = await supabase
+            .from('consignment_orders')
+            .select('''
+            id,
+            booking_code,
+            full_name,
+            seat_number,
+            total_amount,
+            consignment_order_items (
+              id,
+              created_at,
+              consignment_id,
+              item_name,
+              price,
+              quantity,
+              subtotal,
+              consignment (
+                id,
+                item_name,
+                category,
+                size,
+                image_url
+              )
+            )
+          ''')
+            .eq('booking_code', bookingCode);
+
+        for (final raw in (consignmentOrdersRes as List<dynamic>)) {
+          final map = Map<String, dynamic>.from(raw as Map);
+          final items =
+              (map['consignment_order_items'] as List<dynamic>? ?? []);
+
+          for (final itemRaw in items) {
+            final item = Map<String, dynamic>.from(itemRaw as Map);
+            final consignmentRaw = item['consignment'];
+            Map<String, dynamic>? consignment;
+
+            if (consignmentRaw is List && consignmentRaw.isNotEmpty) {
+              consignment = Map<String, dynamic>.from(
+                consignmentRaw.first as Map,
+              );
+            } else if (consignmentRaw is Map) {
+              consignment = Map<String, dynamic>.from(consignmentRaw);
+            }
+
+            final qty = _toInt(item['quantity']);
+            final price = _toDouble(item['price']);
+            final subtotal = _toDouble(item['subtotal']) > 0
+                ? _toDouble(item['subtotal'])
+                : qty * price;
+
+            orderLines.add(
+              OrderLine(
+                source: OrderSource.consignment,
+                name: _toText(item['item_name']).isNotEmpty
+                    ? _toText(item['item_name'])
+                    : _toText(consignment?['item_name']),
+                qty: qty,
+                price: price,
+                subtotal: subtotal,
+                category: _toText(consignment?['category']),
+                size: _toText(consignment?['size']).isEmpty
+                    ? null
+                    : _toText(consignment?['size']),
+                imageUrl: _toText(consignment?['image_url']).isEmpty
+                    ? null
+                    : _toText(consignment?['image_url']),
+              ),
+            );
+          }
+
+          orderDisplayTotal += _toDouble(map['total_amount']);
+        }
+      } catch (_) {}
+
+      // fallback + merge para siguradong lahat ng consignment lines makita
+      try {
+        final fallbackConsignment = await supabase
+            .from('customer_session_consignment')
+            .select('''
+      id,
+      quantity,
+      price,
+      total,
+      consignment_id,
+      consignment (
+        id,
+        item_name,
+        category,
+        size,
+        image_url
+      )
+    ''')
+            .eq('full_name', receipt.fullName)
+            .eq('seat_number', receipt.seatNumber)
+            .eq('voided', false);
+
+        for (final raw in (fallbackConsignment as List<dynamic>)) {
+          final map = Map<String, dynamic>.from(raw as Map);
+          final consignmentRaw = map['consignment'];
+          Map<String, dynamic>? consignment;
+
+          if (consignmentRaw is List && consignmentRaw.isNotEmpty) {
+            consignment = Map<String, dynamic>.from(
+              consignmentRaw.first as Map,
+            );
+          } else if (consignmentRaw is Map) {
+            consignment = Map<String, dynamic>.from(consignmentRaw);
+          }
+
+          final qty = _toInt(map['quantity']);
+          final price = _toDouble(map['price']);
+          final subtotal = _toDouble(map['total']) > 0
+              ? _toDouble(map['total'])
+              : qty * price;
+
+          final itemName = _toText(consignment?['item_name']).isNotEmpty
+              ? _toText(consignment?['item_name'])
+              : 'Consignment Item';
+
+          final alreadyExists = orderLines.any(
+            (e) =>
+                e.source == OrderSource.consignment &&
+                e.name.trim().toLowerCase() == itemName.trim().toLowerCase() &&
+                e.qty == qty &&
+                e.price == price &&
+                e.subtotal == subtotal,
+          );
+
+          if (alreadyExists) continue;
+
+          orderLines.add(
+            OrderLine(
+              source: OrderSource.consignment,
+              name: itemName,
+              qty: qty,
+              price: price,
+              subtotal: subtotal,
+              category: _toText(consignment?['category']),
+              size: _toText(consignment?['size']).isEmpty
+                  ? null
+                  : _toText(consignment?['size']),
+              imageUrl: _toText(consignment?['image_url']).isEmpty
+                  ? null
+                  : _toText(consignment?['image_url']),
+            ),
+          );
+        }
+      } catch (_) {}
+
+      // fallback + merge para siguradong lahat ng add-on lines makita
+      try {
+        final fallbackAddons = await supabase
+            .from('customer_session_add_ons')
+            .select('''
+      id,
+      quantity,
+      price,
+      total,
+      add_on_id,
+      add_ons (
+        id,
+        name,
+        category,
+        size,
+        image_url
+      )
+    ''')
+            .eq('full_name', receipt.fullName)
+            .eq('seat_number', receipt.seatNumber)
+            .eq('voided', false);
+
+        for (final raw in (fallbackAddons as List<dynamic>)) {
+          final map = Map<String, dynamic>.from(raw as Map);
+          final addOnsRaw = map['add_ons'];
+          Map<String, dynamic>? addOns;
+
+          if (addOnsRaw is List && addOnsRaw.isNotEmpty) {
+            addOns = Map<String, dynamic>.from(addOnsRaw.first as Map);
+          } else if (addOnsRaw is Map) {
+            addOns = Map<String, dynamic>.from(addOnsRaw);
+          }
+
+          final qty = _toInt(map['quantity']);
+          final price = _toDouble(map['price']);
+          final subtotal = _toDouble(map['total']) > 0
+              ? _toDouble(map['total'])
+              : qty * price;
+
+          final itemName = _toText(addOns?['name']).isNotEmpty
+              ? _toText(addOns?['name'])
+              : 'Add-On';
+
+          final alreadyExists = orderLines.any(
+            (e) =>
+                e.source == OrderSource.addon &&
+                e.name.trim().toLowerCase() == itemName.trim().toLowerCase() &&
+                e.qty == qty &&
+                e.price == price &&
+                e.subtotal == subtotal,
+          );
+
+          if (alreadyExists) continue;
+
+          orderLines.add(
+            OrderLine(
+              source: OrderSource.addon,
+              name: itemName,
+              qty: qty,
+              price: price,
+              subtotal: subtotal,
+              category: _toText(addOns?['category']),
+              size: _toText(addOns?['size']).isEmpty
+                  ? null
+                  : _toText(addOns?['size']),
+              imageUrl: _toText(addOns?['image_url']).isEmpty
+                  ? null
+                  : _toText(addOns?['image_url']),
+            ),
+          );
+        }
+      } catch (_) {}
+    }
 
     try {
       var addOnQuery = supabase
@@ -406,9 +843,19 @@ class _ViewReceiptState extends State<ViewReceipt>
       }
     } catch (_) {}
 
-    return OrderRowsBundle(
+    // same total behavior as customer list: display sum of visible order lines if available
+    if (orderLines.isNotEmpty) {
+      orderDisplayTotal = orderLines.fold(
+        0.0,
+        (sum, line) => sum + line.subtotal,
+      );
+    }
+
+    return _OrderBundleForReceipt(
       addOnRows: addOnRows,
       consignmentRows: consignmentRows,
+      orderLines: orderLines,
+      orderDisplayTotal: orderDisplayTotal,
     );
   }
 
@@ -421,8 +868,27 @@ class _ViewReceiptState extends State<ViewReceipt>
       ..._consignmentRows,
     ].where((e) => !e.isPaid).toList();
 
+    final existingOrderPayment = await _getExistingOrderPaymentRow(
+      receipt.code,
+    );
+    final double computedOrderTotal = _orderLines.fold(
+      0.0,
+      (sum, line) => sum + line.subtotal,
+    );
+    final double storedOrderTotal = existingOrderPayment?.orderTotal ?? 0;
+
+    final double effectiveOrderTotal = math.max(
+      computedOrderTotal,
+      storedOrderTotal,
+    );
+
+    final double existingOrderPaid = existingOrderPayment?.totalPaid ?? 0;
+
     final double systemDue = receipt.systemBalance;
-    final double orderDue = _sumUnpaidOrders(unpaidOrderRows);
+    final double orderDue = math.max(
+      0,
+      effectiveOrderTotal - existingOrderPaid,
+    );
 
     final systemGcashController = TextEditingController(text: '0');
     final systemCashController = TextEditingController(text: '0');
@@ -470,6 +936,14 @@ class _ViewReceiptState extends State<ViewReceipt>
                   _syncReceiptState(refreshed);
                   final composed = _buildComposedReceipt(refreshed);
                   final allRows = refreshed.allRows;
+
+                  await _syncFinalSessionPaidStatus(
+                    receipt: composed,
+                    systemPaidTotal: composed.systemPaidTotal,
+                    orderPaidTotal: composed.orderPaidTotal,
+                    systemDue: composed.systemTotal,
+                    orderDue: composed.orderTotal,
+                  );
 
                   if (Navigator.of(dialogContext).canPop()) {
                     Navigator.of(dialogContext).pop();
@@ -528,6 +1002,14 @@ class _ViewReceiptState extends State<ViewReceipt>
                   final composed = _buildComposedReceipt(refreshed);
                   final allRows = refreshed.allRows;
 
+                  await _syncFinalSessionPaidStatus(
+                    receipt: composed,
+                    systemPaidTotal: composed.systemPaidTotal,
+                    orderPaidTotal: composed.orderPaidTotal,
+                    systemDue: composed.systemTotal,
+                    orderDue: composed.orderTotal,
+                  );
+
                   if (Navigator.of(dialogContext).canPop()) {
                     Navigator.of(dialogContext).pop();
                   }
@@ -543,6 +1025,94 @@ class _ViewReceiptState extends State<ViewReceipt>
               } finally {
                 if (mounted) {
                   setState(() => _isSavingOrders = false);
+                }
+              }
+            }
+
+            Future<void> saveAllPayments() async {
+              final double systemGcash = _toDouble(systemGcashController.text);
+              final double systemCash = _toDouble(systemCashController.text);
+              final double orderGcash = _toDouble(orderGcashController.text);
+              final double orderCash = _toDouble(orderCashController.text);
+
+              final double totalSystemInput = systemGcash + systemCash;
+              final double totalOrderInput = orderGcash + orderCash;
+
+              if (systemDue > 0 && totalSystemInput <= 0 && orderDue <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Enter payment amount.')),
+                );
+                return;
+              }
+
+              if (orderDue > 0 && totalOrderInput <= 0 && systemDue <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Enter payment amount.')),
+                );
+                return;
+              }
+
+              if (totalSystemInput <= 0 && totalOrderInput <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Enter payment amount.')),
+                );
+                return;
+              }
+
+              setModalState(() {
+                _isSavingSystem = true;
+                _isSavingOrders = true;
+              });
+
+              try {
+                if (systemDue > 0 && totalSystemInput > 0) {
+                  await _saveSystemPayment(
+                    receipt: receipt,
+                    addGcash: systemGcash,
+                    addCash: systemCash,
+                  );
+                }
+
+                if (orderDue > 0 && totalOrderInput > 0) {
+                  await _saveOrderPayment(
+                    orderRows: unpaidOrderRows,
+                    addGcash: orderGcash,
+                    addCash: orderCash,
+                  );
+                }
+
+                final refreshed = await _findReceiptByCode(receipt.code);
+                if (refreshed != null && mounted) {
+                  _syncReceiptState(refreshed);
+                  final composed = _buildComposedReceipt(refreshed);
+                  final allRows = refreshed.allRows;
+
+                  await _syncFinalSessionPaidStatus(
+                    receipt: composed,
+                    systemPaidTotal: composed.systemPaidTotal,
+                    orderPaidTotal: composed.orderPaidTotal,
+                    systemDue: composed.systemTotal,
+                    orderDue: composed.orderTotal,
+                  );
+
+                  if (Navigator.of(dialogContext).canPop()) {
+                    Navigator.of(dialogContext).pop();
+                  }
+
+                  _appendPaymentFeedback(composed, allRows);
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to save payment: $e')),
+                  );
+                }
+              } finally {
+                if (mounted) {
+                  setState(() {
+                    _isSavingSystem = false;
+                    _isSavingOrders = false;
+                  });
                 }
               }
             }
@@ -568,8 +1138,8 @@ class _ViewReceiptState extends State<ViewReceipt>
                               : 'Already Paid',
                           gcashController: systemGcashController,
                           cashController: systemCashController,
-                          onSave: _isSavingSystem ? null : saveSystemPayment,
-                          isSaving: _isSavingSystem,
+                          onSave: null,
+                          isSaving: false,
                         ),
                         if (orderDue > 0) ...[
                           const SizedBox(height: 18),
@@ -578,10 +1148,32 @@ class _ViewReceiptState extends State<ViewReceipt>
                             dueText: 'Balance: ${_peso2(orderDue)}',
                             gcashController: orderGcashController,
                             cashController: orderCashController,
-                            onSave: _isSavingOrders ? null : saveOrderPayment,
-                            isSaving: _isSavingOrders,
+                            onSave: null,
+                            isSaving: false,
                           ),
                         ],
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: (_isSavingSystem || _isSavingOrders)
+                                ? null
+                                : saveAllPayments,
+                            style: ViewReceiptStyles.saveButtonStyle,
+                            child: (_isSavingSystem || _isSavingOrders)
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Save',
+                                    style: ViewReceiptStyles.saveButtonText,
+                                  ),
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         Align(
                           alignment: Alignment.centerRight,
@@ -637,26 +1229,28 @@ class _ViewReceiptState extends State<ViewReceipt>
           const Text('CASH', style: ViewReceiptStyles.paymentLabel),
           const SizedBox(height: 8),
           _paymentField(cashController),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              ElevatedButton(
-                onPressed: onSave,
-                style: ViewReceiptStyles.saveButtonStyle,
-                child: isSaving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text(
-                        'Save',
-                        style: ViewReceiptStyles.saveButtonText,
-                      ),
-              ),
-            ],
-          ),
+          if (onSave != null) ...[
+            const SizedBox(height: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                ElevatedButton(
+                  onPressed: onSave,
+                  style: ViewReceiptStyles.saveButtonStyle,
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text(
+                          'Save',
+                          style: ViewReceiptStyles.saveButtonText,
+                        ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -677,14 +1271,24 @@ class _ViewReceiptState extends State<ViewReceipt>
   }) async {
     final double newGcash = receipt.systemGcash + addGcash;
     final double newCash = receipt.systemCash + addCash;
-    final double newPaid = newGcash + newCash;
-    final bool fullyPaid = newPaid >= receipt.systemTotal;
+    final double newSystemPaid = newGcash + newCash;
+
+    final existingOrder = await _getExistingOrderPaymentRow(receipt.code);
+    final double orderPaidTotal =
+        existingOrder?.totalPaid ?? receipt.orderPaidTotal;
+    final double orderDue = existingOrder?.orderTotal ?? receipt.orderTotal;
+
+    final bool systemPaid = receipt.systemTotal <= 0
+        ? true
+        : newSystemPaid >= receipt.systemTotal;
+    final bool orderPaid = orderDue <= 0 ? true : orderPaidTotal >= orderDue;
+    final bool finalPaid = systemPaid && orderPaid;
 
     final payload = {
       'gcash_amount': newGcash,
       'cash_amount': newCash,
-      'is_paid': fullyPaid,
-      'paid_at': DateTime.now().toIso8601String(),
+      'is_paid': finalPaid,
+      'paid_at': finalPaid ? DateTime.now().toIso8601String() : null,
     };
 
     if (receipt.source == ReceiptSource.customerSession) {
@@ -705,44 +1309,93 @@ class _ViewReceiptState extends State<ViewReceipt>
     required double addGcash,
     required double addCash,
   }) async {
-    if (orderRows.isEmpty) return;
+    final String bookingCode = (_receipt?.code ?? '').trim().toUpperCase();
+    final String fullName = (_receipt?.fullName ?? '').trim();
+    final String seatNumber = (_receipt?.seatNumber ?? '').trim();
+
+    if (bookingCode.isEmpty) {
+      throw Exception('Missing booking code for order payment.');
+    }
+
+    final existingPayment = await _getExistingOrderPaymentRow(bookingCode);
+
+    final double currentOrdersTotal = _orderLines.fold(
+      0.0,
+      (sum, line) => sum + line.subtotal,
+    );
+
+    final double storedOrderTotal = existingPayment?.orderTotal ?? 0;
+    final double orderTotal = math.max(currentOrdersTotal, storedOrderTotal);
+
+    final double newOrderGcash = (existingPayment?.gcashAmount ?? 0) + addGcash;
+    final double newOrderCash = (existingPayment?.cashAmount ?? 0) + addCash;
+    final double newOrderPaid = newOrderGcash + newOrderCash;
+    final bool orderFullyPaid = orderTotal <= 0
+        ? true
+        : newOrderPaid >= orderTotal;
 
     final double totalUnpaid = orderRows.fold(0.0, (s, e) => s + e.total);
-    if (totalUnpaid <= 0) return;
 
-    for (int i = 0; i < orderRows.length; i++) {
-      final row = orderRows[i];
-      final double ratio = row.total / totalUnpaid;
+    if (totalUnpaid > 0) {
+      for (int i = 0; i < orderRows.length; i++) {
+        final row = orderRows[i];
+        final double ratio = row.total / totalUnpaid;
 
-      double gcashShare = addGcash * ratio;
-      double cashShare = addCash * ratio;
+        double gcashShare = addGcash * ratio;
+        double cashShare = addCash * ratio;
 
-      if (i == orderRows.length - 1) {
-        final distributedGcash = orderRows
-            .take(i)
-            .fold(0.0, (s, e) => s + (addGcash * (e.total / totalUnpaid)));
-        final distributedCash = orderRows
-            .take(i)
-            .fold(0.0, (s, e) => s + (addCash * (e.total / totalUnpaid)));
+        if (i == orderRows.length - 1) {
+          final distributedGcash = orderRows
+              .take(i)
+              .fold(0.0, (s, e) => s + (addGcash * (e.total / totalUnpaid)));
+          final distributedCash = orderRows
+              .take(i)
+              .fold(0.0, (s, e) => s + (addCash * (e.total / totalUnpaid)));
 
-        gcashShare = addGcash - distributedGcash;
-        cashShare = addCash - distributedCash;
+          gcashShare = addGcash - distributedGcash;
+          cashShare = addCash - distributedCash;
+        }
+
+        final double rowNewGcash = row.gcashAmount + gcashShare;
+        final double rowNewCash = row.cashAmount + cashShare;
+        final double rowNewPaid = rowNewGcash + rowNewCash;
+        final bool rowFullyPaid = rowNewPaid >= row.total;
+
+        await supabase
+            .from(row.table)
+            .update({
+              'gcash_amount': rowNewGcash,
+              'cash_amount': rowNewCash,
+              'is_paid': rowFullyPaid,
+              'paid_at': rowFullyPaid ? DateTime.now().toIso8601String() : null,
+            })
+            .eq('id', row.id);
       }
+    }
 
-      final double newGcash = row.gcashAmount + gcashShare;
-      final double newCash = row.cashAmount + cashShare;
-      final double newTotalPaid = newGcash + newCash;
-      final bool fullyPaid = newTotalPaid >= row.total;
+    final upsertResult = await supabase.from('customer_order_payments').upsert({
+      'booking_code': bookingCode,
+      'full_name': fullName,
+      'seat_number': seatNumber,
+      'order_total': orderTotal,
+      'gcash_amount': newOrderGcash,
+      'cash_amount': newOrderCash,
+      'is_paid': orderFullyPaid,
+      'paid_at': orderFullyPaid ? DateTime.now().toIso8601String() : null,
+    }, onConflict: 'booking_code').select();
 
-      await supabase
-          .from(row.table)
-          .update({
-            'gcash_amount': newGcash,
-            'cash_amount': newCash,
-            'is_paid': fullyPaid,
-            'paid_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', row.id);
+    if ((upsertResult as List).isEmpty) {
+      throw Exception('Order payment was not recorded.');
+    }
+
+    if (_receipt != null) {
+      await _syncFinalSessionPaidStatus(
+        receipt: _receipt!,
+        systemPaidTotal: _receipt!.systemPaidTotal,
+        orderPaidTotal: newOrderPaid,
+        systemDue: _receipt!.systemTotal,
+        orderDue: orderTotal,
+      );
     }
   }
 
@@ -881,6 +1534,102 @@ class _ViewReceiptState extends State<ViewReceipt>
     );
   }
 
+  Widget _buildOrderLineCard(OrderLine line) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F3E9),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5DAC8), width: 1),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if ((line.imageUrl ?? '').isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                line.imageUrl!,
+                width: 52,
+                height: 52,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _orderPlaceholder(line),
+              ),
+            )
+          else
+            _orderPlaceholder(line),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  line.name,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF2B1D16),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${line.qty} × ${_peso(line.price)}',
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF9B6E39),
+                  ),
+                ),
+                if ((line.size ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Size: ${line.size}',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: Color(0xFF7F6A58),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            _peso(line.subtotal),
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF2B1D16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _orderPlaceholder(OrderLine line) {
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        color: line.source == OrderSource.addon
+            ? const Color(0xFFEAF4E6)
+            : const Color(0xFFF6EEE3),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(
+        line.source == OrderSource.addon
+            ? Icons.fastfood_rounded
+            : Icons.shopping_bag_rounded,
+        color: line.source == OrderSource.addon
+            ? const Color(0xFF4A9B45)
+            : const Color(0xFFB8843B),
+      ),
+    );
+  }
+
   Widget _buildReceiptCard(ReceiptData receipt) {
     final allRows = [..._addOnRows, ..._consignmentRows];
     final double orderDue = _sumUnpaidOrders(allRows);
@@ -909,69 +1658,66 @@ class _ViewReceiptState extends State<ViewReceipt>
           ),
           const SizedBox(height: 2),
           const Text(
-            'OFFICIAL RECEIPT',
-            style: ViewReceiptStyles.receiptSubTitle,
+            'Customer Receipt',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF3A1F11),
+            ),
           ),
           const SizedBox(height: 18),
-          const Divider(),
-          _receiptRow(
-            'Date',
-            _formatDateTime(receipt.paidAt ?? receipt.createdAt),
-          ),
-          _receiptRow('Customer', receipt.fullName),
-          _receiptRow(
-            'Seat',
-            receipt.seatNumber.isEmpty ? '—' : receipt.seatNumber,
-          ),
-          _receiptRow(
-            receipt.source == ReceiptSource.customerSession
-                ? 'Booking Code'
-                : 'Promo Code',
-            receipt.code,
-          ),
-          const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: ViewReceiptStyles.sessionInfoBox,
             child: Column(
               children: [
-                _titleAmountRow(receipt.itemTitle, _peso2(receipt.systemTotal)),
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    receipt.itemSubtitle,
-                    style: ViewReceiptStyles.sessionInfoSubText,
-                  ),
+                _receiptRow('Name', receipt.fullName),
+                _receiptRow('Date', _formatDateOnly(receipt.createdAt)),
+                _receiptRow(
+                  'Seat',
+                  receipt.seatNumber.isEmpty ? '—' : receipt.seatNumber,
+                ),
+                _receiptRow(
+                  receipt.source == ReceiptSource.customerSession
+                      ? 'Booking Code'
+                      : 'Promo Code',
+                  receipt.code,
                 ),
               ],
             ),
           ),
           const SizedBox(height: 14),
           const Divider(),
-          _receiptRow('System Cost', _peso2(receipt.systemTotal)),
+
+          if (_orderLines.isNotEmpty) ...[
+            for (final line in _orderLines) _buildOrderLineCard(line),
+            const Divider(),
+          ],
+
+          _receiptRow('System Cost', _peso(receipt.systemTotal)),
           _receiptRow(
             'Discount',
             receipt.discountAmount > 0
-                ? '- ${_peso2(receipt.discountAmount)}'
+                ? '- ${_peso(receipt.discountAmount)}'
                 : '—',
           ),
-          _receiptRow('Orders Total', _peso2(receipt.orderTotal)),
+          _receiptRow('Orders Total', _peso(receipt.orderTotal)),
+          _receiptRow('Down Payment', '₱0'),
           _receiptRow(
             'GCash',
-            _peso2(receipt.systemGcash + receipt.orderGcashPaid),
+            _peso(receipt.systemGcash + receipt.orderGcashPaid),
           ),
           _receiptRow(
             'Cash',
-            _peso2(receipt.systemCash + receipt.orderCashPaid),
+            _peso(receipt.systemCash + receipt.orderCashPaid),
           ),
           _receiptRow(
             'Total Paid',
-            _peso2(receipt.systemPaidTotal + receipt.orderPaidTotal),
+            _peso(receipt.systemPaidTotal + receipt.orderPaidTotal),
           ),
           _receiptRow(
             'Change',
-            _peso2(
+            _peso(
               ((receipt.systemPaidTotal - receipt.systemTotal) > 0
                       ? (receipt.systemPaidTotal - receipt.systemTotal)
                       : 0) +
@@ -994,7 +1740,7 @@ class _ViewReceiptState extends State<ViewReceipt>
             decoration: ViewReceiptStyles.totalBox,
             child: _titleAmountRow(
               'TOTAL',
-              _peso2(receipt.systemTotal + receipt.orderTotal),
+              _peso(receipt.systemTotal + receipt.orderTotal),
               big: true,
             ),
           ),
@@ -1188,6 +1934,8 @@ class _ChatMessage {
 
 enum ReceiptSource { customerSession, promoBooking }
 
+enum OrderSource { addon, consignment }
+
 class ReceiptData {
   final String id;
   final ReceiptSource source;
@@ -1378,28 +2126,95 @@ class OrderRow {
   }
 }
 
-class OrderRowsBundle {
+class OrderLine {
+  final OrderSource source;
+  final String name;
+  final int qty;
+  final double price;
+  final double subtotal;
+  final String category;
+  final String? size;
+  final String? imageUrl;
+
+  const OrderLine({
+    required this.source,
+    required this.name,
+    required this.qty,
+    required this.price,
+    required this.subtotal,
+    required this.category,
+    required this.size,
+    required this.imageUrl,
+  });
+}
+
+class _OrderBundleForReceipt {
   final List<OrderRow> addOnRows;
   final List<OrderRow> consignmentRows;
+  final List<OrderLine> orderLines;
+  final double orderDisplayTotal;
 
-  const OrderRowsBundle({
+  const _OrderBundleForReceipt({
     required this.addOnRows,
     required this.consignmentRows,
+    required this.orderLines,
+    required this.orderDisplayTotal,
   });
-
-  List<OrderRow> get allRows => [...addOnRows, ...consignmentRows];
 }
 
 class ReceiptLookupResult {
   final ReceiptData receipt;
   final List<OrderRow> addOnRows;
   final List<OrderRow> consignmentRows;
+  final List<OrderLine> orderLines;
+  final double orderDisplayTotal;
+  final CustomerOrderPaymentRow? orderPaymentRow;
 
   const ReceiptLookupResult({
     required this.receipt,
     required this.addOnRows,
     required this.consignmentRows,
+    required this.orderLines,
+    required this.orderDisplayTotal,
+    required this.orderPaymentRow,
   });
 
   List<OrderRow> get allRows => [...addOnRows, ...consignmentRows];
+}
+
+class CustomerOrderPaymentRow {
+  final String bookingCode;
+  final double orderTotal;
+  final double gcashAmount;
+  final double cashAmount;
+  final bool isPaid;
+  final String? paidAt;
+
+  const CustomerOrderPaymentRow({
+    required this.bookingCode,
+    required this.orderTotal,
+    required this.gcashAmount,
+    required this.cashAmount,
+    required this.isPaid,
+    required this.paidAt,
+  });
+
+  double get totalPaid => gcashAmount + cashAmount;
+
+  factory CustomerOrderPaymentRow.fromMap(Map<String, dynamic> map) {
+    double toDouble(dynamic v) {
+      if (v == null) return 0;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString()) ?? 0;
+    }
+
+    return CustomerOrderPaymentRow(
+      bookingCode: (map['booking_code'] ?? '').toString().trim().toUpperCase(),
+      orderTotal: toDouble(map['order_total']),
+      gcashAmount: toDouble(map['gcash_amount']),
+      cashAmount: toDouble(map['cash_amount']),
+      isPaid: map['is_paid'] == true,
+      paidAt: map['paid_at']?.toString(),
+    );
+  }
 }
