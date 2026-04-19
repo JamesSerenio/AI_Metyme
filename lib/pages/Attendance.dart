@@ -1,9 +1,12 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../styles/Attendance_styles.dart';
 
 const double _hourlyRate = 20;
 const int _freeMinutes = 0;
+
+enum AttendanceReceiptSource { reservation, promo }
 
 class AttendancePage extends StatefulWidget {
   const AttendancePage({super.key});
@@ -125,6 +128,395 @@ class _AttendancePageState extends State<AttendancePage>
     final billableMin = minutes - _freeMinutes;
     final safeBillable = billableMin < 0 ? 0 : billableMin;
     return (safeBillable / 60) * _hourlyRate;
+  }
+
+  double toDoubleSafe(dynamic value) {
+    if (value == null) return 0;
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString()) ?? 0;
+  }
+
+  int toIntSafe(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString()) ?? 0;
+  }
+
+  String peso2(num value) => '₱${value.toStringAsFixed(2)}';
+
+  String formatDateTimeLocal(dynamic iso) {
+    if (iso == null) return '—';
+    final parsed = DateTime.tryParse(iso.toString());
+    if (parsed == null) return '—';
+
+    final local = parsed.toLocal();
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final ampm = local.hour >= 12 ? 'PM' : 'AM';
+
+    return '${local.month}/${local.day}/${local.year}, $hour:$minute $ampm';
+  }
+
+  double applyDiscountValue({
+    required double base,
+    required String kind,
+    required double value,
+  }) {
+    final double safeBase = base < 0 ? 0.0 : base;
+    final double safeValue = value < 0 ? 0.0 : value;
+
+    if (kind == 'percent') {
+      final double pct = safeValue.clamp(0, 100).toDouble();
+      return math.max(0.0, safeBase - ((safeBase * pct) / 100)).toDouble();
+    }
+
+    if (kind == 'amount') {
+      return math.max(0.0, safeBase - safeValue).toDouble();
+    }
+
+    return safeBase.toDouble();
+  }
+
+  Future<Map<String, dynamic>?> loadCustomerOrderPaymentRow(String code) async {
+    if (code.trim().isEmpty) return null;
+
+    final row = await supabase
+        .from('customer_order_payments')
+        .select('*')
+        .eq('booking_code', code.trim().toUpperCase())
+        .maybeSingle();
+
+    return row == null ? null : Map<String, dynamic>.from(row);
+  }
+
+  Future<Map<String, dynamic>> loadAttendanceReceiptBundle(
+    String bookingCode,
+  ) async {
+    final code = bookingCode.trim().toUpperCase();
+
+    final List<Map<String, dynamic>> orderLines = [];
+    final List<Map<String, dynamic>> addOnRows = [];
+    final List<Map<String, dynamic>> consignmentRows = [];
+
+    double orderDisplayTotal = 0;
+
+    if (code.isEmpty) {
+      return {
+        'orderLines': orderLines,
+        'addOnRows': addOnRows,
+        'consignmentRows': consignmentRows,
+        'orderDisplayTotal': 0.0,
+      };
+    }
+
+    try {
+      final addonOrdersRes = await supabase
+          .from('addon_orders')
+          .select('''
+        id,
+        booking_code,
+        full_name,
+        seat_number,
+        total_amount,
+        addon_order_items (
+          id,
+          created_at,
+          add_on_id,
+          item_name,
+          price,
+          quantity,
+          subtotal,
+          add_ons (
+            id,
+            name,
+            category,
+            size,
+            image_url
+          )
+        )
+      ''')
+          .eq('booking_code', code);
+
+      for (final raw in (addonOrdersRes as List<dynamic>)) {
+        final map = Map<String, dynamic>.from(raw as Map);
+        final items = (map['addon_order_items'] as List<dynamic>? ?? []);
+
+        for (final itemRaw in items) {
+          final item = Map<String, dynamic>.from(itemRaw as Map);
+          final addOnsRaw = item['add_ons'];
+          Map<String, dynamic>? addOns;
+
+          if (addOnsRaw is List && addOnsRaw.isNotEmpty) {
+            addOns = Map<String, dynamic>.from(addOnsRaw.first as Map);
+          } else if (addOnsRaw is Map) {
+            addOns = Map<String, dynamic>.from(addOnsRaw);
+          }
+
+          final qty = toIntSafe(item['quantity']);
+          final price = toDoubleSafe(item['price']);
+          final subtotal = toDoubleSafe(item['subtotal']) > 0
+              ? toDoubleSafe(item['subtotal'])
+              : qty * price;
+
+          orderLines.add({
+            'source': 'addon',
+            'name': (item['item_name']?.toString().trim().isNotEmpty ?? false)
+                ? item['item_name'].toString()
+                : (addOns?['name']?.toString() ?? 'Add-On'),
+            'qty': qty,
+            'price': price,
+            'subtotal': subtotal,
+          });
+        }
+
+        orderDisplayTotal += toDoubleSafe(map['total_amount']);
+      }
+    } catch (_) {}
+
+    try {
+      final consignmentOrdersRes = await supabase
+          .from('consignment_orders')
+          .select('''
+        id,
+        booking_code,
+        full_name,
+        seat_number,
+        total_amount,
+        consignment_order_items (
+          id,
+          created_at,
+          consignment_id,
+          item_name,
+          price,
+          quantity,
+          subtotal,
+          consignment (
+            id,
+            item_name,
+            category,
+            size,
+            image_url
+          )
+        )
+      ''')
+          .eq('booking_code', code);
+
+      for (final raw in (consignmentOrdersRes as List<dynamic>)) {
+        final map = Map<String, dynamic>.from(raw as Map);
+        final items = (map['consignment_order_items'] as List<dynamic>? ?? []);
+
+        for (final itemRaw in items) {
+          final item = Map<String, dynamic>.from(itemRaw as Map);
+          final consignmentRaw = item['consignment'];
+          Map<String, dynamic>? consignment;
+
+          if (consignmentRaw is List && consignmentRaw.isNotEmpty) {
+            consignment = Map<String, dynamic>.from(
+              consignmentRaw.first as Map,
+            );
+          } else if (consignmentRaw is Map) {
+            consignment = Map<String, dynamic>.from(consignmentRaw);
+          }
+
+          final qty = toIntSafe(item['quantity']);
+          final price = toDoubleSafe(item['price']);
+          final subtotal = toDoubleSafe(item['subtotal']) > 0
+              ? toDoubleSafe(item['subtotal'])
+              : qty * price;
+
+          orderLines.add({
+            'source': 'consignment',
+            'name': (item['item_name']?.toString().trim().isNotEmpty ?? false)
+                ? item['item_name'].toString()
+                : (consignment?['item_name']?.toString() ?? 'Special Item'),
+            'qty': qty,
+            'price': price,
+            'subtotal': subtotal,
+          });
+        }
+
+        orderDisplayTotal += toDoubleSafe(map['total_amount']);
+      }
+    } catch (_) {}
+
+    try {
+      final addOnRes = await supabase
+          .from('customer_session_add_ons')
+          .select(
+            'id,total,is_paid,paid_at,gcash_amount,cash_amount,full_name,seat_number',
+          )
+          .eq('full_name', '')
+          .limit(0);
+
+      if (addOnRes is List) {
+        // no-op, just keeps shape predictable
+      }
+    } catch (_) {}
+
+    try {
+      final consignmentRes = await supabase
+          .from('customer_session_consignment')
+          .select(
+            'id,total,is_paid,voided,paid_at,gcash_amount,cash_amount,full_name,seat_number',
+          )
+          .eq('voided', false);
+
+      if (consignmentRes is List) {
+        for (final row in consignmentRes) {
+          consignmentRows.add(Map<String, dynamic>.from(row));
+        }
+      }
+    } catch (_) {}
+
+    if (orderLines.isNotEmpty) {
+      orderDisplayTotal = orderLines.fold<double>(
+        0.0,
+        (sum, line) => sum + toDoubleSafe(line['subtotal']),
+      );
+    }
+
+    return {
+      'orderLines': orderLines,
+      'addOnRows': addOnRows,
+      'consignmentRows': consignmentRows,
+      'orderDisplayTotal': orderDisplayTotal,
+    };
+  }
+
+  Future<void> showAttendanceReceiptIfNeeded({
+    required AttendanceReceiptSource source,
+    required Map<String, dynamic> row,
+  }) async {
+    final fullName = formatName(row['full_name']);
+    final seatNumber = source == AttendanceReceiptSource.promo
+        ? ((row['seat_number'] ?? '').toString().trim().isEmpty
+              ? 'CONFERENCE ROOM'
+              : row['seat_number'].toString().trim())
+        : ((row['seat_number'] ?? '').toString().trim().isEmpty
+              ? 'N/A'
+              : row['seat_number'].toString().trim());
+
+    final code = source == AttendanceReceiptSource.promo
+        ? (row['promo_code'] ?? '').toString().trim().toUpperCase()
+        : (row['booking_code'] ?? '').toString().trim().toUpperCase();
+
+    final bundle = await loadAttendanceReceiptBundle(code);
+    final orderLines = List<Map<String, dynamic>>.from(
+      bundle['orderLines'] ?? [],
+    );
+    final addOnRows = List<Map<String, dynamic>>.from(
+      bundle['addOnRows'] ?? [],
+    );
+    final consignmentRows = List<Map<String, dynamic>>.from(
+      bundle['consignmentRows'] ?? [],
+    );
+    final orderPaymentRow = await loadCustomerOrderPaymentRow(code);
+
+    final double orderDisplayTotal = toDoubleSafe(bundle['orderDisplayTotal']);
+
+    final orderTotalFromPayment = toDoubleSafe(orderPaymentRow?['order_total']);
+    final double orderTotal = math
+        .max(orderDisplayTotal, orderTotalFromPayment)
+        .toDouble();
+
+    final orderGcashPaid = toDoubleSafe(orderPaymentRow?['gcash_amount']);
+    final orderCashPaid = toDoubleSafe(orderPaymentRow?['cash_amount']);
+    final orderPaidTotal = orderGcashPaid + orderCashPaid;
+    final double orderRemaining = math
+        .max(0.0, orderTotal - orderPaidTotal)
+        .toDouble();
+
+    double systemBase = 0;
+    double systemGcash = 0;
+    double systemCash = 0;
+    double systemPaidTotal = 0;
+    double systemRemaining = 0;
+    String paidAtText = '—';
+
+    if (source == AttendanceReceiptSource.promo) {
+      final rawPrice = toDoubleSafe(row['price']);
+      final discountKind = (row['discount_kind'] ?? 'none')
+          .toString()
+          .trim()
+          .toLowerCase();
+      final discountValue = toDoubleSafe(row['discount_value']);
+      systemBase = applyDiscountValue(
+        base: rawPrice,
+        kind: discountKind,
+        value: discountValue,
+      );
+      systemGcash = toDoubleSafe(row['gcash_amount']);
+      systemCash = toDoubleSafe(row['cash_amount']);
+      systemPaidTotal = systemGcash + systemCash;
+      systemRemaining = math.max(0, systemBase - systemPaidTotal).toDouble();
+      paidAtText = formatDateTimeLocal(row['paid_at']);
+    } else {
+      systemBase = toDoubleSafe(row['total_amount']);
+      systemGcash = toDoubleSafe(row['gcash_amount']);
+      systemCash = toDoubleSafe(row['cash_amount']);
+      systemPaidTotal = systemGcash + systemCash;
+      systemRemaining = math.max(0, systemBase - systemPaidTotal).toDouble();
+      paidAtText = formatDateTimeLocal(row['paid_at']);
+    }
+
+    final bool systemFullyPaid = systemRemaining <= 0;
+    final bool ordersFullyPaid = orderRemaining <= 0;
+    final bool fullyPaid = systemFullyPaid && ordersFullyPaid;
+
+    // huwag ipakita kapag fully paid na lahat
+    if (fullyPaid) {
+      return;
+    }
+
+    final addonCount = orderLines
+        .where((e) => (e['source'] ?? '') == 'addon')
+        .length;
+    final specialItemCount = orderLines
+        .where((e) => (e['source'] ?? '') == 'consignment')
+        .length;
+
+    addAI('Receipt loaded successfully ✅');
+    addAI(
+      'System total: ${peso2(systemBase)}\n'
+      'Orders total: ${peso2(orderTotal)}\n'
+      'Add-Ons found: $addonCount\n'
+      'Special Item found: $specialItemCount\n'
+      'Remaining system: ${peso2(systemRemaining)}\n'
+      'Remaining orders: ${peso2(orderRemaining)}',
+    );
+
+    addAI(
+      '${source == AttendanceReceiptSource.promo ? "Promo Code" : "Booking Code"}: $code\n'
+      'Customer: $fullName\n'
+      'Seat: $seatNumber\n'
+      'System payment: ${systemFullyPaid ? "PAID" : "UNPAID"}\n'
+      'Order payment: ${ordersFullyPaid ? "PAID" : "UNPAID"}\n'
+      'Paid at: $paidAtText',
+    );
+
+    if (systemFullyPaid && !ordersFullyPaid) {
+      addAI('Promo / Reservation is already paid ✅');
+      addAI('But your order payment is not yet fully paid.');
+      addAI('Remaining order payment: ${peso2(orderRemaining)}');
+      addAI('Thank you! 😊');
+      return;
+    }
+
+    if (!systemFullyPaid && ordersFullyPaid) {
+      addAI('Order payment is already fully paid ✅');
+      addAI('But your promo / reservation payment is not yet fully paid.');
+      addAI('Remaining system payment: ${peso2(systemRemaining)}');
+      addAI('Thank you! 😊');
+      return;
+    }
+
+    addAI('Payment saved successfully ✅');
+    addAI(
+      'Remaining system payment: ${peso2(systemRemaining)}\n'
+      'Remaining order payment: ${peso2(orderRemaining)}',
+    );
+    addAI('Thank you! 😊');
   }
 
   String formatName(dynamic value) {
@@ -417,6 +809,37 @@ class _AttendancePageState extends State<AttendancePage>
 
     addAI('✅ Reservation / Booking Attendance OUT successful.');
     addAI('Your attendance OUT has been recorded for $customerName.');
+
+    final refreshedSession = await supabase
+        .from('customer_sessions')
+        .select('''
+      id,
+      full_name,
+      booking_code,
+      seat_number,
+      total_amount,
+      gcash_amount,
+      cash_amount,
+      is_paid,
+      paid_at,
+      reservation,
+      reservation_date,
+      reservation_end_date,
+      hour_avail,
+      time_started,
+      time_ended,
+      expected_end_at,
+      total_time
+    ''')
+        .eq('id', sessionId)
+        .limit(1)
+        .single();
+
+    await showAttendanceReceiptIfNeeded(
+      source: AttendanceReceiptSource.reservation,
+      row: Map<String, dynamic>.from(refreshedSession),
+    );
+
     addAI('Thank you! 😊');
   }
 
@@ -497,6 +920,35 @@ class _AttendancePageState extends State<AttendancePage>
 
     addAI('✅ Promo Attendance OUT successful.');
     addAI('Your promo attendance OUT has been recorded for $customerName.');
+
+    final refreshedPromo = await supabase
+        .from('promo_bookings')
+        .select('''
+      id,
+      full_name,
+      promo_code,
+      seat_number,
+      price,
+      gcash_amount,
+      cash_amount,
+      is_paid,
+      paid_at,
+      discount_kind,
+      discount_value,
+      discount_reason,
+      start_at,
+      end_at,
+      validity_end_at
+    ''')
+        .eq('id', promoId)
+        .limit(1)
+        .single();
+
+    await showAttendanceReceiptIfNeeded(
+      source: AttendanceReceiptSource.promo,
+      row: Map<String, dynamic>.from(refreshedPromo),
+    );
+
     addAI('Thank you! 😊');
   }
 
