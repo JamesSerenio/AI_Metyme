@@ -388,7 +388,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       final Map<String, dynamic>? sessionRow = await supabase
           .from('customer_sessions')
           .select(
-            'id, full_name, phone_number, booking_code, time_started, time_ended, reservation, reservation_date, reservation_end_date',
+            'id, full_name, phone_number, booking_code, time_started, time_ended, reservation, reservation_date, reservation_end_date, is_paid',
           )
           .eq('booking_code', code)
           .limit(1)
@@ -401,6 +401,24 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         final String phoneNumber = (sessionRow['phone_number'] ?? '')
             .toString()
             .trim();
+
+        final bool sessionPaid =
+            sessionRow['is_paid'] == true ||
+            sessionRow['is_paid'] == 1 ||
+            sessionRow['is_paid']?.toString().toLowerCase() == 'true';
+
+        if (sessionPaid) {
+          if (!mounted) return;
+          setState(() {
+            isVerified = false;
+            verifiedCustomer = null;
+            selectedSeatNumber = null;
+          });
+          _showSnack(
+            'This booking code is already paid and can no longer be used for add-ons.',
+          );
+          return;
+        }
 
         final DateTime? startAt = DateTime.tryParse(
           (sessionRow['time_started'] ?? '').toString(),
@@ -452,7 +470,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       final Map<String, dynamic>? promoRow = await supabase
           .from('promo_bookings')
           .select(
-            'id, full_name, phone_number, promo_code, start_at, end_at, status',
+            'id, full_name, phone_number, promo_code, start_at, end_at, status, is_paid',
           )
           .eq('promo_code', code)
           .limit(1)
@@ -463,6 +481,24 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         final String phoneNumber = (promoRow['phone_number'] ?? '')
             .toString()
             .trim();
+
+        final bool promoPaid =
+            promoRow['is_paid'] == true ||
+            promoRow['is_paid'] == 1 ||
+            promoRow['is_paid']?.toString().toLowerCase() == 'true';
+
+        if (promoPaid) {
+          if (!mounted) return;
+          setState(() {
+            isVerified = false;
+            verifiedCustomer = null;
+            selectedSeatNumber = null;
+          });
+          _showSnack(
+            'This promo code is already paid and can no longer be used for add-ons.',
+          );
+          return;
+        }
 
         final DateTime? startAt = DateTime.tryParse(
           (promoRow['start_at'] ?? '').toString(),
