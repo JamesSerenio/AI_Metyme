@@ -823,11 +823,29 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
             ),
             child: hasValue
                 ? Text(
-                    valueText,
-                    style: const TextStyle(
-                      color: AddOnsStyles.textDark,
-                      fontWeight: FontWeight.w600,
+                    valueText == 'SPECIAL ITEM'
+                        ? 'SPECIAL ITEM !!!'
+                        : valueText,
+                    style: TextStyle(
                       fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: valueText == 'SPECIAL ITEM'
+                          ? Colors.orangeAccent
+                          : AddOnsStyles.textDark,
+
+                      // 🔥 GLOW EFFECT
+                      shadows: valueText == 'SPECIAL ITEM'
+                          ? [
+                              Shadow(
+                                color: Colors.orange.withOpacity(0.8),
+                                blurRadius: 10,
+                              ),
+                              Shadow(
+                                color: Colors.deepOrange.withOpacity(0.6),
+                                blurRadius: 18,
+                              ),
+                            ]
+                          : [],
                     ),
                   )
                 : const SizedBox.shrink(),
@@ -1475,11 +1493,31 @@ class _SelectionSheet<T> extends StatelessWidget {
                             ),
                           ),
                           child: Text(
-                            item.label,
-                            style: const TextStyle(
+                            item.label == 'SPECIAL ITEM'
+                                ? 'SPECIAL ITEM !!!'
+                                : item.label,
+                            style: TextStyle(
                               fontSize: 14.5,
-                              fontWeight: FontWeight.w700,
-                              color: AddOnsStyles.textDark,
+                              fontWeight: FontWeight.w800,
+                              color: item.label == 'SPECIAL ITEM'
+                                  ? Colors.orangeAccent
+                                  : AddOnsStyles.textDark,
+
+                              // 🔥 GLOW
+                              shadows: item.label == 'SPECIAL ITEM'
+                                  ? [
+                                      Shadow(
+                                        color: Colors.orange.withOpacity(0.9),
+                                        blurRadius: 12,
+                                      ),
+                                      Shadow(
+                                        color: Colors.deepOrange.withOpacity(
+                                          0.7,
+                                        ),
+                                        blurRadius: 22,
+                                      ),
+                                    ]
+                                  : [],
                             ),
                           ),
                         ),
