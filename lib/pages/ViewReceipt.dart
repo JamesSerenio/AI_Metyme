@@ -40,6 +40,8 @@ class _ViewReceiptState extends State<ViewReceipt>
   bool _isSavingSystem = false;
   bool _isSavingOrders = false;
 
+  final List<_ChatMessage> _chatMessages = [];
+
   ReceiptData? _receipt;
   List<OrderRow> _addOnRows = [];
   List<OrderRow> _consignmentRows = [];
@@ -63,7 +65,15 @@ class _ViewReceiptState extends State<ViewReceipt>
           CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
         );
 
+    _chatMessages.addAll(const [
+      _ChatMessage.user('You selected View Receipt 🧾'),
+      _ChatMessage.ai(
+        'Please paste your booking code or promo code below to view your receipt.',
+      ),
+    ]);
+
     _animController.forward();
+    _scrollToBottom();
   }
 
   @override
@@ -72,6 +82,22 @@ class _ViewReceiptState extends State<ViewReceipt>
     _scrollController.dispose();
     _animController.dispose();
     super.dispose();
+  }
+
+  void _addAiMessage(String text) {
+    if (!mounted) return;
+    setState(() {
+      _chatMessages.add(_ChatMessage.ai(text));
+    });
+    _scrollToBottom();
+  }
+
+  void _addUserMessage(String text) {
+    if (!mounted) return;
+    setState(() {
+      _chatMessages.add(_ChatMessage.user(text));
+    });
+    _scrollToBottom();
   }
 
   double _toDouble(dynamic value) {
@@ -178,12 +204,60 @@ class _ViewReceiptState extends State<ViewReceipt>
     return rows.fold(0.0, (sum, row) => sum + row.cashAmount);
   }
 
+  ReceiptData _buildComposedReceipt(ReceiptLookupResult result) {
+    return result.receipt.copyWith(
+      orderTotal: _sumOrders(result.allRows),
+      orderGcashPaid: _sumOrderGcash(result.allRows),
+      orderCashPaid: _sumOrderCash(result.allRows),
+    );
+  }
+
+  void _syncReceiptState(ReceiptLookupResult result) {
+    final composed = _buildComposedReceipt(result);
+    setState(() {
+      _receipt = composed;
+      _addOnRows = result.addOnRows;
+      _consignmentRows = result.consignmentRows;
+    });
+  }
+
+  double _currentOrderRemainingFromRows(List<OrderRow> rows) {
+    return _sumUnpaidOrders(rows);
+  }
+
+  void _appendPaymentFeedback(ReceiptData receipt, List<OrderRow> allRows) {
+    final systemRemaining = receipt.systemBalance;
+    final orderRemaining = _currentOrderRemainingFromRows(allRows);
+
+    if (systemRemaining <= 0 && orderRemaining <= 0) {
+      _addAiMessage(
+        'Payment received successfully ✅\n\nYour receipt is now fully paid.\n\nThank you! 😊',
+      );
+      return;
+    }
+
+    final List<String> lines = ['Payment saved successfully ✅', ''];
+
+    if (systemRemaining > 0) {
+      lines.add('System remaining: ${_peso2(systemRemaining)}');
+    }
+
+    if (orderRemaining > 0) {
+      lines.add('Order remaining: ${_peso2(orderRemaining)}');
+    }
+
+    lines.add('');
+    lines.add('Thank you! 😊');
+
+    _addAiMessage(lines.join('\n'));
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
       _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent + 200,
-        duration: const Duration(milliseconds: 260),
+        _scrollController.position.maxScrollExtent + 220,
+        duration: const Duration(milliseconds: 280),
         curve: Curves.easeOut,
       );
     });
@@ -192,6 +266,8 @@ class _ViewReceiptState extends State<ViewReceipt>
   Future<void> _loadReceipt() async {
     final code = _codeController.text.trim().toUpperCase();
     if (code.isEmpty || _isSearching) return;
+
+    _addUserMessage(code);
 
     setState(() {
       _isSearching = true;
@@ -204,25 +280,22 @@ class _ViewReceiptState extends State<ViewReceipt>
       final result = await _findReceiptByCode(code);
 
       if (result == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No receipt found for that code.')),
+        _addAiMessage(
+          'No receipt found for that code.\n\nPlease check your booking code or promo code and try again.',
         );
         return;
       }
 
-      setState(() {
-        _receipt = result.receipt.copyWith(
-          orderTotal: _sumOrders(result.allRows),
-          orderGcashPaid: _sumOrderGcash(result.allRows),
-          orderCashPaid: _sumOrderCash(result.allRows),
-        );
-        _addOnRows = result.addOnRows;
-        _consignmentRows = result.consignmentRows;
-      });
+      _syncReceiptState(result);
 
-      _scrollToBottom();
+      final composed = _buildComposedReceipt(result);
+      final orderRemaining = _currentOrderRemainingFromRows(result.allRows);
+
+      _addAiMessage(
+        'Receipt loaded successfully ✅\n\nSystem total: ${_peso2(composed.systemTotal)}\nOrders total: ${_peso2(composed.orderTotal)}\nRemaining system: ${_peso2(composed.systemBalance)}\nRemaining orders: ${_peso2(orderRemaining)}',
+      );
     } catch (e) {
+      _addAiMessage('Failed to load receipt.\n\nPlease try again.');
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -359,7 +432,7 @@ class _ViewReceiptState extends State<ViewReceipt>
     await showDialog(
       context: context,
       barrierDismissible: !_isSavingSystem && !_isSavingOrders,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setModalState) {
             Future<void> saveSystemPayment() async {
@@ -393,22 +466,16 @@ class _ViewReceiptState extends State<ViewReceipt>
                 );
 
                 final refreshed = await _findReceiptByCode(receipt.code);
-                if (refreshed != null) {
-                  setState(() {
-                    _receipt = refreshed.receipt.copyWith(
-                      orderTotal: _sumOrders(refreshed.allRows),
-                      orderGcashPaid: _sumOrderGcash(refreshed.allRows),
-                      orderCashPaid: _sumOrderCash(refreshed.allRows),
-                    );
-                    _addOnRows = refreshed.addOnRows;
-                    _consignmentRows = refreshed.consignmentRows;
-                  });
-                }
+                if (refreshed != null && mounted) {
+                  _syncReceiptState(refreshed);
+                  final composed = _buildComposedReceipt(refreshed);
+                  final allRows = refreshed.allRows;
 
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('System payment saved.')),
-                  );
+                  if (Navigator.of(dialogContext).canPop()) {
+                    Navigator.of(dialogContext).pop();
+                  }
+
+                  _appendPaymentFeedback(composed, allRows);
                 }
               } catch (e) {
                 if (mounted) {
@@ -419,7 +486,9 @@ class _ViewReceiptState extends State<ViewReceipt>
                   );
                 }
               } finally {
-                setModalState(() => _isSavingSystem = false);
+                if (mounted) {
+                  setState(() => _isSavingSystem = false);
+                }
               }
             }
 
@@ -454,22 +523,16 @@ class _ViewReceiptState extends State<ViewReceipt>
                 );
 
                 final refreshed = await _findReceiptByCode(receipt.code);
-                if (refreshed != null) {
-                  setState(() {
-                    _receipt = refreshed.receipt.copyWith(
-                      orderTotal: _sumOrders(refreshed.allRows),
-                      orderGcashPaid: _sumOrderGcash(refreshed.allRows),
-                      orderCashPaid: _sumOrderCash(refreshed.allRows),
-                    );
-                    _addOnRows = refreshed.addOnRows;
-                    _consignmentRows = refreshed.consignmentRows;
-                  });
-                }
+                if (refreshed != null && mounted) {
+                  _syncReceiptState(refreshed);
+                  final composed = _buildComposedReceipt(refreshed);
+                  final allRows = refreshed.allRows;
 
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Order payment saved.')),
-                  );
+                  if (Navigator.of(dialogContext).canPop()) {
+                    Navigator.of(dialogContext).pop();
+                  }
+
+                  _appendPaymentFeedback(composed, allRows);
                 }
               } catch (e) {
                 if (mounted) {
@@ -478,7 +541,9 @@ class _ViewReceiptState extends State<ViewReceipt>
                   );
                 }
               } finally {
-                setModalState(() => _isSavingOrders = false);
+                if (mounted) {
+                  setState(() => _isSavingOrders = false);
+                }
               }
             }
 
@@ -1060,20 +1125,18 @@ class _ViewReceiptState extends State<ViewReceipt>
                             controller: _scrollController,
                             child: Column(
                               children: [
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: _buildUserBubble(
-                                    'You selected View Receipt 🧾',
+                                for (final message in _chatMessages) ...[
+                                  Align(
+                                    alignment: message.isAI
+                                        ? Alignment.centerLeft
+                                        : Alignment.centerRight,
+                                    child: message.isAI
+                                        ? _buildAiBubble(message.text)
+                                        : _buildUserBubble(message.text),
                                   ),
-                                ),
-                                const SizedBox(height: 6),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: _buildAiBubble(
-                                    'Please paste your booking code or promo code below to view your receipt.',
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
+                                  const SizedBox(height: 6),
+                                ],
+                                const SizedBox(height: 10),
                                 Center(
                                   child: SizedBox(
                                     width: isMobile ? double.infinity : 620,
@@ -1111,6 +1174,16 @@ class _ViewReceiptState extends State<ViewReceipt>
       ),
     );
   }
+}
+
+class _ChatMessage {
+  final bool isAI;
+  final String text;
+
+  const _ChatMessage({required this.isAI, required this.text});
+
+  const _ChatMessage.ai(this.text) : isAI = true;
+  const _ChatMessage.user(this.text) : isAI = false;
 }
 
 enum ReceiptSource { customerSession, promoBooking }
