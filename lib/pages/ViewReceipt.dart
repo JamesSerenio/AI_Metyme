@@ -324,32 +324,98 @@ class _ViewReceiptState extends State<ViewReceipt>
     }
   }
 
-  void _appendPaymentFeedback(ReceiptData receipt, List<OrderRow> allRows) {
-    final systemRemaining = receipt.systemBalance;
-    final double computedOrderRemaining = math.max(
+  void _appendPaymentFeedback({
+    required ReceiptData receipt,
+    required bool paidSystemNow,
+    required bool paidOrderNow,
+  }) {
+    final double systemRemaining = math.max(0, receipt.systemBalance);
+    final double orderRemaining = math.max(
       0,
       receipt.orderTotal - receipt.orderPaidTotal,
     );
 
-    if (systemRemaining <= 0 && computedOrderRemaining <= 0) {
-      _addAiMessage(
-        'Payment received successfully ✅\n\nYour receipt is now fully paid.\n\nThank you! 😊',
-      );
-      return;
+    final bool fullyPaid = systemRemaining <= 0 && orderRemaining <= 0;
+
+    final List<String> lines = [];
+
+    if (paidOrderNow && !paidSystemNow) {
+      if (fullyPaid) {
+        lines.add('Order payment successful ✅');
+        lines.add('');
+        lines.add('Your receipt is now fully paid.');
+        lines.add('');
+        lines.add('Thank you! 😊');
+      } else {
+        lines.add('Order payment successful ✅');
+        lines.add('');
+        if (orderRemaining > 0) {
+          lines.add('Remaining order payment: ${_peso2(orderRemaining)}');
+        } else {
+          lines.add('Order payment is fully paid.');
+        }
+
+        if (systemRemaining > 0) {
+          lines.add('Remaining system payment: ${_peso2(systemRemaining)}');
+        }
+
+        lines.add('');
+        lines.add('Thank you! 😊');
+      }
+    } else if (paidSystemNow && !paidOrderNow) {
+      if (fullyPaid) {
+        lines.add('System payment successful ✅');
+        lines.add('');
+        lines.add('Your receipt is now fully paid.');
+        lines.add('');
+        lines.add('Thank you! 😊');
+      } else {
+        lines.add('System payment successful ✅');
+        lines.add('');
+        if (systemRemaining > 0) {
+          lines.add('Remaining system payment: ${_peso2(systemRemaining)}');
+        } else {
+          lines.add('System payment is fully paid.');
+        }
+
+        if (orderRemaining > 0) {
+          lines.add('Remaining order payment: ${_peso2(orderRemaining)}');
+        }
+
+        lines.add('');
+        lines.add('Thank you! 😊');
+      }
+    } else if (paidSystemNow && paidOrderNow) {
+      if (fullyPaid) {
+        lines.add('Payment successful ✅');
+        lines.add('');
+        lines.add('Your receipt is now fully paid.');
+        lines.add('');
+        lines.add('Thank you! 😊');
+      } else {
+        lines.add('Payment successful ✅');
+        lines.add('');
+        if (systemRemaining > 0) {
+          lines.add('Remaining system payment: ${_peso2(systemRemaining)}');
+        }
+        if (orderRemaining > 0) {
+          lines.add('Remaining order payment: ${_peso2(orderRemaining)}');
+        }
+        lines.add('');
+        lines.add('Thank you! 😊');
+      }
+    } else {
+      lines.add('Payment saved successfully ✅');
+      lines.add('');
+      if (systemRemaining > 0) {
+        lines.add('Remaining system payment: ${_peso2(systemRemaining)}');
+      }
+      if (orderRemaining > 0) {
+        lines.add('Remaining order payment: ${_peso2(orderRemaining)}');
+      }
+      lines.add('');
+      lines.add('Thank you! 😊');
     }
-
-    final List<String> lines = ['Payment saved successfully ✅', ''];
-
-    if (systemRemaining > 0) {
-      lines.add('System remaining: ${_peso2(systemRemaining)}');
-    }
-
-    if (computedOrderRemaining > 0) {
-      lines.add('Order remaining: ${_peso2(computedOrderRemaining)}');
-    }
-
-    lines.add('');
-    lines.add('Thank you! 😊');
 
     _addAiMessage(lines.join('\n'));
   }
@@ -935,8 +1001,6 @@ class _ViewReceiptState extends State<ViewReceipt>
                 if (refreshed != null && mounted) {
                   _syncReceiptState(refreshed);
                   final composed = _buildComposedReceipt(refreshed);
-                  final allRows = refreshed.allRows;
-
                   await _syncFinalSessionPaidStatus(
                     receipt: composed,
                     systemPaidTotal: composed.systemPaidTotal,
@@ -949,7 +1013,11 @@ class _ViewReceiptState extends State<ViewReceipt>
                     Navigator.of(dialogContext).pop();
                   }
 
-                  _appendPaymentFeedback(composed, allRows);
+                  _appendPaymentFeedback(
+                    receipt: composed,
+                    paidSystemNow: true,
+                    paidOrderNow: false,
+                  );
                 }
               } catch (e) {
                 if (mounted) {
@@ -1000,8 +1068,6 @@ class _ViewReceiptState extends State<ViewReceipt>
                 if (refreshed != null && mounted) {
                   _syncReceiptState(refreshed);
                   final composed = _buildComposedReceipt(refreshed);
-                  final allRows = refreshed.allRows;
-
                   await _syncFinalSessionPaidStatus(
                     receipt: composed,
                     systemPaidTotal: composed.systemPaidTotal,
@@ -1014,7 +1080,11 @@ class _ViewReceiptState extends State<ViewReceipt>
                     Navigator.of(dialogContext).pop();
                   }
 
-                  _appendPaymentFeedback(composed, allRows);
+                  _appendPaymentFeedback(
+                    receipt: composed,
+                    paidSystemNow: false,
+                    paidOrderNow: true,
+                  );
                 }
               } catch (e) {
                 if (mounted) {
@@ -1085,8 +1155,6 @@ class _ViewReceiptState extends State<ViewReceipt>
                 if (refreshed != null && mounted) {
                   _syncReceiptState(refreshed);
                   final composed = _buildComposedReceipt(refreshed);
-                  final allRows = refreshed.allRows;
-
                   await _syncFinalSessionPaidStatus(
                     receipt: composed,
                     systemPaidTotal: composed.systemPaidTotal,
@@ -1099,7 +1167,11 @@ class _ViewReceiptState extends State<ViewReceipt>
                     Navigator.of(dialogContext).pop();
                   }
 
-                  _appendPaymentFeedback(composed, allRows);
+                  _appendPaymentFeedback(
+                    receipt: composed,
+                    paidSystemNow: totalSystemInput > 0,
+                    paidOrderNow: totalOrderInput > 0,
+                  );
                 }
               } catch (e) {
                 if (mounted) {
@@ -1871,17 +1943,6 @@ class _ViewReceiptState extends State<ViewReceipt>
                             controller: _scrollController,
                             child: Column(
                               children: [
-                                for (final message in _chatMessages) ...[
-                                  Align(
-                                    alignment: message.isAI
-                                        ? Alignment.centerLeft
-                                        : Alignment.centerRight,
-                                    child: message.isAI
-                                        ? _buildAiBubble(message.text)
-                                        : _buildUserBubble(message.text),
-                                  ),
-                                  const SizedBox(height: 6),
-                                ],
                                 const SizedBox(height: 10),
                                 Center(
                                   child: SizedBox(
@@ -1889,9 +1950,37 @@ class _ViewReceiptState extends State<ViewReceipt>
                                     child: _buildCodeInput(),
                                   ),
                                 ),
+
+                                if (_receipt == null) ...[
+                                  const SizedBox(height: 16),
+                                  for (final message in _chatMessages) ...[
+                                    Align(
+                                      alignment: message.isAI
+                                          ? Alignment.centerLeft
+                                          : Alignment.centerRight,
+                                      child: message.isAI
+                                          ? _buildAiBubble(message.text)
+                                          : _buildUserBubble(message.text),
+                                    ),
+                                    const SizedBox(height: 6),
+                                  ],
+                                ],
+
                                 if (_receipt != null) ...[
                                   const SizedBox(height: 18),
                                   _buildReceiptCard(_receipt!),
+                                  const SizedBox(height: 16),
+                                  for (final message in _chatMessages) ...[
+                                    Align(
+                                      alignment: message.isAI
+                                          ? Alignment.centerLeft
+                                          : Alignment.centerRight,
+                                      child: message.isAI
+                                          ? _buildAiBubble(message.text)
+                                          : _buildUserBubble(message.text),
+                                    ),
+                                    const SizedBox(height: 6),
+                                  ],
                                 ],
                               ],
                             ),
