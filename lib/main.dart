@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'Book_Add.dart';
-import 'Add_Ons.dart';
-import 'Noisy.dart'; // ✅ ADD THIS
+import 'Book_Add.dart'; // ✅ ADD THIS
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,13 +26,7 @@ class MyApp extends StatelessWidget {
       // ✅ default page
       initialRoute: '/',
 
-      routes: {
-        '/': (context) => const BookAddPage(),
-        '/add-ons': (context) => const AddOnsPage(),
-
-        // ✅ ADD THIS
-        '/noisy': (context) => const NoisyPage(),
-      },
+      routes: {'/': (context) => const BookAddPage()},
     );
   }
 }
