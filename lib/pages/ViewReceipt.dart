@@ -314,9 +314,9 @@ class _ViewReceiptState extends State<ViewReceipt>
     required double systemDue,
     required double orderDue,
   }) async {
-    final bool systemPaid = systemDue <= 0
+    final bool systemPaid = receipt.discountedSystemTotal <= 0
         ? true
-        : systemPaidTotal >= systemDue;
+        : systemPaidTotal >= receipt.discountedSystemTotal;
     final bool orderPaid = orderDue <= 0 ? true : orderPaidTotal >= orderDue;
     final bool finalPaid = systemPaid && orderPaid;
 
@@ -1053,7 +1053,7 @@ class _ViewReceiptState extends State<ViewReceipt>
                     receipt: composed,
                     systemPaidTotal: composed.systemPaidTotal,
                     orderPaidTotal: composed.orderPaidTotal,
-                    systemDue: composed.systemTotal,
+                    systemDue: composed.discountedSystemTotal,
                     orderDue: composed.orderTotal,
                   );
 
@@ -1398,9 +1398,9 @@ class _ViewReceiptState extends State<ViewReceipt>
         existingOrder?.totalPaid ?? receipt.orderPaidTotal;
     final double orderDue = existingOrder?.orderTotal ?? receipt.orderTotal;
 
-    final bool systemPaid = receipt.systemTotal <= 0
+    final bool systemPaid = receipt.discountedSystemTotal <= 0
         ? true
-        : newSystemPaid >= receipt.systemTotal;
+        : newSystemPaid >= receipt.discountedSystemTotal;
     final bool orderPaid = orderDue <= 0 ? true : orderPaidTotal >= orderDue;
     final bool finalPaid = systemPaid && orderPaid;
 
@@ -1513,7 +1513,7 @@ class _ViewReceiptState extends State<ViewReceipt>
         receipt: _receipt!,
         systemPaidTotal: _receipt!.systemPaidTotal,
         orderPaidTotal: newOrderPaid,
-        systemDue: _receipt!.systemTotal,
+        systemDue: _receipt!.discountedSystemTotal,
         orderDue: orderTotal,
       );
     }
@@ -1819,7 +1819,7 @@ class _ViewReceiptState extends State<ViewReceipt>
             const Divider(),
           ],
 
-          _receiptRow('System Cost', _peso(receipt.systemTotal)),
+          _receiptRow('System Cost', _peso2(receipt.systemTotal)),
           _receiptRow(
             'Discount',
             receipt.discountAmount > 0
@@ -1844,8 +1844,9 @@ class _ViewReceiptState extends State<ViewReceipt>
           _receiptRow(
             'Change',
             _peso2(
-              ((receipt.systemPaidTotal - receipt.systemTotal) > 0
-                      ? (receipt.systemPaidTotal - receipt.systemTotal)
+              ((receipt.systemPaidTotal - receipt.discountedSystemTotal) > 0
+                      ? (receipt.systemPaidTotal -
+                            receipt.discountedSystemTotal)
                       : 0) +
                   ((receipt.orderPaidTotal - receipt.orderTotal) > 0
                       ? (receipt.orderPaidTotal - receipt.orderTotal)
@@ -2122,13 +2123,18 @@ class ReceiptData {
   double get systemPaidTotal => systemGcash + systemCash;
   double get orderPaidTotal => orderGcashPaid + orderCashPaid;
 
+  double get discountedSystemTotal {
+    final value = systemTotal - discountAmount;
+    return value > 0 ? value : 0;
+  }
+
   double get systemBalance {
-    final value = systemTotal - systemPaidTotal;
+    final value = discountedSystemTotal - systemPaidTotal;
     return value > 0 ? value : 0;
   }
 
   bool get isFullyPaid =>
-      systemPaidTotal >= systemTotal && orderPaidTotal >= orderTotal;
+      systemPaidTotal >= discountedSystemTotal && orderPaidTotal >= orderTotal;
 
   ReceiptData copyWith({
     double? orderTotal,
