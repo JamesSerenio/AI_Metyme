@@ -361,6 +361,9 @@ class _ViewReceiptState extends State<ViewReceipt>
         lines.add(
           'Discount: ${receipt.discountAmount > 0 ? _peso2(receipt.discountAmount) : "₱0.00"}',
         );
+        if (receipt.source == ReceiptSource.customerSession) {
+          lines.add('Time Consumed: ${receipt.timeConsumedText}');
+        }
         lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
         lines.add('');
         lines.add('Your receipt is now fully paid.');
@@ -520,6 +523,7 @@ class _ViewReceiptState extends State<ViewReceipt>
 
       final String receiptLoadedMessage =
           'Receipt loaded successfully ✅\n\n'
+          '${composed.source == ReceiptSource.customerSession ? 'Time Consumed: ${composed.timeConsumedText}\n' : ''}'
           'System total: ${_peso2(composed.systemTotal)}\n'
           'Discount: ${composed.discountAmount > 0 ? _peso2(composed.discountAmount) : "₱0.00"}\n'
           'Orders total: ${_peso2(composed.orderTotal)}\n'
@@ -546,19 +550,17 @@ class _ViewReceiptState extends State<ViewReceipt>
   }
 
   Future<ReceiptLookupResult?> _findReceiptByCode(String code) async {
-    final walkIn = await supabase
-        .from('customer_sessions')
+    final promo = await supabase
+        .from('promo_bookings')
         .select()
-        .eq('booking_code', code)
+        .eq('promo_code', code)
         .limit(1)
         .maybeSingle();
 
-    if (walkIn != null) {
-      final finalizedWalkIn = await _finalizeOpenSessionIfNeeded(
-        Map<String, dynamic>.from(walkIn),
+    if (promo != null) {
+      final receipt = ReceiptData.fromPromoBooking(
+        Map<String, dynamic>.from(promo),
       );
-
-      final receipt = ReceiptData.fromCustomerSession(finalizedWalkIn);
       final bundle = await _loadOrderBundleForReceipt(receipt);
       final orderPaymentRow = await _getExistingOrderPaymentRow(receipt.code);
 
@@ -572,17 +574,19 @@ class _ViewReceiptState extends State<ViewReceipt>
       );
     }
 
-    final promo = await supabase
-        .from('promo_bookings')
+    final walkIn = await supabase
+        .from('customer_sessions')
         .select()
-        .eq('promo_code', code)
+        .eq('booking_code', code)
         .limit(1)
         .maybeSingle();
 
-    if (promo != null) {
-      final receipt = ReceiptData.fromPromoBooking(
-        Map<String, dynamic>.from(promo),
+    if (walkIn != null) {
+      final finalizedWalkIn = await _finalizeOpenSessionIfNeeded(
+        Map<String, dynamic>.from(walkIn),
       );
+
+      final receipt = ReceiptData.fromCustomerSession(finalizedWalkIn);
       final bundle = await _loadOrderBundleForReceipt(receipt);
       final orderPaymentRow = await _getExistingOrderPaymentRow(receipt.code);
 
@@ -1808,6 +1812,11 @@ class _ViewReceiptState extends State<ViewReceipt>
                       : 'Promo Code',
                   receipt.code,
                 ),
+                _receiptRow(
+                  'Time Start',
+                  _formatDateTime(receipt.timeStartedAt),
+                ),
+                _receiptRow('Time End', _formatDateTime(receipt.timeEndedAt)),
               ],
             ),
           ),
@@ -1819,6 +1828,8 @@ class _ViewReceiptState extends State<ViewReceipt>
             const Divider(),
           ],
 
+          if (receipt.source == ReceiptSource.customerSession)
+            _receiptRow('Time Consumed', receipt.timeConsumedText),
           _receiptRow('System Cost', _peso2(receipt.systemTotal)),
           _receiptRow(
             'Discount',
@@ -2097,6 +2108,10 @@ class ReceiptData {
   final String itemTitle;
   final String itemSubtitle;
 
+  final int timeConsumedMinutes;
+  final String? timeStartedAt;
+  final String? timeEndedAt;
+
   final double orderTotal;
   final double orderGcashPaid;
   final double orderCashPaid;
@@ -2115,6 +2130,9 @@ class ReceiptData {
     required this.systemCash,
     required this.itemTitle,
     required this.itemSubtitle,
+    required this.timeConsumedMinutes,
+    required this.timeStartedAt,
+    required this.timeEndedAt,
     required this.orderTotal,
     required this.orderGcashPaid,
     required this.orderCashPaid,
@@ -2122,6 +2140,20 @@ class ReceiptData {
 
   double get systemPaidTotal => systemGcash + systemCash;
   double get orderPaidTotal => orderGcashPaid + orderCashPaid;
+
+  String get timeConsumedText {
+    final mins = timeConsumedMinutes < 0 ? 0 : timeConsumedMinutes;
+    final hours = mins ~/ 60;
+    final minutes = mins % 60;
+
+    if (hours > 0 && minutes > 0) {
+      return '${hours}h ${minutes}m';
+    }
+    if (hours > 0) {
+      return '${hours}h';
+    }
+    return '${minutes}m';
+  }
 
   double get discountedSystemTotal {
     final value = systemTotal - discountAmount;
@@ -2155,6 +2187,9 @@ class ReceiptData {
       systemCash: systemCash,
       itemTitle: itemTitle,
       itemSubtitle: itemSubtitle,
+      timeConsumedMinutes: timeConsumedMinutes,
+      timeStartedAt: timeStartedAt,
+      timeEndedAt: timeEndedAt,
       orderTotal: orderTotal ?? this.orderTotal,
       orderGcashPaid: orderGcashPaid ?? this.orderGcashPaid,
       orderCashPaid: orderCashPaid ?? this.orderCashPaid,
@@ -2196,6 +2231,9 @@ class ReceiptData {
       systemCash: _toDouble(map['cash_amount']),
       itemTitle: 'Study Hub Session',
       itemSubtitle: '$minutes mins used • $minutes mins charged',
+      timeConsumedMinutes: minutes,
+      timeStartedAt: map['time_started']?.toString(),
+      timeEndedAt: map['time_ended']?.toString(),
       orderTotal: 0,
       orderGcashPaid: 0,
       orderCashPaid: 0,
@@ -2233,6 +2271,9 @@ class ReceiptData {
       systemCash: _toDouble(map['cash_amount']),
       itemTitle: title,
       itemSubtitle: 'Promo / reservation receipt',
+      timeConsumedMinutes: 0,
+      timeStartedAt: map['start_at']?.toString(),
+      timeEndedAt: map['end_at']?.toString(),
       orderTotal: 0,
       orderGcashPaid: 0,
       orderCashPaid: 0,
