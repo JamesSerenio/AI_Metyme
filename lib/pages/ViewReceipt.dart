@@ -348,6 +348,7 @@ class _ViewReceiptState extends State<ViewReceipt>
       0,
       receipt.orderTotal - receipt.orderPaidTotal,
     );
+    final double totalAmountDue = math.max(0, systemRemaining + orderRemaining);
 
     final bool fullyPaid = systemRemaining <= 0 && orderRemaining <= 0;
 
@@ -357,22 +358,29 @@ class _ViewReceiptState extends State<ViewReceipt>
       if (fullyPaid) {
         lines.add('Order payment successful ✅');
         lines.add('');
+        lines.add(
+          'Discount: ${receipt.discountAmount > 0 ? _peso2(receipt.discountAmount) : "₱0.00"}',
+        );
+        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        lines.add('');
         lines.add('Your receipt is now fully paid.');
         lines.add('');
         lines.add('Thank you! 😊');
       } else {
         lines.add('Order payment successful ✅');
         lines.add('');
+        lines.add(
+          'Discount: ${receipt.discountAmount > 0 ? _peso2(receipt.discountAmount) : "₱0.00"}',
+        );
         if (orderRemaining > 0) {
           lines.add('Remaining order payment: ${_peso2(orderRemaining)}');
         } else {
           lines.add('Order payment is fully paid.');
         }
-
         if (systemRemaining > 0) {
           lines.add('Remaining system payment: ${_peso2(systemRemaining)}');
         }
-
+        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
         lines.add('');
         lines.add('Thank you! 😊');
       }
@@ -380,22 +388,29 @@ class _ViewReceiptState extends State<ViewReceipt>
       if (fullyPaid) {
         lines.add('System payment successful ✅');
         lines.add('');
+        lines.add(
+          'Discount: ${receipt.discountAmount > 0 ? _peso2(receipt.discountAmount) : "₱0.00"}',
+        );
+        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        lines.add('');
         lines.add('Your receipt is now fully paid.');
         lines.add('');
         lines.add('Thank you! 😊');
       } else {
         lines.add('System payment successful ✅');
         lines.add('');
+        lines.add(
+          'Discount: ${receipt.discountAmount > 0 ? _peso2(receipt.discountAmount) : "₱0.00"}',
+        );
         if (systemRemaining > 0) {
           lines.add('Remaining system payment: ${_peso2(systemRemaining)}');
         } else {
           lines.add('System payment is fully paid.');
         }
-
         if (orderRemaining > 0) {
           lines.add('Remaining order payment: ${_peso2(orderRemaining)}');
         }
-
+        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
         lines.add('');
         lines.add('Thank you! 😊');
       }
@@ -403,30 +418,43 @@ class _ViewReceiptState extends State<ViewReceipt>
       if (fullyPaid) {
         lines.add('Payment successful ✅');
         lines.add('');
+        lines.add(
+          'Discount: ${receipt.discountAmount > 0 ? _peso2(receipt.discountAmount) : "₱0.00"}',
+        );
+        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        lines.add('');
         lines.add('Your receipt is now fully paid.');
         lines.add('');
         lines.add('Thank you! 😊');
       } else {
         lines.add('Payment successful ✅');
         lines.add('');
+        lines.add(
+          'Discount: ${receipt.discountAmount > 0 ? _peso2(receipt.discountAmount) : "₱0.00"}',
+        );
         if (systemRemaining > 0) {
           lines.add('Remaining system payment: ${_peso2(systemRemaining)}');
         }
         if (orderRemaining > 0) {
           lines.add('Remaining order payment: ${_peso2(orderRemaining)}');
         }
+        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
         lines.add('');
         lines.add('Thank you! 😊');
       }
     } else {
       lines.add('Payment saved successfully ✅');
       lines.add('');
+      lines.add(
+        'Discount: ${receipt.discountAmount > 0 ? _peso2(receipt.discountAmount) : "₱0.00"}',
+      );
       if (systemRemaining > 0) {
         lines.add('Remaining system payment: ${_peso2(systemRemaining)}');
       }
       if (orderRemaining > 0) {
         lines.add('Remaining order payment: ${_peso2(orderRemaining)}');
       }
+      lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
       lines.add('');
       lines.add('Thank you! 😊');
     }
@@ -478,6 +506,10 @@ class _ViewReceiptState extends State<ViewReceipt>
         composed.orderTotal - composed.orderPaidTotal,
       );
 
+      final double totalAmountDue =
+          math.max(0.0, composed.systemBalance) +
+          math.max(0.0, orderRemainingValue);
+
       final int addonCount = result.orderLines
           .where((e) => e.source == OrderSource.addon)
           .length;
@@ -489,11 +521,13 @@ class _ViewReceiptState extends State<ViewReceipt>
       final String receiptLoadedMessage =
           'Receipt loaded successfully ✅\n\n'
           'System total: ${_peso2(composed.systemTotal)}\n'
+          'Discount: ${composed.discountAmount > 0 ? _peso2(composed.discountAmount) : "₱0.00"}\n'
           'Orders total: ${_peso2(composed.orderTotal)}\n'
           'Add-Ons found: $addonCount\n'
           'Special Item found: $specialItemCount\n'
           'Remaining system: ${_peso2(composed.systemBalance)}\n'
-          'Remaining orders: ${_peso2(orderRemainingValue)}';
+          'Remaining orders: ${_peso2(orderRemainingValue)}\n'
+          'Total Amount Due: ${_peso2(totalAmountDue)}';
 
       _addAiMessage(receiptLoadedMessage);
     } catch (e) {
@@ -1718,7 +1752,12 @@ class _ViewReceiptState extends State<ViewReceipt>
 
   Widget _buildReceiptCard(ReceiptData receipt) {
     final allRows = [..._addOnRows, ..._consignmentRows];
-    final double orderDue = _sumUnpaidOrders(allRows);
+    final double orderDue = math.max(
+      0,
+      receipt.orderTotal - receipt.orderPaidTotal,
+    );
+    final double totalAmountDue =
+        math.max(0, receipt.systemBalance) + math.max(0, orderDue);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1784,8 +1823,8 @@ class _ViewReceiptState extends State<ViewReceipt>
           _receiptRow(
             'Discount',
             receipt.discountAmount > 0
-                ? '- ${_peso(receipt.discountAmount)}'
-                : '—',
+                ? '- ${_peso2(receipt.discountAmount)}'
+                : '₱0.00',
           ),
           _receiptRow('Orders Total', _peso(receipt.orderTotal)),
           _receiptRow('Down Payment', '₱0'),
@@ -1799,11 +1838,12 @@ class _ViewReceiptState extends State<ViewReceipt>
           ),
           _receiptRow(
             'Total Paid',
-            _peso(receipt.systemPaidTotal + receipt.orderPaidTotal),
+            _peso2(receipt.systemPaidTotal + receipt.orderPaidTotal),
           ),
+          _receiptRow('Total Amount Due', _peso2(totalAmountDue)),
           _receiptRow(
             'Change',
-            _peso(
+            _peso2(
               ((receipt.systemPaidTotal - receipt.systemTotal) > 0
                       ? (receipt.systemPaidTotal - receipt.systemTotal)
                       : 0) +
@@ -1825,8 +1865,8 @@ class _ViewReceiptState extends State<ViewReceipt>
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: ViewReceiptStyles.totalBox,
             child: _titleAmountRow(
-              'TOTAL',
-              _peso(receipt.systemTotal + receipt.orderTotal),
+              'TOTAL AMOUNT DUE',
+              _peso2(totalAmountDue),
               big: true,
             ),
           ),
