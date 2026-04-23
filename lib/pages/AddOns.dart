@@ -58,6 +58,7 @@ class SubmittedOrderSummary {
   final int addOnCount;
   final int specialItemCount;
   final List<String> addOnRowIds;
+  final String submittedAtIso;
 
   const SubmittedOrderSummary({
     required this.bookingCode,
@@ -67,6 +68,7 @@ class SubmittedOrderSummary {
     required this.addOnCount,
     required this.specialItemCount,
     required this.addOnRowIds,
+    required this.submittedAtIso,
   });
 }
 
@@ -713,11 +715,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
   Future<void> _savePayment() async {
     final order = submittedOrder;
-    if (order == null ||
-        order.bookingCode == null ||
-        order.bookingCode!.isEmpty) {
+    if (order == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Booking code not found for this order.')),
+        const SnackBar(content: Text('No submitted order found.')),
       );
       return;
     }
@@ -734,37 +734,52 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         paymentSaving = true;
       });
 
-      await supabase.from('customer_order_payments').upsert({
-        'booking_code': order.bookingCode,
-        'full_name': order.fullName,
-        'seat_number': order.seatNumber,
-        'order_total': order.orderTotal,
-        'gcash_amount': gcash,
-        'cash_amount': cash,
-        'is_paid': isPaid,
-        'paid_at': paidAt,
-      }, onConflict: 'booking_code');
+      // Save shared payment row only if booking code exists.
+      if (order.bookingCode != null && order.bookingCode!.isNotEmpty) {
+        await supabase.from('customer_order_payments').upsert({
+          'booking_code': order.bookingCode,
+          'full_name': order.fullName,
+          'seat_number': order.seatNumber,
+          'order_total': order.orderTotal,
+          'gcash_amount': gcash,
+          'cash_amount': cash,
+          'is_paid': isPaid,
+          'paid_at': paidAt,
+        }, onConflict: 'booking_code');
 
-      try {
-        await supabase.rpc(
-          'pay_addon_order_by_booking_code',
-          params: {
-            'p_booking_code': order.bookingCode,
-            'p_full_name': order.fullName,
-            'p_seat_number': order.seatNumber,
-            'p_order_total': order.orderTotal,
-            'p_gcash_amount': gcash,
-            'p_cash_amount': cash,
-          },
-        );
-      } catch (e) {
-        debugPrint('pay_addon_order_by_booking_code failed: $e');
+        try {
+          await supabase.rpc(
+            'pay_addon_order_by_booking_code',
+            params: {
+              'p_booking_code': order.bookingCode,
+              'p_full_name': order.fullName,
+              'p_seat_number': order.seatNumber,
+              'p_order_total': order.orderTotal,
+              'p_gcash_amount': gcash,
+              'p_cash_amount': cash,
+            },
+          );
+        } catch (e) {
+          debugPrint('pay_addon_order_by_booking_code failed: $e');
+        }
       }
 
       bool sessionRowsUpdated = false;
 
-      if (isPaid && order.addOnRowIds.isNotEmpty) {
-        for (int i = 0; i < order.addOnRowIds.length; i++) {
+      // If addOnRowIds is empty, re-find the latest unpaid exact rows now.
+      List<String> idsToUpdate = List<String>.from(order.addOnRowIds);
+
+      if (idsToUpdate.isEmpty) {
+        idsToUpdate = await _findLatestAddOnRowIds(
+          fullName: order.fullName,
+          seatNumber: order.seatNumber,
+          expectedTotal: order.orderTotal,
+        );
+        debugPrint('Re-fetched addOnRowIds: $idsToUpdate');
+      }
+
+      if (isPaid && idsToUpdate.isNotEmpty) {
+        for (int i = 0; i < idsToUpdate.length; i++) {
           await supabase
               .from('customer_session_add_ons')
               .update({
@@ -773,7 +788,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                 'gcash_amount': i == 0 ? gcash : 0,
                 'cash_amount': i == 0 ? cash : 0,
               })
-              .eq('id', order.addOnRowIds[i]);
+              .eq('id', idsToUpdate[i]);
 
           sessionRowsUpdated = true;
         }
@@ -781,11 +796,20 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
       if (!mounted) return;
 
-      final reallyPaid =
-          isPaid && (order.addOnRowIds.isEmpty || sessionRowsUpdated);
+      final reallyPaid = isPaid && sessionRowsUpdated;
 
       setState(() {
         formLocked = false;
+        submittedOrder = SubmittedOrderSummary(
+          bookingCode: order.bookingCode,
+          fullName: order.fullName,
+          seatNumber: order.seatNumber,
+          orderTotal: order.orderTotal,
+          addOnCount: order.addOnCount,
+          specialItemCount: order.specialItemCount,
+          addOnRowIds: idsToUpdate,
+        );
+
         chatMessages = [
           ChatMessage(
             text: reallyPaid
@@ -796,11 +820,12 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                       'Change: ${_money(diff < 0 ? 0 : diff)}\n'
                       'Status: PAID\n\n'
                       'Thank you! 😊'
-                : 'Order payment saved but add-on rows were not marked paid yet ⚠️\n\n'
+                : 'Payment saved but the add-on row was not marked paid yet ⚠️\n\n'
                       'GCash: ${_money(gcash)}\n'
                       'Cash: ${_money(cash)}\n'
                       'Total Paid: ${_money(totalPaid)}\n'
-                      'Please refresh and check the matching rows.',
+                      'Status: ${isPaid ? "SHOULD BE PAID" : "UNPAID"}\n\n'
+                      'Please check the exact row ids / booking code.',
             isUser: false,
           ),
         ];
