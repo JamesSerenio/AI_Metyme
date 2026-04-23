@@ -476,51 +476,37 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     return isUuid ? raw : null;
   }
 
-  Future<String?> _findLatestBookingCode() async {
+  Future<String?> _findLatestBookingCode({required bool forAddOns}) async {
     try {
-      final addonRows = await supabase
-          .from('addon_orders')
+      final table = forAddOns ? 'addon_orders' : 'consignment_orders';
+
+      final rows = await supabase
+          .from(table)
           .select('booking_code, created_at')
           .order('created_at', ascending: false)
           .limit(10);
 
-      final consignmentRows = await supabase
-          .from('consignment_orders')
-          .select('booking_code, created_at')
-          .order('created_at', ascending: false)
-          .limit(10);
+      if (rows is! List || rows.isEmpty) return null;
 
-      final merged = <Map<String, dynamic>>[];
+      rows.sort((a, b) {
+        final aMap = Map<String, dynamic>.from(a as Map);
+        final bMap = Map<String, dynamic>.from(b as Map);
 
-      if (addonRows is List) {
-        for (final row in addonRows) {
-          if (row is Map) {
-            merged.add(Map<String, dynamic>.from(row));
-          }
-        }
-      }
-
-      if (consignmentRows is List) {
-        for (final row in consignmentRows) {
-          if (row is Map) {
-            merged.add(Map<String, dynamic>.from(row));
-          }
-        }
-      }
-
-      if (merged.isEmpty) return null;
-
-      merged.sort((a, b) {
         final aTime =
-            DateTime.tryParse('${a['created_at']}')?.millisecondsSinceEpoch ??
+            DateTime.tryParse(
+              '${aMap['created_at']}',
+            )?.millisecondsSinceEpoch ??
             0;
         final bTime =
-            DateTime.tryParse('${b['created_at']}')?.millisecondsSinceEpoch ??
+            DateTime.tryParse(
+              '${bMap['created_at']}',
+            )?.millisecondsSinceEpoch ??
             0;
+
         return bTime.compareTo(aTime);
       });
 
-      return _extractBookingCode(merged.first);
+      return _extractBookingCode(rows.first);
     } catch (_) {
       return null;
     }
@@ -580,7 +566,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       ids.add(id);
       runningTotal = _round2(runningTotal + rowTotal);
 
-      if (runningTotal >= expectedTotal) {
+      if (runningTotal == expectedTotal) {
         break;
       }
     }
@@ -752,7 +738,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       }
 
       String? resolvedBookingCode = addOnBookingCode ?? consignmentBookingCode;
-      resolvedBookingCode ??= await _findLatestBookingCode();
+      resolvedBookingCode ??= await _findLatestBookingCode(
+        forAddOns: addOnPayload.isNotEmpty,
+      );
 
       final addOnRowIds = addOnPayload.isNotEmpty
           ? await _findLatestAddOnRowIds(
@@ -811,7 +799,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
               child: ElevatedButton(
                 onPressed: () async {
                   String? code = summary.bookingCode;
-                  code ??= await _findLatestBookingCode();
+                  code ??= await _findLatestBookingCode(
+                    forAddOns: summary.addOnCount > 0,
+                  );
 
                   if (!mounted) return;
 
@@ -868,12 +858,18 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       return;
     }
 
-    final gcash = _round2(_moneyFromText(gcashController.text));
-    final cash = _round2(_moneyFromText(cashController.text));
+    final due = _round2(order.orderTotal);
+    final gcashRaw = _round2(_moneyFromText(gcashController.text));
+    final cashRaw = _round2(_moneyFromText(cashController.text));
+
+    final gcash = gcashRaw > due ? due : gcashRaw;
+    final remainingAfterGcash = _round2(due - gcash);
+    final cash = cashRaw > remainingAfterGcash ? remainingAfterGcash : cashRaw;
+
     final totalPaid = _round2(gcash + cash);
-    final isPaid = totalPaid >= order.orderTotal;
+    final isPaid = totalPaid >= due;
     final paidAt = isPaid ? DateTime.now().toUtc().toIso8601String() : null;
-    final diff = _round2(totalPaid - order.orderTotal);
+    final diff = _round2(totalPaid - due);
 
     try {
       setState(() {
@@ -885,29 +881,47 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           'booking_code': order.bookingCode,
           'full_name': order.fullName,
           'seat_number': order.seatNumber,
-          'order_total': order.orderTotal,
+          'order_total': _round2(
+            order.addOnRowIds.isNotEmpty && order.specialItemCount == 0
+                ? totalAmount
+                : order.orderTotal,
+          ),
           'gcash_amount': gcash,
-          'cash_amount': cash,
+          'cash_amount': _round2(
+            cash > order.orderTotal ? order.orderTotal - gcash : cash,
+          ),
           'is_paid': isPaid,
           'paid_at': paidAt,
         }, onConflict: 'booking_code');
 
         try {
-          await supabase.rpc(
-            order.specialItemCount > 0 && order.addOnCount == 0
-                ? 'pay_consignment_order_by_booking_code'
-                : 'pay_addon_order_by_booking_code',
-            params: {
-              'p_booking_code': order.bookingCode,
-              'p_full_name': order.fullName,
-              'p_seat_number': order.seatNumber,
-              'p_order_total': order.orderTotal,
-              'p_gcash_amount': gcash,
-              'p_cash_amount': cash,
-            },
-          );
+          if (order.addOnCount > 0) {
+            await supabase
+                .from('customer_session_add_ons')
+                .update({
+                  'gcash_amount': 0,
+                  'cash_amount': 0,
+                  'is_paid': isPaid,
+                  'paid_at': paidAt,
+                })
+                .inFilter('id', order.addOnRowIds);
+          }
+
+          if (order.specialItemCount > 0) {
+            await supabase.rpc(
+              'pay_consignment_order_by_booking_code',
+              params: {
+                'p_booking_code': order.bookingCode,
+                'p_full_name': order.fullName,
+                'p_seat_number': order.seatNumber,
+                'p_order_total': order.orderTotal,
+                'p_gcash_amount': gcash,
+                'p_cash_amount': cash,
+              },
+            );
+          }
         } catch (e) {
-          debugPrint('pay_addon_order_by_booking_code failed: $e');
+          debugPrint('order payment sync failed: $e');
         }
       } else {
         debugPrint(
