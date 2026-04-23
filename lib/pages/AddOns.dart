@@ -520,14 +520,27 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     required String fullName,
     required String seatNumber,
     required double expectedTotal,
+    String? submittedAtIso,
   }) async {
-    final rows = await supabase
+    var query = supabase
         .from('customer_session_add_ons')
         .select('id, total, created_at, full_name, seat_number, is_paid')
         .eq('full_name', fullName)
         .eq('seat_number', seatNumber)
-        .eq('is_paid', false)
-        .order('created_at', ascending: false);
+        .eq('is_paid', false);
+
+    if (submittedAtIso != null && submittedAtIso.trim().isNotEmpty) {
+      final submittedAt = DateTime.tryParse(submittedAtIso);
+      if (submittedAt != null) {
+        final fromIso = submittedAt
+            .subtract(const Duration(seconds: 20))
+            .toUtc()
+            .toIso8601String();
+        query = query.gte('created_at', fromIso);
+      }
+    }
+
+    final rows = await query.order('created_at', ascending: false);
 
     final ids = <String>[];
     double runningTotal = 0;
@@ -545,6 +558,10 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         break;
       }
     }
+
+    debugPrint(
+      '_findLatestAddOnRowIds => fullName=$fullName seat=$seatNumber total=$expectedTotal ids=$ids',
+    );
 
     return ids;
   }
@@ -584,6 +601,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       final fullName = fullNameController.text.trim();
       final seat = (selectedSeat ?? '').trim();
       final computedTotal = _round2(totalAmount);
+      final submittedAtIso = DateTime.now().toUtc().toIso8601String();
 
       String? addOnBookingCode;
       String? consignmentBookingCode;
@@ -622,6 +640,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
               fullName: fullName,
               seatNumber: seat,
               expectedTotal: computedTotal,
+              submittedAtIso: submittedAtIso,
             )
           : <String>[];
 
@@ -637,6 +656,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         addOnCount: _submittedAddOnCount,
         specialItemCount: _submittedSpecialItemCount,
         addOnRowIds: addOnRowIds,
+        submittedAtIso: submittedAtIso,
       );
 
       setState(() {
@@ -686,6 +706,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                       addOnCount: summary.addOnCount,
                       specialItemCount: summary.specialItemCount,
                       addOnRowIds: summary.addOnRowIds,
+                      submittedAtIso: summary.submittedAtIso,
                     );
                   });
 
@@ -734,7 +755,6 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         paymentSaving = true;
       });
 
-      // Save shared payment row only if booking code exists.
       if (order.bookingCode != null && order.bookingCode!.isNotEmpty) {
         await supabase.from('customer_order_payments').upsert({
           'booking_code': order.bookingCode,
@@ -765,8 +785,6 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       }
 
       bool sessionRowsUpdated = false;
-
-      // If addOnRowIds is empty, re-find the latest unpaid exact rows now.
       List<String> idsToUpdate = List<String>.from(order.addOnRowIds);
 
       if (idsToUpdate.isEmpty) {
@@ -774,13 +792,14 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           fullName: order.fullName,
           seatNumber: order.seatNumber,
           expectedTotal: order.orderTotal,
+          submittedAtIso: order.submittedAtIso,
         );
         debugPrint('Re-fetched addOnRowIds: $idsToUpdate');
       }
 
       if (isPaid && idsToUpdate.isNotEmpty) {
         for (int i = 0; i < idsToUpdate.length; i++) {
-          await supabase
+          final updatedRows = await supabase
               .from('customer_session_add_ons')
               .update({
                 'is_paid': true,
@@ -788,9 +807,62 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                 'gcash_amount': i == 0 ? gcash : 0,
                 'cash_amount': i == 0 ? cash : 0,
               })
-              .eq('id', idsToUpdate[i]);
+              .eq('id', idsToUpdate[i])
+              .select('id');
 
-          sessionRowsUpdated = true;
+          if ((updatedRows as List<dynamic>).isNotEmpty) {
+            sessionRowsUpdated = true;
+          }
+        }
+      }
+
+      if (!sessionRowsUpdated && isPaid) {
+        final fallbackRows = await supabase
+            .from('customer_session_add_ons')
+            .select('id, total, created_at')
+            .eq('full_name', order.fullName)
+            .eq('seat_number', order.seatNumber)
+            .eq('is_paid', false)
+            .order('created_at', ascending: false);
+
+        final fallbackIds = <String>[];
+        double runningTotal = 0;
+
+        for (final row in (fallbackRows as List<dynamic>)) {
+          final id = (row['id'] ?? '').toString();
+          final rowTotal = _toDouble(row['total']);
+
+          if (id.isEmpty) continue;
+
+          fallbackIds.add(id);
+          runningTotal = _round2(runningTotal + rowTotal);
+
+          if (runningTotal >= order.orderTotal) {
+            break;
+          }
+        }
+
+        debugPrint('Fallback idsToUpdate: $fallbackIds');
+
+        for (int i = 0; i < fallbackIds.length; i++) {
+          final updatedRows = await supabase
+              .from('customer_session_add_ons')
+              .update({
+                'is_paid': true,
+                'paid_at': paidAt,
+                'gcash_amount': i == 0 ? gcash : 0,
+                'cash_amount': i == 0 ? cash : 0,
+              })
+              .eq('id', fallbackIds[i])
+              .select('id');
+
+          if ((updatedRows as List<dynamic>).isNotEmpty) {
+            sessionRowsUpdated = true;
+          }
+        }
+
+        if (sessionRowsUpdated) {
+          idsToUpdate = fallbackIds;
         }
       }
 
@@ -808,6 +880,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           addOnCount: order.addOnCount,
           specialItemCount: order.specialItemCount,
           addOnRowIds: idsToUpdate,
+          submittedAtIso: order.submittedAtIso,
         );
 
         chatMessages = [
@@ -838,10 +911,11 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         context,
       ).showSnackBar(SnackBar(content: Text('Save payment failed: $e')));
     } finally {
-      if (!mounted) return;
-      setState(() {
-        paymentSaving = false;
-      });
+      if (mounted) {
+        setState(() {
+          paymentSaving = false;
+        });
+      }
     }
   }
 
