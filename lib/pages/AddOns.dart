@@ -36,6 +36,38 @@ class OrderRowData {
   double get subtotal => (item?.price ?? 0) * quantity;
 }
 
+class ChatMessage {
+  final String text;
+  final bool isUser;
+  final bool showAvatar;
+  final Widget? bottomAction;
+
+  const ChatMessage({
+    required this.text,
+    required this.isUser,
+    this.showAvatar = true,
+    this.bottomAction,
+  });
+}
+
+class SubmittedOrderSummary {
+  final String? bookingCode;
+  final String fullName;
+  final String seatNumber;
+  final double orderTotal;
+  final int addOnCount;
+  final int specialItemCount;
+
+  const SubmittedOrderSummary({
+    required this.bookingCode,
+    required this.fullName,
+    required this.seatNumber,
+    required this.orderTotal,
+    required this.addOnCount,
+    required this.specialItemCount,
+  });
+}
+
 class AddOnsPage extends StatefulWidget {
   const AddOnsPage({super.key});
 
@@ -49,15 +81,25 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
   final TextEditingController fullNameController = TextEditingController();
   final ScrollController scrollController = ScrollController();
 
+  final TextEditingController gcashController = TextEditingController(
+    text: '0',
+  );
+  final TextEditingController cashController = TextEditingController(text: '0');
+
   String? selectedSeat;
   bool isLoading = true;
   bool isSubmitting = false;
   bool showForm = false;
-  bool submitted = false;
+  bool paymentSaving = false;
+  bool formLocked = false;
 
   List<CatalogItem> addOnItems = [];
   List<CatalogItem> otherItems = [];
   List<OrderRowData> orderRows = [OrderRowData()];
+
+  List<ChatMessage> chatMessages = [];
+
+  SubmittedOrderSummary? submittedOrder;
 
   late final AnimationController pageController;
   late final Animation<double> fadeAnim;
@@ -79,9 +121,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       '10',
       '11',
     ],
-
     'TATAMI AREA': ['12A', '12B', '12C'],
-
     '2ndF': [
       '13',
       '14',
@@ -97,7 +137,6 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       '24',
       '25',
     ],
-
     'CONFERENCE ROOM': ['CONFERENCE ROOM'],
   };
 
@@ -123,6 +162,18 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     pageController.forward();
     _loadCatalog();
 
+    chatMessages = [
+      const ChatMessage(
+        text: 'You selected Add-Ons 🍔',
+        isUser: true,
+        showAvatar: false,
+      ),
+      const ChatMessage(
+        text: 'Please fill up the order details below.',
+        isUser: false,
+      ),
+    ];
+
     Future.delayed(const Duration(milliseconds: 250), () {
       if (!mounted) return;
       setState(() {
@@ -135,6 +186,8 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
   void dispose() {
     fullNameController.dispose();
     scrollController.dispose();
+    gcashController.dispose();
+    cashController.dispose();
     pageController.dispose();
     super.dispose();
   }
@@ -244,6 +297,16 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     return int.tryParse(value.toString()) ?? 0;
   }
 
+  double _moneyFromText(String value) {
+    return double.tryParse(value.trim()) ?? 0;
+  }
+
+  double _round2(num value) {
+    return double.parse(value.toStringAsFixed(2));
+  }
+
+  String _money(double value) => '₱${_round2(value).toStringAsFixed(2)}';
+
   List<CatalogItem> itemsForCategory(String category) {
     if (category == 'SPECIAL ITEM') return otherItems;
     return addOnItems.where((e) => e.category == category).toList();
@@ -349,8 +412,81 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       fullNameController.clear();
       selectedSeat = null;
       orderRows = [OrderRowData()];
-      submitted = false;
+      submittedOrder = null;
+      gcashController.text = '0';
+      cashController.text = '0';
+      showForm = true;
+      formLocked = false;
+
+      chatMessages = [
+        const ChatMessage(
+          text: 'You selected Add-Ons 🍔',
+          isUser: true,
+          showAvatar: false,
+        ),
+        const ChatMessage(
+          text: 'Please fill up the order details below.',
+          isUser: false,
+        ),
+      ];
     });
+    _scrollToBottom();
+  }
+
+  Future<String?> _findLatestBookingCode() async {
+    try {
+      final addonRows = await supabase
+          .from('addon_orders')
+          .select('booking_code, created_at')
+          .order('created_at', ascending: false)
+          .limit(10);
+
+      final consignmentRows = await supabase
+          .from('consignment_orders')
+          .select('booking_code, created_at')
+          .order('created_at', ascending: false)
+          .limit(10);
+
+      final merged = <Map<String, dynamic>>[
+        ...List<Map<String, dynamic>>.from(addonRows as List),
+        ...List<Map<String, dynamic>>.from(consignmentRows as List),
+      ];
+
+      if (merged.isEmpty) return null;
+
+      merged.sort((a, b) {
+        final aTime =
+            DateTime.tryParse('${a['created_at']}')?.millisecondsSinceEpoch ??
+            0;
+        final bTime =
+            DateTime.tryParse('${b['created_at']}')?.millisecondsSinceEpoch ??
+            0;
+        return bTime.compareTo(aTime);
+      });
+
+      final latestCode = (merged.first['booking_code'] ?? '').toString().trim();
+      if (latestCode.isEmpty) return null;
+
+      return latestCode.toUpperCase();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  int get _submittedAddOnCount {
+    int count = 0;
+    for (final row in orderRows) {
+      if (row.item?.kind == CatalogKind.addOn) count += row.quantity;
+    }
+    return count;
+  }
+
+  int get _submittedSpecialItemCount {
+    int count = 0;
+    for (final row in orderRows) {
+      if (row.item?.kind == CatalogKind.otherItems) count += row.quantity;
+    }
+    return count;
   }
 
   Future<void> submitOrder() async {
@@ -385,34 +521,104 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         }
       }
 
+      final fullName = fullNameController.text.trim();
+      final seat = (selectedSeat ?? '').trim();
+      final computedTotal = _round2(totalAmount);
+
+      String? addOnBookingCode;
+      String? consignmentBookingCode;
+
       if (addOnPayload.isNotEmpty) {
-        await supabase.rpc(
-          'place_addon_order', // ✅ tamang function
+        final addOnRes = await supabase.rpc(
+          'place_addon_order',
           params: {
-            'p_full_name': fullNameController.text.trim(),
-            'p_seat_number': selectedSeat,
-            'p_items': addOnPayload, // ✅ tamang payload
+            'p_full_name': fullName,
+            'p_seat_number': seat,
+            'p_items': addOnPayload,
           },
         );
+
+        if (addOnRes is Map && addOnRes['booking_code'] != null) {
+          addOnBookingCode = addOnRes['booking_code']
+              .toString()
+              .trim()
+              .toUpperCase();
+        }
       }
 
       if (otherItemsPayload.isNotEmpty) {
-        await supabase.rpc(
+        final consignmentRes = await supabase.rpc(
           'place_consignment_order',
           params: {
-            'p_full_name': fullNameController.text.trim(),
-            'p_seat_number': selectedSeat,
+            'p_full_name': fullName,
+            'p_seat_number': seat,
             'p_items': otherItemsPayload,
           },
         );
+
+        if (consignmentRes is Map && consignmentRes['booking_code'] != null) {
+          consignmentBookingCode = consignmentRes['booking_code']
+              .toString()
+              .trim()
+              .toUpperCase();
+        }
       }
+
+      String? resolvedBookingCode = addOnBookingCode ?? consignmentBookingCode;
+
+      resolvedBookingCode ??= await _findLatestBookingCode();
 
       await _loadCatalog();
 
       if (!mounted) return;
+
+      final summary = SubmittedOrderSummary(
+        bookingCode: resolvedBookingCode,
+        fullName: fullName,
+        seatNumber: seat,
+        orderTotal: computedTotal,
+        addOnCount: _submittedAddOnCount,
+        specialItemCount: _submittedSpecialItemCount,
+      );
+
       setState(() {
-        submitted = true;
+        submittedOrder = summary;
+        gcashController.text = '0';
+        cashController.text = '0';
+        formLocked = true;
+        // hide form after submit
+        showForm = false;
+
+        chatMessages.add(
+          ChatMessage(
+            text:
+                'Order submitted successfully ✅\n\n'
+                'Customer: ${summary.fullName}\n'
+                'Seat: ${summary.seatNumber}\n'
+                'Add-Ons found: ${summary.addOnCount}\n'
+                'Special Item found: ${summary.specialItemCount}\n'
+                'Total Order: ${_money(summary.orderTotal)}\n'
+                'Amount Due: ${_money(summary.orderTotal)}',
+            isUser: false,
+            bottomAction: Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed:
+                      (summary.bookingCode == null ||
+                          summary.bookingCode!.isEmpty)
+                      ? null
+                      : _showPaymentDialog,
+                  style: AddOnsStyles.primaryButton,
+                  child: const Text('PAY NOW'),
+                ),
+              ),
+            ),
+          ),
+        );
       });
+
       _scrollToBottom();
     } catch (e) {
       if (!mounted) return;
@@ -427,11 +633,243 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     });
   }
 
+  Future<void> _savePayment() async {
+    final order = submittedOrder;
+    if (order == null ||
+        order.bookingCode == null ||
+        order.bookingCode!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Booking code not found for this order.')),
+      );
+      return;
+    }
+
+    final gcash = _round2(_moneyFromText(gcashController.text));
+    final cash = _round2(_moneyFromText(cashController.text));
+    final totalPaid = _round2(gcash + cash);
+    final isPaid = totalPaid >= order.orderTotal;
+    final paidAt = isPaid ? DateTime.now().toUtc().toIso8601String() : null;
+    final diff = _round2(totalPaid - order.orderTotal);
+
+    try {
+      setState(() {
+        paymentSaving = true;
+      });
+
+      await supabase.from('customer_order_payments').upsert({
+        'booking_code': order.bookingCode,
+        'full_name': order.fullName,
+        'seat_number': order.seatNumber,
+        'order_total': order.orderTotal,
+        'gcash_amount': gcash,
+        'cash_amount': cash,
+        'is_paid': isPaid,
+        'paid_at': paidAt,
+      }, onConflict: 'booking_code');
+
+      try {
+        await supabase.rpc(
+          'pay_addon_order_by_booking_code',
+          params: {
+            'p_booking_code': order.bookingCode,
+            'p_full_name': order.fullName,
+            'p_seat_number': order.seatNumber,
+            'p_order_total': order.orderTotal,
+            'p_gcash_amount': gcash,
+            'p_cash_amount': cash,
+          },
+        );
+      } catch (_) {}
+
+      if (!mounted) return;
+
+      setState(() {
+        formLocked = false;
+        chatMessages.add(
+          ChatMessage(
+            text: isPaid
+                ? 'Order payment successful ✅\n\n'
+                      'GCash: ${_money(gcash)}\n'
+                      'Cash: ${_money(cash)}\n'
+                      'Total Paid: ${_money(totalPaid)}\n'
+                      'Change: ${_money(diff < 0 ? 0 : diff)}\n'
+                      'Status: PAID\n\n'
+                      'Thank you! 😊'
+                : 'Order payment saved ✅\n\n'
+                      'GCash: ${_money(gcash)}\n'
+                      'Cash: ${_money(cash)}\n'
+                      'Total Paid: ${_money(totalPaid)}\n'
+                      'Remaining: ${_money(diff < 0 ? diff.abs() : 0)}\n'
+                      'Status: UNPAID\n\n'
+                      'You may complete the remaining balance later.',
+            isUser: false,
+          ),
+        );
+      });
+
+      _scrollToBottom();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Save payment failed: $e')));
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        paymentSaving = false;
+      });
+    }
+  }
+
+  Future<void> _showPaymentDialog() async {
+    final order = submittedOrder;
+    if (order == null) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !paymentSaving,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final due = _round2(order.orderTotal);
+            final g = _round2(_moneyFromText(gcashController.text));
+            final c = _round2(_moneyFromText(cashController.text));
+            final totalPaid = _round2(g + c);
+            final diff = _round2(totalPaid - due);
+            final isPaidAuto = totalPaid >= due;
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 20,
+              ),
+              child: Center(
+                child: Container(
+                  width: 420,
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  padding: const EdgeInsets.all(18),
+                  decoration: AddOnsStyles.modalCard,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('PAYMENT', style: AddOnsStyles.title),
+                      const SizedBox(height: 6),
+                      Text(order.fullName, style: AddOnsStyles.subtitle),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: AddOnsStyles.formCard,
+                        child: Column(
+                          children: [
+                            _paymentLine('Payment Due', _money(due)),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: gcashController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              decoration: AddOnsStyles.inputDecoration(
+                                hintText: 'GCash',
+                              ).copyWith(labelText: 'GCash'),
+                              onChanged: (_) => setModalState(() {}),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: cashController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              decoration: AddOnsStyles.inputDecoration(
+                                hintText: 'Cash',
+                              ).copyWith(labelText: 'Cash'),
+                              onChanged: (_) => setModalState(() {}),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: AddOnsStyles.formCard,
+                        child: Column(
+                          children: [
+                            _paymentLine('Total Paid', _money(totalPaid)),
+                            const SizedBox(height: 8),
+                            _paymentLine(
+                              diff >= 0 ? 'Change' : 'Remaining',
+                              _money(diff >= 0 ? diff : diff.abs()),
+                            ),
+                            const SizedBox(height: 8),
+                            _paymentLine(
+                              'Auto Status',
+                              isPaidAuto ? 'PAID' : 'UNPAID',
+                              valueColor: isPaidAuto
+                                  ? AddOnsStyles.primaryDark
+                                  : Colors.deepOrange,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: paymentSaving
+                                  ? null
+                                  : () => Navigator.pop(context),
+                              style: AddOnsStyles.secondaryButton,
+                              child: const Text('Cancel'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: paymentSaving
+                                  ? null
+                                  : () async {
+                                      Navigator.pop(context);
+                                      await _savePayment();
+                                    },
+                              style: AddOnsStyles.primaryButton,
+                              child: Text(paymentSaving ? 'Saving...' : 'Save'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _paymentLine(String label, String value, {Color? valueColor}) {
+    return Row(
+      children: [
+        Expanded(child: Text(label, style: AddOnsStyles.mutedText)),
+        Text(
+          value,
+          style: AddOnsStyles.sectionTitle.copyWith(
+            color: valueColor ?? AddOnsStyles.textDark,
+          ),
+        ),
+      ],
+    );
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!scrollController.hasClients) return;
       scrollController.animateTo(
-        scrollController.position.maxScrollExtent + 260,
+        scrollController.position.maxScrollExtent + 360,
         duration: const Duration(milliseconds: 320),
         curve: Curves.easeOut,
       );
@@ -465,18 +903,34 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget buildAiBubble({required String text, bool showAvatar = true}) {
+  Widget buildAiBubble({
+    required String text,
+    bool showAvatar = true,
+    Widget? bottomAction,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (showAvatar) ...[buildLogo(38), const SizedBox(width: 8)],
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: AddOnsStyles.aiBubble,
-              child: Text(text, style: AddOnsStyles.aiText),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  decoration: AddOnsStyles.aiBubble,
+                  child: Text(text, style: AddOnsStyles.aiText),
+                ),
+                if (bottomAction != null) ...[
+                  const SizedBox(height: 10),
+                  bottomAction,
+                ],
+              ],
             ),
           ),
         ],
@@ -518,7 +972,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         const SizedBox(height: 8),
         InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTap: onTap,
+          onTap: formLocked ? null : onTap,
           child: InputDecorator(
             decoration: AddOnsStyles.inputDecoration(
               hintText: hasValue ? valueText : (emptyText ?? 'Select $label'),
@@ -535,8 +989,6 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                       color: valueText == 'SPECIAL ITEM'
                           ? Colors.orangeAccent
                           : AddOnsStyles.textDark,
-
-                      // 🔥 GLOW EFFECT
                       shadows: valueText == 'SPECIAL ITEM'
                           ? [
                               Shadow(
@@ -597,7 +1049,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
             label: 'Category',
             valueText: row.category ?? '',
             emptyText: 'Choose category',
-            onTap: () => pickCategory(index),
+            onTap: formLocked ? () {} : () => pickCategory(index),
           ),
           const SizedBox(height: 14),
           buildField(
@@ -609,7 +1061,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                 : '${item.name} (${item.size})',
             emptyText: 'Choose item',
             icon: Icons.inventory_2_rounded,
-            onTap: () => pickItem(index),
+            onTap: formLocked ? () {} : () => pickItem(index),
           ),
           if (item != null) ...[
             const SizedBox(height: 14),
@@ -677,7 +1129,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                   width: 48,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: () => changeQty(index, row.quantity - 1),
+                    onPressed: formLocked
+                        ? null
+                        : () => changeQty(index, row.quantity - 1),
                     style: AddOnsStyles.secondaryButton,
                     child: const Icon(Icons.remove),
                   ),
@@ -699,7 +1153,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                   width: 48,
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: () => changeQty(index, row.quantity + 1),
+                    onPressed: formLocked
+                        ? null
+                        : () => changeQty(index, row.quantity + 1),
                     style: AddOnsStyles.primaryButton,
                     child: const Icon(Icons.add),
                   ),
@@ -820,11 +1276,14 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                             : ListView(
                                 controller: scrollController,
                                 children: [
-                                  buildSuccessBubble('You selected Add-Ons 🍔'),
-                                  buildAiBubble(
-                                    text:
-                                        'Please fill up the order details below.',
-                                  ),
+                                  for (final msg in chatMessages)
+                                    msg.isUser
+                                        ? buildSuccessBubble(msg.text)
+                                        : buildAiBubble(
+                                            text: msg.text,
+                                            showAvatar: msg.showAvatar,
+                                            bottomAction: msg.bottomAction,
+                                          ),
                                   if (showForm) ...[
                                     const SizedBox(height: 8),
                                     AnimatedOpacity(
@@ -853,6 +1312,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                                             const SizedBox(height: 8),
                                             TextField(
                                               controller: fullNameController,
+                                              enabled: !formLocked,
                                               decoration:
                                                   AddOnsStyles.inputDecoration(
                                                     hintText: 'Enter full name',
@@ -906,7 +1366,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                                               children: [
                                                 Expanded(
                                                   child: ElevatedButton(
-                                                    onPressed: addMoreOrder,
+                                                    onPressed: formLocked
+                                                        ? null
+                                                        : addMoreOrder,
                                                     style: AddOnsStyles
                                                         .secondaryButton,
                                                     child: const Text(
@@ -921,7 +1383,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                                               children: [
                                                 Expanded(
                                                   child: ElevatedButton(
-                                                    onPressed: isSubmitting
+                                                    onPressed:
+                                                        (isSubmitting ||
+                                                            formLocked)
                                                         ? null
                                                         : submitOrder,
                                                     style: AddOnsStyles
@@ -953,26 +1417,6 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                                           ],
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                  if (submitted) ...[
-                                    const SizedBox(height: 12),
-
-                                    buildAiBubble(
-                                      text:
-                                          'Your order, ${fullNameController.text.trim()}, was successful.',
-                                      showAvatar: true,
-                                    ),
-
-                                    buildAiBubble(
-                                      text:
-                                          'You may then proceed to the counter for pickup and payment.',
-                                      showAvatar: true,
-                                    ),
-
-                                    buildAiBubble(
-                                      text: 'Thank you! 😊',
-                                      showAvatar: true,
                                     ),
                                   ],
                                 ],
@@ -1086,8 +1530,6 @@ class _SelectionSheet<T> extends StatelessWidget {
                               color: item.label == 'SPECIAL ITEM'
                                   ? Colors.orangeAccent
                                   : AddOnsStyles.textDark,
-
-                              // 🔥 GLOW
                               shadows: item.label == 'SPECIAL ITEM'
                                   ? [
                                       Shadow(
@@ -1158,121 +1600,106 @@ class _SeatPickerSheetState extends State<_SeatPickerSheet> {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 620,
-          child: Column(
-            children: [
-              Container(
-                width: 48,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(999),
-                ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 48,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(999),
               ),
-              const SizedBox(height: 14),
-              Text('Seat Number', style: AddOnsStyles.sectionTitle),
-              const SizedBox(height: 14),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: widget.seatGroups.entries.map((entry) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 18),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(14),
-                          decoration: AddOnsStyles.seatPanel,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                entry.key,
-                                style: AddOnsStyles.seatGroupTitle,
-                              ),
-                              const SizedBox(height: 12),
-                              Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: entry.value.map((seat) {
-                                  final isSelected = selected == seat;
-                                  return GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        selected = seat;
-                                      });
-                                    },
-                                    child: AnimatedContainer(
-                                      duration: const Duration(
-                                        milliseconds: 180,
-                                      ),
-                                      width: 66,
-                                      height: 42,
-                                      alignment: Alignment.center,
-                                      decoration: isSelected
-                                          ? AddOnsStyles.selectedSeatBox
-                                          : AddOnsStyles.seatBox,
-                                      child: Text(
-                                        seat,
-                                        style: isSelected
-                                            ? AddOnsStyles.selectedSeatText
-                                            : AddOnsStyles.seatText,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Select Seat',
+              style: AddOnsStyles.sectionTitle.copyWith(fontSize: 18),
+            ),
+            const SizedBox(height: 14),
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: widget.seatGroups.entries.map((entry) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.all(14),
+                      decoration: AddOnsStyles.seatPanel,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(entry.key, style: AddOnsStyles.seatGroupTitle),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: entry.value.map((seat) {
+                              final isSelected = selected == seat;
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    selected = seat;
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 12,
+                                  ),
+                                  decoration: isSelected
+                                      ? AddOnsStyles.selectedSeatBox
+                                      : AddOnsStyles.seatBox,
+                                  child: Text(
+                                    seat,
+                                    style: isSelected
+                                        ? AddOnsStyles.selectedSeatText
+                                        : AddOnsStyles.seatText,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                           ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
                 ),
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: selected == null
-                          ? null
-                          : () => Navigator.pop(context, selected),
-                      style: AddOnsStyles.primaryButton,
-                      child: const Text('Done'),
-                    ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: AddOnsStyles.secondaryButton,
+                    child: const Text('Close'),
                   ),
-                ],
-              ),
-            ],
-          ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: selected == null
+                        ? null
+                        : () => Navigator.pop(context, selected),
+                    style: AddOnsStyles.primaryButton,
+                    child: const Text('Select'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _ItemPickerSheet extends StatefulWidget {
+class _ItemPickerSheet extends StatelessWidget {
   final String title;
   final List<CatalogItem> items;
 
   const _ItemPickerSheet({required this.title, required this.items});
-
-  @override
-  State<_ItemPickerSheet> createState() => _ItemPickerSheetState();
-}
-
-class _ItemPickerSheetState extends State<_ItemPickerSheet> {
-  final TextEditingController searchController = TextEditingController();
-
-  List<CatalogItem> get filteredItems {
-    final q = searchController.text.trim().toLowerCase();
-    if (q.isEmpty) return widget.items;
-    return widget.items.where((e) {
-      return e.name.toLowerCase().contains(q) ||
-          (e.size ?? '').toLowerCase().contains(q);
-    }).toList();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1281,7 +1708,7 @@ class _ItemPickerSheetState extends State<_ItemPickerSheet> {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
       decoration: BoxDecoration(
         color: AddOnsStyles.cardBg,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.16),
@@ -1292,110 +1719,91 @@ class _ItemPickerSheetState extends State<_ItemPickerSheet> {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 680,
-          child: Column(
-            children: [
-              Container(
-                width: 48,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(999),
-                ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 48,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(999),
               ),
-              const SizedBox(height: 14),
-              Text(widget.title, style: AddOnsStyles.sectionTitle),
-              const SizedBox(height: 14),
-              TextField(
-                controller: searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: AddOnsStyles.inputDecoration(
-                  hintText: 'Search item...',
-                  suffixIcon: const Icon(Icons.search_rounded),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Expanded(
-                child: filteredItems.isEmpty
-                    ? const Center(child: Text('No available items.'))
-                    : ListView.separated(
-                        itemCount: filteredItems.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final item = filteredItems[index];
-
-                          return InkWell(
-                            borderRadius: BorderRadius.circular(18),
-                            onTap: () => Navigator.pop(context, item),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: AddOnsStyles.sectionCard,
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 64,
-                                    height: 64,
-                                    decoration: AddOnsStyles.imageBox,
-                                    clipBehavior: Clip.antiAlias,
-                                    child:
-                                        item.imageUrl != null &&
-                                            item.imageUrl!.trim().isNotEmpty
-                                        ? Image.network(
-                                            item.imageUrl!,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) {
-                                              return const Icon(
-                                                Icons
-                                                    .image_not_supported_outlined,
-                                              );
-                                            },
-                                          )
-                                        : const Icon(
-                                            Icons.image_outlined,
-                                            size: 30,
-                                          ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          item.name,
-                                          style: AddOnsStyles.sectionTitle,
-                                        ),
-                                        if (item.size != null &&
-                                            item.size!.trim().isNotEmpty) ...[
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Size: ${item.size}',
-                                            style: AddOnsStyles.mutedText,
-                                          ),
-                                        ],
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Remaining: ${item.stocks}',
-                                          style: AddOnsStyles.mutedText,
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          '₱${item.price.toStringAsFixed(2)}',
-                                          style: AddOnsStyles.priceText,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              title,
+              style: AddOnsStyles.sectionTitle.copyWith(fontSize: 18),
+            ),
+            const SizedBox(height: 14),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(18),
+                    onTap: () => Navigator.pop(context, item),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: AddOnsStyles.formCard,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 58,
+                            height: 58,
+                            decoration: AddOnsStyles.imageBox,
+                            clipBehavior: Clip.antiAlias,
+                            child:
+                                item.imageUrl != null &&
+                                    item.imageUrl!.trim().isNotEmpty
+                                ? Image.network(
+                                    item.imageUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        const Icon(Icons.image_outlined),
+                                  )
+                                : const Icon(Icons.image_outlined),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.name,
+                                  style: AddOnsStyles.sectionTitle,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  item.size == null || item.size!.trim().isEmpty
+                                      ? item.category
+                                      : '${item.category} • ${item.size}',
+                                  style: AddOnsStyles.mutedText,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Stocks: ${item.stocks}',
+                                  style: AddOnsStyles.mutedText,
+                                ),
+                              ],
                             ),
-                          );
-                        },
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            '₱${item.price.toStringAsFixed(2)}',
+                            style: AddOnsStyles.priceText,
+                          ),
+                        ],
                       ),
+                    ),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
