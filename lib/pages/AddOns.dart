@@ -57,6 +57,7 @@ class SubmittedOrderSummary {
   final double orderTotal;
   final int addOnCount;
   final int specialItemCount;
+  final List<String> addOnRowIds;
 
   const SubmittedOrderSummary({
     required this.bookingCode,
@@ -65,6 +66,7 @@ class SubmittedOrderSummary {
     required this.orderTotal,
     required this.addOnCount,
     required this.specialItemCount,
+    required this.addOnRowIds,
   });
 }
 
@@ -80,7 +82,6 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
   final TextEditingController fullNameController = TextEditingController();
   final ScrollController scrollController = ScrollController();
-
   final TextEditingController gcashController = TextEditingController(
     text: '0',
   );
@@ -96,7 +97,6 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
   List<CatalogItem> addOnItems = [];
   List<CatalogItem> otherItems = [];
   List<OrderRowData> orderRows = [OrderRowData()];
-
   List<ChatMessage> chatMessages = [];
 
   SubmittedOrderSummary? submittedOrder;
@@ -162,17 +162,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     pageController.forward();
     _loadCatalog();
 
-    chatMessages = [
-      const ChatMessage(
-        text: 'You selected Add-Ons 🍔',
-        isUser: true,
-        showAvatar: false,
-      ),
-      const ChatMessage(
-        text: 'Please fill up the order details below.',
-        isUser: false,
-      ),
-    ];
+    chatMessages = [];
 
     Future.delayed(const Duration(milliseconds: 250), () {
       if (!mounted) return;
@@ -418,19 +408,44 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       showForm = true;
       formLocked = false;
 
-      chatMessages = [
-        const ChatMessage(
-          text: 'You selected Add-Ons 🍔',
-          isUser: true,
-          showAvatar: false,
-        ),
-        const ChatMessage(
-          text: 'Please fill up the order details below.',
-          isUser: false,
-        ),
-      ];
+      chatMessages = [];
     });
     _scrollToBottom();
+  }
+
+  String? _extractBookingCode(dynamic value) {
+    if (value == null) return null;
+
+    if (value is String) {
+      final code = value.trim().toUpperCase();
+      return code.isEmpty ? null : code;
+    }
+
+    if (value is Map) {
+      final map = Map<String, dynamic>.from(value);
+      final code = (map['booking_code'] ?? '').toString().trim().toUpperCase();
+      return code.isEmpty ? null : code;
+    }
+
+    if (value is List && value.isNotEmpty) {
+      final first = value.first;
+
+      if (first is Map) {
+        final map = Map<String, dynamic>.from(first);
+        final code = (map['booking_code'] ?? '')
+            .toString()
+            .trim()
+            .toUpperCase();
+        return code.isEmpty ? null : code;
+      }
+
+      if (first is String) {
+        final code = first.trim().toUpperCase();
+        return code.isEmpty ? null : code;
+      }
+    }
+
+    return null;
   }
 
   Future<String?> _findLatestBookingCode() async {
@@ -447,10 +462,23 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           .order('created_at', ascending: false)
           .limit(10);
 
-      final merged = <Map<String, dynamic>>[
-        ...List<Map<String, dynamic>>.from(addonRows as List),
-        ...List<Map<String, dynamic>>.from(consignmentRows as List),
-      ];
+      final merged = <Map<String, dynamic>>[];
+
+      if (addonRows is List) {
+        for (final row in addonRows) {
+          if (row is Map) {
+            merged.add(Map<String, dynamic>.from(row));
+          }
+        }
+      }
+
+      if (consignmentRows is List) {
+        for (final row in consignmentRows) {
+          if (row is Map) {
+            merged.add(Map<String, dynamic>.from(row));
+          }
+        }
+      }
 
       if (merged.isEmpty) return null;
 
@@ -464,10 +492,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         return bTime.compareTo(aTime);
       });
 
-      final latestCode = (merged.first['booking_code'] ?? '').toString().trim();
-      if (latestCode.isEmpty) return null;
-
-      return latestCode.toUpperCase();
+      return _extractBookingCode(merged.first);
     } catch (_) {
       return null;
     }
@@ -487,6 +512,39 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       if (row.item?.kind == CatalogKind.otherItems) count += row.quantity;
     }
     return count;
+  }
+
+  Future<List<String>> _findLatestAddOnRowIds({
+    required String fullName,
+    required String seatNumber,
+    required double expectedTotal,
+  }) async {
+    final rows = await supabase
+        .from('customer_session_add_ons')
+        .select('id, total, created_at, full_name, seat_number, is_paid')
+        .eq('full_name', fullName)
+        .eq('seat_number', seatNumber)
+        .eq('is_paid', false)
+        .order('created_at', ascending: false);
+
+    final ids = <String>[];
+    double runningTotal = 0;
+
+    for (final row in (rows as List<dynamic>)) {
+      final id = (row['id'] ?? '').toString();
+      final rowTotal = _toDouble(row['total']);
+
+      if (id.isEmpty) continue;
+
+      ids.add(id);
+      runningTotal = _round2(runningTotal + rowTotal);
+
+      if (runningTotal >= expectedTotal) {
+        break;
+      }
+    }
+
+    return ids;
   }
 
   Future<void> submitOrder() async {
@@ -538,12 +596,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           },
         );
 
-        if (addOnRes is Map && addOnRes['booking_code'] != null) {
-          addOnBookingCode = addOnRes['booking_code']
-              .toString()
-              .trim()
-              .toUpperCase();
-        }
+        addOnBookingCode = _extractBookingCode(addOnRes);
       }
 
       if (otherItemsPayload.isNotEmpty) {
@@ -556,17 +609,19 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           },
         );
 
-        if (consignmentRes is Map && consignmentRes['booking_code'] != null) {
-          consignmentBookingCode = consignmentRes['booking_code']
-              .toString()
-              .trim()
-              .toUpperCase();
-        }
+        consignmentBookingCode = _extractBookingCode(consignmentRes);
       }
 
       String? resolvedBookingCode = addOnBookingCode ?? consignmentBookingCode;
-
       resolvedBookingCode ??= await _findLatestBookingCode();
+
+      final addOnRowIds = addOnPayload.isNotEmpty
+          ? await _findLatestAddOnRowIds(
+              fullName: fullName,
+              seatNumber: seat,
+              expectedTotal: computedTotal,
+            )
+          : <String>[];
 
       await _loadCatalog();
 
@@ -579,6 +634,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         orderTotal: computedTotal,
         addOnCount: _submittedAddOnCount,
         specialItemCount: _submittedSpecialItemCount,
+        addOnRowIds: addOnRowIds,
       );
 
       setState(() {
@@ -586,10 +642,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         gcashController.text = '0';
         cashController.text = '0';
         formLocked = true;
-        // hide form after submit
-        showForm = false;
+        showForm = true;
 
-        chatMessages.add(
+        chatMessages = [
           ChatMessage(
             text:
                 'Order submitted successfully ✅\n\n'
@@ -600,23 +655,46 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                 'Total Order: ${_money(summary.orderTotal)}\n'
                 'Amount Due: ${_money(summary.orderTotal)}',
             isUser: false,
-            bottomAction: Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed:
-                      (summary.bookingCode == null ||
-                          summary.bookingCode!.isEmpty)
-                      ? null
-                      : _showPaymentDialog,
-                  style: AddOnsStyles.primaryButton,
-                  child: const Text('PAY NOW'),
-                ),
+            bottomAction: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  String? code = summary.bookingCode;
+                  code ??= await _findLatestBookingCode();
+
+                  if (!mounted) return;
+
+                  if (code == null || code.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Booking code not found yet. Please try again.',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+
+                  setState(() {
+                    submittedOrder = SubmittedOrderSummary(
+                      bookingCode: code,
+                      fullName: summary.fullName,
+                      seatNumber: summary.seatNumber,
+                      orderTotal: summary.orderTotal,
+                      addOnCount: summary.addOnCount,
+                      specialItemCount: summary.specialItemCount,
+                      addOnRowIds: summary.addOnRowIds,
+                    );
+                  });
+
+                  await _showPaymentDialog();
+                },
+                style: AddOnsStyles.primaryButton,
+                child: const Text('PAY NOW'),
               ),
             ),
           ),
-        );
+        ];
       });
 
       _scrollToBottom();
@@ -679,15 +757,38 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
             'p_cash_amount': cash,
           },
         );
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('pay_addon_order_by_booking_code failed: $e');
+      }
+
+      bool sessionRowsUpdated = false;
+
+      if (isPaid && order.addOnRowIds.isNotEmpty) {
+        for (int i = 0; i < order.addOnRowIds.length; i++) {
+          await supabase
+              .from('customer_session_add_ons')
+              .update({
+                'is_paid': true,
+                'paid_at': paidAt,
+                'gcash_amount': i == 0 ? gcash : 0,
+                'cash_amount': i == 0 ? cash : 0,
+              })
+              .eq('id', order.addOnRowIds[i]);
+
+          sessionRowsUpdated = true;
+        }
+      }
 
       if (!mounted) return;
 
+      final reallyPaid =
+          isPaid && (order.addOnRowIds.isEmpty || sessionRowsUpdated);
+
       setState(() {
         formLocked = false;
-        chatMessages.add(
+        chatMessages = [
           ChatMessage(
-            text: isPaid
+            text: reallyPaid
                 ? 'Order payment successful ✅\n\n'
                       'GCash: ${_money(gcash)}\n'
                       'Cash: ${_money(cash)}\n'
@@ -695,16 +796,14 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                       'Change: ${_money(diff < 0 ? 0 : diff)}\n'
                       'Status: PAID\n\n'
                       'Thank you! 😊'
-                : 'Order payment saved ✅\n\n'
+                : 'Order payment saved but add-on rows were not marked paid yet ⚠️\n\n'
                       'GCash: ${_money(gcash)}\n'
                       'Cash: ${_money(cash)}\n'
                       'Total Paid: ${_money(totalPaid)}\n'
-                      'Remaining: ${_money(diff < 0 ? diff.abs() : 0)}\n'
-                      'Status: UNPAID\n\n'
-                      'You may complete the remaining balance later.',
+                      'Please refresh and check the matching rows.',
             isUser: false,
           ),
-        );
+        ];
       });
 
       _scrollToBottom();
@@ -915,22 +1014,19 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         children: [
           if (showAvatar) ...[buildLogo(38), const SizedBox(width: 8)],
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  decoration: AddOnsStyles.aiBubble,
-                  child: Text(text, style: AddOnsStyles.aiText),
-                ),
-                if (bottomAction != null) ...[
-                  const SizedBox(height: 10),
-                  bottomAction,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: AddOnsStyles.aiBubble,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(text, style: AddOnsStyles.aiText),
+                  if (bottomAction != null) ...[
+                    const SizedBox(height: 12),
+                    bottomAction,
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ],
@@ -1033,11 +1129,13 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                 SizedBox(
                   height: 40,
                   child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        orderRows.removeAt(index);
-                      });
-                    },
+                    onPressed: formLocked
+                        ? null
+                        : () {
+                            setState(() {
+                              orderRows.removeAt(index);
+                            });
+                          },
                     style: AddOnsStyles.dangerButton,
                     child: const Text('Remove'),
                   ),
@@ -1276,14 +1374,12 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                             : ListView(
                                 controller: scrollController,
                                 children: [
-                                  for (final msg in chatMessages)
-                                    msg.isUser
-                                        ? buildSuccessBubble(msg.text)
-                                        : buildAiBubble(
-                                            text: msg.text,
-                                            showAvatar: msg.showAvatar,
-                                            bottomAction: msg.bottomAction,
-                                          ),
+                                  buildSuccessBubble('You selected Add-Ons 🍔'),
+                                  buildAiBubble(
+                                    text:
+                                        'Please fill up the order details below.',
+                                  ),
+
                                   if (showForm) ...[
                                     const SizedBox(height: 8),
                                     AnimatedOpacity(
@@ -1419,6 +1515,15 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                                       ),
                                     ),
                                   ],
+                                  const SizedBox(height: 10),
+                                  for (final msg in chatMessages)
+                                    msg.isUser
+                                        ? buildSuccessBubble(msg.text)
+                                        : buildAiBubble(
+                                            text: msg.text,
+                                            showAvatar: msg.showAvatar,
+                                            bottomAction: msg.bottomAction,
+                                          ),
                                 ],
                               ),
                       ),
