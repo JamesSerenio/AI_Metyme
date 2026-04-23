@@ -58,6 +58,7 @@ class SubmittedOrderSummary {
   final int addOnCount;
   final int specialItemCount;
   final List<String> addOnRowIds;
+  final List<String> consignmentRowIds;
   final String submittedAtIso;
 
   const SubmittedOrderSummary({
@@ -68,6 +69,7 @@ class SubmittedOrderSummary {
     required this.addOnCount,
     required this.specialItemCount,
     required this.addOnRowIds,
+    required this.consignmentRowIds,
     required this.submittedAtIso,
   });
 }
@@ -340,6 +342,8 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     );
 
     if (result != null) {
+      debugPrint('PICKED CATEGORY => $result');
+
       setState(() {
         orderRows[index].category = result;
         orderRows[index].item = null;
@@ -372,6 +376,10 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     );
 
     if (result != null) {
+      debugPrint(
+        'PICKED ITEM => id=${result.id}, name=${result.name}, category=${result.category}, kind=${result.kind}',
+      );
+
       setState(() {
         orderRows[index].item = result;
         orderRows[index].quantity = 1;
@@ -419,7 +427,14 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     if (value == null) return null;
 
     if (value is String) {
-      final code = value.trim().toUpperCase();
+      final raw = value.trim();
+      final isUuid = RegExp(
+        r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+      ).hasMatch(raw);
+
+      if (isUuid) return null;
+
+      final code = raw.toUpperCase();
       return code.isEmpty ? null : code;
     }
 
@@ -448,6 +463,17 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     }
 
     return null;
+  }
+
+  String? _extractUuid(dynamic value) {
+    if (value == null) return null;
+
+    final raw = value.toString().trim();
+    final isUuid = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+    ).hasMatch(raw);
+
+    return isUuid ? raw : null;
   }
 
   Future<String?> _findLatestBookingCode() async {
@@ -566,6 +592,59 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     return ids;
   }
 
+  Future<List<String>> _findLatestConsignmentRowIds({
+    required String fullName,
+    required String seatNumber,
+    required double expectedTotal,
+    String? submittedAtIso,
+  }) async {
+    var query = supabase
+        .from('customer_session_consignment')
+        .select(
+          'id, total, created_at, full_name, seat_number, is_paid, voided',
+        )
+        .eq('full_name', fullName)
+        .eq('seat_number', seatNumber)
+        .eq('is_paid', false)
+        .eq('voided', false);
+
+    if (submittedAtIso != null && submittedAtIso.trim().isNotEmpty) {
+      final submittedAt = DateTime.tryParse(submittedAtIso);
+      if (submittedAt != null) {
+        final fromIso = submittedAt
+            .subtract(const Duration(seconds: 20))
+            .toUtc()
+            .toIso8601String();
+        query = query.gte('created_at', fromIso);
+      }
+    }
+
+    final rows = await query.order('created_at', ascending: false);
+
+    final ids = <String>[];
+    double runningTotal = 0;
+
+    for (final row in (rows as List<dynamic>)) {
+      final id = (row['id'] ?? '').toString();
+      final rowTotal = _toDouble(row['total']);
+
+      if (id.isEmpty) continue;
+
+      ids.add(id);
+      runningTotal = _round2(runningTotal + rowTotal);
+
+      if (runningTotal == expectedTotal) {
+        break;
+      }
+    }
+
+    debugPrint(
+      '_findLatestConsignmentRowIds => fullName=$fullName seat=$seatNumber total=$expectedTotal ids=$ids',
+    );
+
+    return ids;
+  }
+
   Future<void> submitOrder() async {
     if (!isValid) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -584,8 +663,11 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
       for (final row in orderRows) {
         if (row.item == null) continue;
-
         if (row.item!.kind == CatalogKind.addOn) {
+          debugPrint(
+            'ADD-ON payload => id=${row.item!.id}, name=${row.item!.name}, qty=${row.quantity}, kind=${row.item!.kind}',
+          );
+
           addOnPayload.add({
             'add_on_id': row.item!.id,
             'quantity': row.quantity,
@@ -601,12 +683,44 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
       final fullName = fullNameController.text.trim();
       final seat = (selectedSeat ?? '').trim();
       final computedTotal = _round2(totalAmount);
-      final submittedAtIso = DateTime.now().toUtc().toIso8601String();
+      final submittedAtIso = DateTime.now()
+          .subtract(const Duration(seconds: 2))
+          .toUtc()
+          .toIso8601String();
 
       String? addOnBookingCode;
       String? consignmentBookingCode;
+      String? addOnOrderId;
 
       if (addOnPayload.isNotEmpty) {
+        final addOnIds = addOnPayload
+            .map((e) => (e['add_on_id'] ?? '').toString())
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        final existingRows = await supabase
+            .from('add_ons')
+            .select('id, name')
+            .inFilter('id', addOnIds);
+
+        final existingIds = (existingRows as List<dynamic>)
+            .map((e) => (e['id'] ?? '').toString())
+            .toSet();
+
+        final missingIds = addOnIds
+            .where((id) => !existingIds.contains(id))
+            .toList();
+
+        debugPrint('ADD-ON ids from payload: $addOnIds');
+        debugPrint('ADD-ON ids found in DB: $existingIds');
+        debugPrint('ADD-ON ids missing in DB: $missingIds');
+
+        if (missingIds.isNotEmpty) {
+          throw Exception(
+            'These add-on ids do not exist in add_ons: $missingIds',
+          );
+        }
+
         final addOnRes = await supabase.rpc(
           'place_addon_order',
           params: {
@@ -616,7 +730,12 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           },
         );
 
+        addOnOrderId = _extractUuid(addOnRes);
         addOnBookingCode = _extractBookingCode(addOnRes);
+
+        debugPrint('place_addon_order result: $addOnRes');
+        debugPrint('addOnOrderId: $addOnOrderId');
+        debugPrint('addOnBookingCode: $addOnBookingCode');
       }
 
       if (otherItemsPayload.isNotEmpty) {
@@ -644,6 +763,15 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
             )
           : <String>[];
 
+      final consignmentRowIds = otherItemsPayload.isNotEmpty
+          ? await _findLatestConsignmentRowIds(
+              fullName: fullName,
+              seatNumber: seat,
+              expectedTotal: computedTotal,
+              submittedAtIso: submittedAtIso,
+            )
+          : <String>[];
+
       await _loadCatalog();
 
       if (!mounted) return;
@@ -656,6 +784,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         addOnCount: _submittedAddOnCount,
         specialItemCount: _submittedSpecialItemCount,
         addOnRowIds: addOnRowIds,
+        consignmentRowIds: consignmentRowIds,
         submittedAtIso: submittedAtIso,
       );
 
@@ -687,25 +816,21 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                   if (!mounted) return;
 
                   if (code == null || code.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Booking code not found yet. Please try again.',
-                        ),
-                      ),
+                    debugPrint(
+                      'No booking code found for add-on order. Proceeding with direct row payment.',
                     );
-                    return;
                   }
 
                   setState(() {
                     submittedOrder = SubmittedOrderSummary(
-                      bookingCode: code,
+                      bookingCode: code ?? summary.bookingCode,
                       fullName: summary.fullName,
                       seatNumber: summary.seatNumber,
                       orderTotal: summary.orderTotal,
                       addOnCount: summary.addOnCount,
                       specialItemCount: summary.specialItemCount,
                       addOnRowIds: summary.addOnRowIds,
+                      consignmentRowIds: summary.consignmentRowIds,
                       submittedAtIso: summary.submittedAtIso,
                     );
                   });
@@ -769,7 +894,9 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
 
         try {
           await supabase.rpc(
-            'pay_addon_order_by_booking_code',
+            order.specialItemCount > 0 && order.addOnCount == 0
+                ? 'pay_consignment_order_by_booking_code'
+                : 'pay_addon_order_by_booking_code',
             params: {
               'p_booking_code': order.bookingCode,
               'p_full_name': order.fullName,
@@ -782,12 +909,19 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         } catch (e) {
           debugPrint('pay_addon_order_by_booking_code failed: $e');
         }
+      } else {
+        debugPrint(
+          'No booking code for add-ons; using direct customer_session_add_ons update only.',
+        );
       }
 
       bool sessionRowsUpdated = false;
       List<String> idsToUpdate = List<String>.from(order.addOnRowIds);
+      List<String> consignmentIdsToUpdate = List<String>.from(
+        order.consignmentRowIds,
+      );
 
-      if (idsToUpdate.isEmpty) {
+      if (idsToUpdate.isEmpty && order.addOnCount > 0) {
         idsToUpdate = await _findLatestAddOnRowIds(
           fullName: order.fullName,
           seatNumber: order.seatNumber,
@@ -797,26 +931,51 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         debugPrint('Re-fetched addOnRowIds: $idsToUpdate');
       }
 
+      if (consignmentIdsToUpdate.isEmpty && order.specialItemCount > 0) {
+        consignmentIdsToUpdate = await _findLatestConsignmentRowIds(
+          fullName: order.fullName,
+          seatNumber: order.seatNumber,
+          expectedTotal: order.orderTotal,
+          submittedAtIso: order.submittedAtIso,
+        );
+        debugPrint('Re-fetched consignmentRowIds: $consignmentIdsToUpdate');
+      }
       if (isPaid && idsToUpdate.isNotEmpty) {
-        for (int i = 0; i < idsToUpdate.length; i++) {
-          final updatedRows = await supabase
-              .from('customer_session_add_ons')
-              .update({
-                'is_paid': true,
-                'paid_at': paidAt,
-                'gcash_amount': i == 0 ? gcash : 0,
-                'cash_amount': i == 0 ? cash : 0,
-              })
-              .eq('id', idsToUpdate[i])
-              .select('id');
+        final rpcRes = await supabase.rpc(
+          'mark_customer_session_addons_paid',
+          params: {
+            'p_ids': idsToUpdate,
+            'p_gcash_amount': gcash,
+            'p_cash_amount': cash,
+          },
+        );
 
-          if ((updatedRows as List<dynamic>).isNotEmpty) {
-            sessionRowsUpdated = true;
-          }
+        debugPrint('mark_customer_session_addons_paid => $rpcRes');
+
+        if (rpcRes is Map && rpcRes['success'] == true) {
+          sessionRowsUpdated = true;
         }
       }
 
-      if (!sessionRowsUpdated && isPaid) {
+      if (isPaid && consignmentIdsToUpdate.isNotEmpty) {
+        final consignmentRpcRes = await supabase.rpc(
+          'mark_customer_session_consignment_paid',
+          params: {
+            'p_ids': consignmentIdsToUpdate,
+            'p_gcash_amount': gcash,
+            'p_cash_amount': cash,
+          },
+        );
+
+        debugPrint(
+          'mark_customer_session_consignment_paid => $consignmentRpcRes',
+        );
+
+        if (consignmentRpcRes is Map && consignmentRpcRes['success'] == true) {
+          sessionRowsUpdated = true;
+        }
+      }
+      if (!sessionRowsUpdated && isPaid && order.addOnCount > 0) {
         final fallbackRows = await supabase
             .from('customer_session_add_ons')
             .select('id, total, created_at')
@@ -842,27 +1001,146 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           }
         }
 
-        debugPrint('Fallback idsToUpdate: $fallbackIds');
+        debugPrint('Fallback add-on idsToUpdate: $fallbackIds');
 
-        for (int i = 0; i < fallbackIds.length; i++) {
-          final updatedRows = await supabase
-              .from('customer_session_add_ons')
-              .update({
-                'is_paid': true,
-                'paid_at': paidAt,
-                'gcash_amount': i == 0 ? gcash : 0,
-                'cash_amount': i == 0 ? cash : 0,
-              })
-              .eq('id', fallbackIds[i])
-              .select('id');
+        final fallbackRpcRes = await supabase.rpc(
+          'mark_customer_session_addons_paid',
+          params: {
+            'p_ids': fallbackIds,
+            'p_gcash_amount': gcash,
+            'p_cash_amount': cash,
+          },
+        );
 
-          if ((updatedRows as List<dynamic>).isNotEmpty) {
-            sessionRowsUpdated = true;
-          }
+        debugPrint(
+          'fallback mark_customer_session_addons_paid => $fallbackRpcRes',
+        );
+
+        if (fallbackRpcRes is Map && fallbackRpcRes['success'] == true) {
+          sessionRowsUpdated = true;
         }
 
         if (sessionRowsUpdated) {
           idsToUpdate = fallbackIds;
+        }
+      }
+
+      if (!sessionRowsUpdated && isPaid && order.addOnCount > 0) {
+        final exactRows = await supabase
+            .from('customer_session_add_ons')
+            .select('id')
+            .eq('full_name', order.fullName)
+            .eq('seat_number', order.seatNumber)
+            .eq('is_paid', false)
+            .eq('total', order.orderTotal);
+
+        final exactIds = (exactRows as List<dynamic>)
+            .map((e) => (e['id'] ?? '').toString())
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        if (exactIds.isNotEmpty) {
+          final exactRpcRes = await supabase.rpc(
+            'mark_customer_session_addons_paid',
+            params: {
+              'p_ids': exactIds,
+              'p_gcash_amount': gcash,
+              'p_cash_amount': cash,
+            },
+          );
+
+          debugPrint('exact mark_customer_session_addons_paid => $exactRpcRes');
+
+          if (exactRpcRes is Map && exactRpcRes['success'] == true) {
+            sessionRowsUpdated = true;
+            idsToUpdate = exactIds;
+          }
+        }
+      }
+
+      if (!sessionRowsUpdated && isPaid && order.specialItemCount > 0) {
+        final consignmentFallbackRows = await supabase
+            .from('customer_session_consignment')
+            .select('id, total, created_at')
+            .eq('full_name', order.fullName)
+            .eq('seat_number', order.seatNumber)
+            .eq('is_paid', false)
+            .eq('voided', false)
+            .order('created_at', ascending: false);
+
+        final consignmentFallbackIds = <String>[];
+        double runningTotal = 0;
+
+        for (final row in (consignmentFallbackRows as List<dynamic>)) {
+          final id = (row['id'] ?? '').toString();
+          final rowTotal = _toDouble(row['total']);
+
+          if (id.isEmpty) continue;
+
+          consignmentFallbackIds.add(id);
+          runningTotal = _round2(runningTotal + rowTotal);
+
+          if (runningTotal >= order.orderTotal) {
+            break;
+          }
+        }
+
+        debugPrint('Fallback consignment idsToUpdate: $consignmentFallbackIds');
+
+        final fallbackConsignmentRpcRes = await supabase.rpc(
+          'mark_customer_session_consignment_paid',
+          params: {
+            'p_ids': consignmentFallbackIds,
+            'p_gcash_amount': gcash,
+            'p_cash_amount': cash,
+          },
+        );
+
+        debugPrint(
+          'fallback mark_customer_session_consignment_paid => $fallbackConsignmentRpcRes',
+        );
+
+        if (fallbackConsignmentRpcRes is Map &&
+            fallbackConsignmentRpcRes['success'] == true) {
+          sessionRowsUpdated = true;
+          consignmentIdsToUpdate = consignmentFallbackIds;
+        }
+      }
+
+      if (!sessionRowsUpdated && isPaid && order.specialItemCount > 0) {
+        final exactConsignmentRows = await supabase
+            .from('customer_session_consignment')
+            .select('id')
+            .eq('full_name', order.fullName)
+            .eq('seat_number', order.seatNumber)
+            .eq('is_paid', false)
+            .eq('voided', false)
+            .eq('total', order.orderTotal);
+
+        final exactConsignmentIds = (exactConsignmentRows as List<dynamic>)
+            .map((e) => (e['id'] ?? '').toString())
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        if (exactConsignmentIds.isNotEmpty) {
+          final exactConsignmentRpcRes = await supabase.rpc(
+            'mark_customer_session_consignment_paid',
+            params: {
+              'p_ids': exactConsignmentIds,
+              'p_gcash_amount': gcash,
+              'p_cash_amount': cash,
+            },
+          );
+
+          debugPrint(
+            'exact mark_customer_session_consignment_paid => $exactConsignmentRpcRes',
+          );
+
+          if (exactConsignmentRpcRes is Map &&
+              exactConsignmentRpcRes['success'] == true) {
+            sessionRowsUpdated = true;
+            consignmentIdsToUpdate = exactConsignmentIds;
+          }
         }
       }
 
@@ -880,6 +1158,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           addOnCount: order.addOnCount,
           specialItemCount: order.specialItemCount,
           addOnRowIds: idsToUpdate,
+          consignmentRowIds: consignmentIdsToUpdate,
           submittedAtIso: order.submittedAtIso,
         );
 
@@ -893,7 +1172,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                       'Change: ${_money(diff < 0 ? 0 : diff)}\n'
                       'Status: PAID\n\n'
                       'Thank you! 😊'
-                : 'Payment saved but the add-on row was not marked paid yet ⚠️\n\n'
+                : 'Payment saved but the order row was not marked paid yet ⚠️\n\n'
                       'GCash: ${_money(gcash)}\n'
                       'Cash: ${_money(cash)}\n'
                       'Total Paid: ${_money(totalPaid)}\n'
