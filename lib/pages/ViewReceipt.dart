@@ -261,10 +261,10 @@ class _ViewReceiptState extends State<ViewReceipt>
 
   ReceiptData _buildComposedReceipt(ReceiptLookupResult result) {
     final paymentRow = result.orderPaymentRow;
-    final double finalOrderTotal = math.max(
-      result.orderDisplayTotal,
-      paymentRow?.orderTotal ?? 0,
-    );
+
+    // ✅ Always use CURRENT visible order items total.
+    // Iwas lumang/stale total sa customer_order_payments.
+    final double finalOrderTotal = result.orderDisplayTotal;
 
     return result.receipt.copyWith(
       orderTotal: finalOrderTotal,
@@ -995,10 +995,10 @@ class _ViewReceiptState extends State<ViewReceipt>
     );
     final double storedOrderTotal = existingOrderPayment?.orderTotal ?? 0;
 
-    final double effectiveOrderTotal = math.max(
-      computedOrderTotal,
-      storedOrderTotal,
-    );
+    // ✅ Current order items total ang susundin, hindi lumang stored order_total
+    final double effectiveOrderTotal = computedOrderTotal > 0
+        ? computedOrderTotal
+        : storedOrderTotal;
 
     final double existingOrderPaid = existingOrderPayment?.totalPaid ?? 0;
 
