@@ -2385,6 +2385,25 @@ class _ViewReceiptState extends State<ViewReceipt>
                         ),
                       ),
                       const SizedBox(height: 14),
+
+                      if (_loadedReceipts.isNotEmpty &&
+                          _allReceiptsTotalDue > 0) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _isSavingPayAll
+                                ? null
+                                : _showPayAllModal,
+                            style: ViewReceiptStyles.primaryButtonStyle,
+                            child: Text(
+                              'Pay All Receipts • ${_peso2(_allReceiptsTotalDue)}',
+                              style: ViewReceiptStyles.primaryButtonText,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
