@@ -49,6 +49,28 @@ class _ViewReceiptState extends State<ViewReceipt>
   List<OrderRow> _consignmentRows = [];
   List<OrderLine> _orderLines = [];
 
+  final List<ReceiptLookupResult> _loadedReceipts = [];
+  int _selectedReceiptIndex = -1;
+  bool _isSavingPayAll = false;
+
+  ReceiptLookupResult? get _selectedLoadedReceipt {
+    if (_selectedReceiptIndex < 0) return null;
+    if (_selectedReceiptIndex >= _loadedReceipts.length) return null;
+    return _loadedReceipts[_selectedReceiptIndex];
+  }
+
+  double _receiptTotalDue(ReceiptData r) {
+    final orderRemaining = math.max(0.0, r.orderTotal - r.orderPaidTotal);
+    return math.max(0.0, r.systemBalance) + orderRemaining;
+  }
+
+  double get _allReceiptsTotalDue {
+    return _loadedReceipts.fold(0.0, (sum, item) {
+      final composed = _buildComposedReceipt(item);
+      return sum + _receiptTotalDue(composed);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -275,7 +297,21 @@ class _ViewReceiptState extends State<ViewReceipt>
 
   void _syncReceiptState(ReceiptLookupResult result) {
     final composed = _buildComposedReceipt(result);
+    final code = composed.code.trim().toUpperCase();
+
+    final existingIndex = _loadedReceipts.indexWhere(
+      (e) => _buildComposedReceipt(e).code.trim().toUpperCase() == code,
+    );
+
     setState(() {
+      if (existingIndex >= 0) {
+        _loadedReceipts[existingIndex] = result;
+        _selectedReceiptIndex = existingIndex;
+      } else {
+        _loadedReceipts.add(result);
+        _selectedReceiptIndex = _loadedReceipts.length - 1;
+      }
+
       _receipt = composed;
       _addOnRows = result.addOnRows;
       _consignmentRows = result.consignmentRows;
@@ -484,10 +520,6 @@ class _ViewReceiptState extends State<ViewReceipt>
 
     setState(() {
       _isSearching = true;
-      _receipt = null;
-      _addOnRows = [];
-      _consignmentRows = [];
-      _orderLines = [];
     });
 
     try {
@@ -501,39 +533,32 @@ class _ViewReceiptState extends State<ViewReceipt>
       }
 
       _syncReceiptState(result);
+      _codeController.clear();
 
       final composed = _buildComposedReceipt(result);
-
-      final double orderRemainingValue = math.max(
+      final orderRemainingValue = math.max(
         0.0,
         composed.orderTotal - composed.orderPaidTotal,
       );
 
-      final double totalAmountDue =
+      final totalAmountDue =
           math.max(0.0, composed.systemBalance) +
           math.max(0.0, orderRemainingValue);
 
-      final int addonCount = result.orderLines
-          .where((e) => e.source == OrderSource.addon)
-          .length;
+      final allTotal = _allReceiptsTotalDue;
 
-      final int specialItemCount = result.orderLines
-          .where((e) => e.source == OrderSource.consignment)
-          .length;
-
-      final String receiptLoadedMessage =
-          'Receipt loaded successfully ✅\n\n'
-          '${composed.source == ReceiptSource.customerSession ? 'Time Consumed: ${composed.timeConsumedText}\n' : ''}'
-          'System total: ${_peso2(composed.systemTotal)}\n'
-          'Discount: ${composed.discountAmount > 0 ? _peso2(composed.discountAmount) : "₱0.00"}\n'
-          'Orders total: ${_peso2(composed.orderTotal)}\n'
-          'Add-Ons found: $addonCount\n'
-          'Special Item found: $specialItemCount\n'
-          'Remaining system: ${_peso2(composed.systemBalance)}\n'
-          'Remaining orders: ${_peso2(orderRemainingValue)}\n'
-          'Total Amount Due: ${_peso2(totalAmountDue)}';
-
-      _addAiMessage(receiptLoadedMessage);
+      _addAiMessage(
+        'Receipt added successfully ✅\n\n'
+        'Code: ${composed.code}\n'
+        'Customer: ${composed.fullName}\n'
+        '${composed.source == ReceiptSource.customerSession ? 'Time Consumed: ${composed.timeConsumedText}\n' : ''}'
+        'Remaining system: ${_peso2(composed.systemBalance)}\n'
+        'Remaining orders: ${_peso2(orderRemainingValue)}\n'
+        'Total Amount Due: ${_peso2(totalAmountDue)}\n\n'
+        'Loaded receipts: ${_loadedReceipts.length}\n'
+        'Total Amount Due for all receipts: ${_peso2(allTotal)}\n\n'
+        'You may pay one receipt, or use Pay All to settle everything.',
+      );
     } catch (e) {
       _addAiMessage('Failed to load receipt.\n\nPlease try again.');
       if (!mounted) return;
@@ -974,6 +999,208 @@ class _ViewReceiptState extends State<ViewReceipt>
       consignmentRows: consignmentRows,
       orderLines: orderLines,
       orderDisplayTotal: orderDisplayTotal,
+    );
+  }
+
+  Future<void> _showPayAllModal() async {
+    if (_loadedReceipts.isEmpty) return;
+
+    final totalDue = _allReceiptsTotalDue;
+
+    if (totalDue <= 0) {
+      _addAiMessage('All loaded receipts are already fully paid ✅');
+      return;
+    }
+
+    final gcashController = TextEditingController(text: '0');
+    final cashController = TextEditingController(text: '0');
+
+    await showDialog(
+      context: context,
+      barrierDismissible: !_isSavingPayAll,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            Future<void> submitPayAll() async {
+              final gcash = _toDouble(gcashController.text);
+              final cash = _toDouble(cashController.text);
+              final paid = gcash + cash;
+
+              if (paid < totalDue) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Insufficient payment. Balance is ${_peso2(totalDue)}.',
+                    ),
+                  ),
+                );
+                return;
+              }
+
+              setModalState(() => _isSavingPayAll = true);
+
+              double remainingGcash = gcash;
+              double remainingCash = cash;
+
+              try {
+                for (int i = 0; i < _loadedReceipts.length; i++) {
+                  final item = _loadedReceipts[i];
+                  final composed = _buildComposedReceipt(item);
+
+                  final systemDue = math.max(0.0, composed.systemBalance);
+                  final orderDue = math.max(
+                    0.0,
+                    composed.orderTotal - composed.orderPaidTotal,
+                  );
+
+                  double takeFromGcash(double need) {
+                    final take = math.min(remainingGcash, need);
+                    remainingGcash -= take;
+                    return take;
+                  }
+
+                  double takeFromCash(double need) {
+                    final take = math.min(remainingCash, need);
+                    remainingCash -= take;
+                    return take;
+                  }
+
+                  if (systemDue > 0) {
+                    final sysGcash = takeFromGcash(systemDue);
+                    final sysCash = takeFromCash(systemDue - sysGcash);
+
+                    await _saveSystemPayment(
+                      receipt: composed,
+                      addGcash: sysGcash,
+                      addCash: sysCash,
+                    );
+                  }
+
+                  if (orderDue > 0) {
+                    final orderRows = [
+                      ...item.addOnRows,
+                      ...item.consignmentRows,
+                    ].where((e) => !e.isPaid).toList();
+
+                    setState(() {
+                      _receipt = composed;
+                      _orderLines = item.orderLines;
+                    });
+
+                    final orderGcash = takeFromGcash(orderDue);
+                    final orderCash = takeFromCash(orderDue - orderGcash);
+
+                    await _saveOrderPayment(
+                      orderRows: orderRows,
+                      addGcash: orderGcash,
+                      addCash: orderCash,
+                    );
+                  }
+
+                  final refreshed = await _findReceiptByCode(composed.code);
+                  if (refreshed != null) {
+                    _loadedReceipts[i] = refreshed;
+                  }
+                }
+
+                if (!mounted) return;
+
+                final refreshedSelected = _selectedLoadedReceipt;
+                if (refreshedSelected != null) {
+                  _syncReceiptState(refreshedSelected);
+                } else {
+                  setState(() {});
+                }
+
+                if (Navigator.of(dialogContext).canPop()) {
+                  Navigator.of(dialogContext).pop();
+                }
+
+                final change = math.max(0.0, paid - totalDue);
+
+                _addAiMessage(
+                  'Pay All successful ✅\n\n'
+                  'Receipts paid: ${_loadedReceipts.length}\n'
+                  'Total Amount Due: ${_peso2(totalDue)}\n'
+                  'Total Payment: ${_peso2(paid)}\n'
+                  'Change: ${_peso2(change)}\n\n'
+                  'All loaded booking/promo codes are now marked as paid.',
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Pay All failed: $e')));
+              } finally {
+                if (mounted) {
+                  setState(() => _isSavingPayAll = false);
+                }
+              }
+            }
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 460),
+                padding: const EdgeInsets.all(22),
+                decoration: ViewReceiptStyles.paymentDialog,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Pay All Receipts',
+                      style: ViewReceiptStyles.paymentTitle,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Full payment required: ${_peso2(totalDue)}',
+                      style: ViewReceiptStyles.paymentDueText,
+                    ),
+                    const SizedBox(height: 18),
+                    const Text('GCASH', style: ViewReceiptStyles.paymentLabel),
+                    const SizedBox(height: 8),
+                    _paymentField(gcashController),
+                    const SizedBox(height: 14),
+                    const Text('CASH', style: ViewReceiptStyles.paymentLabel),
+                    const SizedBox(height: 8),
+                    _paymentField(cashController),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _isSavingPayAll
+                                ? null
+                                : () => Navigator.of(dialogContext).pop(),
+                            child: const Text('Cancel'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _isSavingPayAll ? null : submitPayAll,
+                            style: ViewReceiptStyles.saveButtonStyle,
+                            child: _isSavingPayAll
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text('Pay All'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1615,6 +1842,21 @@ class _ViewReceiptState extends State<ViewReceipt>
                     ),
             ),
           ),
+
+          const SizedBox(height: 10),
+
+          if (_loadedReceipts.isNotEmpty)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isSavingPayAll ? null : _showPayAllModal,
+                style: ViewReceiptStyles.primaryButtonStyle,
+                child: Text(
+                  'Pay All • ${_peso2(_allReceiptsTotalDue)}',
+                  style: ViewReceiptStyles.primaryButtonText,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -2034,6 +2276,95 @@ class _ViewReceiptState extends State<ViewReceipt>
 
                                 if (_receipt != null) ...[
                                   const SizedBox(height: 18),
+
+                                  if (_loadedReceipts.isNotEmpty) ...[
+                                    Column(
+                                      children: List.generate(
+                                        _loadedReceipts.length,
+                                        (index) {
+                                          final item = _loadedReceipts[index];
+                                          final r = _buildComposedReceipt(item);
+                                          final due = _receiptTotalDue(r);
+                                          final selected =
+                                              index == _selectedReceiptIndex;
+
+                                          return Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 10,
+                                            ),
+                                            child: InkWell(
+                                              onTap: () {
+                                                setState(() {
+                                                  _selectedReceiptIndex = index;
+                                                  _receipt = r;
+                                                  _addOnRows = item.addOnRows;
+                                                  _consignmentRows =
+                                                      item.consignmentRows;
+                                                  _orderLines = item.orderLines;
+                                                });
+                                              },
+                                              borderRadius:
+                                                  BorderRadius.circular(18),
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  14,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: selected
+                                                      ? const Color(0xFFE2F1D8)
+                                                      : Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.circular(18),
+                                                  border: Border.all(
+                                                    color: selected
+                                                        ? ViewReceiptStyles
+                                                              .green
+                                                        : const Color(
+                                                            0xFFE5DAC9,
+                                                          ),
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Text(
+                                                            r.fullName,
+                                                            style:
+                                                                ViewReceiptStyles
+                                                                    .codeLabel,
+                                                          ),
+                                                          const SizedBox(
+                                                            height: 3,
+                                                          ),
+                                                          Text(
+                                                            r.code,
+                                                            style: ViewReceiptStyles
+                                                                .headerSubtitle,
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      _peso2(due),
+                                                      style: ViewReceiptStyles
+                                                          .headerChipText,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
+
                                   _buildReceiptCard(_receipt!),
                                   const SizedBox(height: 16),
                                   for (final message in _chatMessages) ...[
