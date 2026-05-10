@@ -204,23 +204,39 @@ class _ViewReceiptState extends State<ViewReceipt>
     }
   }
 
-  Future<String?> _getAddonImageUrlByName(dynamic itemName) async {
-    final name = _toText(itemName).trim();
-    if (name.isEmpty) return null;
+  Future<Map<String, String>> _loadAddonImageMap() async {
+    final Map<String, String> map = {};
 
     try {
-      final row = await supabase
-          .from('add_ons')
-          .select('image_url')
-          .ilike('name', name)
-          .limit(1)
-          .maybeSingle();
+      final rows = await supabase.from('add_ons').select('name,image_url');
 
-      final url = _toText(row?['image_url']).trim();
-      return url.isEmpty ? null : url;
-    } catch (_) {
-      return null;
-    }
+      for (final raw in rows as List<dynamic>) {
+        final row = Map<String, dynamic>.from(raw as Map);
+
+        final name = _toText(row['name']).trim().toLowerCase();
+        final imageUrl = _toText(row['image_url']).trim();
+
+        if (name.isNotEmpty && imageUrl.isNotEmpty) {
+          map[name] = imageUrl;
+        }
+      }
+    } catch (_) {}
+
+    return map;
+  }
+
+  String? _getAddonImageFromMap(
+    Map<String, String> imageMap,
+    dynamic imageUrl,
+    dynamic itemName,
+  ) {
+    final directUrl = _toText(imageUrl).trim();
+    if (directUrl.isNotEmpty) return directUrl;
+
+    final name = _toText(itemName).trim().toLowerCase();
+    if (name.isEmpty) return null;
+
+    return imageMap[name];
   }
 
   Future<String?> _getConsignmentImageUrlById(dynamic consignmentId) async {
@@ -738,6 +754,9 @@ class _ViewReceiptState extends State<ViewReceipt>
 
     double orderDisplayTotal = 0;
 
+    // ✅ Base sa Product Item Lists: add_ons.name + add_ons.image_url
+    final addonImageMap = await _loadAddonImageMap();
+
     if (bookingCode.isNotEmpty) {
       try {
         final addonOrdersRes = await supabase
@@ -788,11 +807,13 @@ class _ViewReceiptState extends State<ViewReceipt>
                 ? _toDouble(item['subtotal'])
                 : qty * price;
 
-            final addonImageUrl =
-                _toText(addOns?['image_url']).trim().isNotEmpty
-                ? _toText(addOns?['image_url']).trim()
-                : await _getAddonImageUrlById(item['add_on_id']) ??
-                      await _getAddonImageUrlByName(item['item_name']);
+            final addonImageUrl = _getAddonImageFromMap(
+              addonImageMap,
+              addOns?['image_url'],
+              item['item_name'],
+            );
+
+            debugPrint('ADDON IMAGE URL => $addonImageUrl');
 
             orderLines.add(
               OrderLine(
@@ -1040,10 +1061,11 @@ class _ViewReceiptState extends State<ViewReceipt>
               size: _toText(addOns?['size']).isEmpty
                   ? null
                   : _toText(addOns?['size']),
-              imageUrl: _toText(addOns?['image_url']).trim().isNotEmpty
-                  ? _toText(addOns?['image_url']).trim()
-                  : await _getAddonImageUrlById(map['add_on_id']) ??
-                        await _getAddonImageUrlByName(itemName),
+              imageUrl: _getAddonImageFromMap(
+                addonImageMap,
+                addOns?['image_url'],
+                itemName,
+              ),
             ),
           );
         }
@@ -2038,11 +2060,10 @@ class _ViewReceiptState extends State<ViewReceipt>
                 width: 52,
                 height: 52,
                 fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
+                errorBuilder: (_, __, ___) {
+                  debugPrint('IMAGE FAILED: ${line.name} => ${line.imageUrl}');
                   return _orderPlaceholder(line);
                 },
-                errorBuilder: (_, __, ___) => _orderPlaceholder(line),
               ),
             )
           else
@@ -2137,11 +2158,10 @@ class _ViewReceiptState extends State<ViewReceipt>
                 width: 44,
                 height: 44,
                 fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
+                errorBuilder: (_, __, ___) {
+                  debugPrint('IMAGE FAILED: ${line.name} => ${line.imageUrl}');
                   return _orderPlaceholder(line);
                 },
-                errorBuilder: (_, __, ___) => _orderPlaceholder(line),
               ),
             )
           else
