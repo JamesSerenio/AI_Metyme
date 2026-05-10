@@ -193,13 +193,19 @@ class _ViewReceiptState extends State<ViewReceipt>
     try {
       final row = await supabase
           .from('add_ons')
-          .select('image_url')
+          .select('id, name, image_url')
           .eq('id', id)
           .maybeSingle();
 
       final url = _toText(row?['image_url']).trim();
+
+      debugPrint(
+        'DIRECT ADDON IMAGE CHECK => id=$id name=${row?['name']} url=$url',
+      );
+
       return url.isEmpty ? null : url;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('DIRECT ADDON IMAGE ERROR => $e');
       return null;
     }
   }
@@ -208,19 +214,28 @@ class _ViewReceiptState extends State<ViewReceipt>
     final Map<String, String> map = {};
 
     try {
-      final rows = await supabase.from('add_ons').select('name,image_url');
+      final rows = await supabase.from('add_ons').select('id, name, image_url');
 
       for (final raw in rows as List<dynamic>) {
         final row = Map<String, dynamic>.from(raw as Map);
 
+        final id = _toText(row['id']).trim();
         final name = _toText(row['name']).trim().toLowerCase();
         final imageUrl = _toText(row['image_url']).trim();
 
-        if (name.isNotEmpty && imageUrl.isNotEmpty) {
-          map[name] = imageUrl;
+        if (imageUrl.isEmpty) continue;
+
+        if (id.isNotEmpty) {
+          map['id:$id'] = imageUrl;
+        }
+
+        if (name.isNotEmpty) {
+          map['name:$name'] = imageUrl;
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('LOAD ADDON IMAGE MAP ERROR: $e');
+    }
 
     return map;
   }
@@ -228,15 +243,23 @@ class _ViewReceiptState extends State<ViewReceipt>
   String? _getAddonImageFromMap(
     Map<String, String> imageMap,
     dynamic imageUrl,
-    dynamic itemName,
-  ) {
+    dynamic itemName, {
+    dynamic addOnId,
+  }) {
     final directUrl = _toText(imageUrl).trim();
     if (directUrl.isNotEmpty) return directUrl;
 
-    final name = _toText(itemName).trim().toLowerCase();
-    if (name.isEmpty) return null;
+    final id = _toText(addOnId).trim();
+    if (id.isNotEmpty && imageMap['id:$id'] != null) {
+      return imageMap['id:$id'];
+    }
 
-    return imageMap[name];
+    final name = _toText(itemName).trim().toLowerCase();
+    if (name.isNotEmpty && imageMap['name:$name'] != null) {
+      return imageMap['name:$name'];
+    }
+
+    return null;
   }
 
   Future<String?> _getConsignmentImageUrlById(dynamic consignmentId) async {
@@ -807,13 +830,24 @@ class _ViewReceiptState extends State<ViewReceipt>
                 ? _toDouble(item['subtotal'])
                 : qty * price;
 
-            final addonImageUrl = _getAddonImageFromMap(
-              addonImageMap,
-              addOns?['image_url'],
-              item['item_name'],
-            );
+            String? addonImageUrl = _toText(addOns?['image_url']).trim();
 
-            debugPrint('ADDON IMAGE URL => $addonImageUrl');
+            if (addonImageUrl.isEmpty) {
+              addonImageUrl = await _getAddonImageUrlById(item['add_on_id']);
+            }
+
+            if ((addonImageUrl ?? '').isEmpty) {
+              addonImageUrl = _getAddonImageFromMap(
+                addonImageMap,
+                null,
+                item['item_name'],
+                addOnId: item['add_on_id'],
+              );
+            }
+
+            debugPrint(
+              'ADDON IMAGE URL => name=${item['item_name']} id=${item['add_on_id']} url=$addonImageUrl',
+            );
 
             orderLines.add(
               OrderLine(
@@ -1061,11 +1095,15 @@ class _ViewReceiptState extends State<ViewReceipt>
               size: _toText(addOns?['size']).isEmpty
                   ? null
                   : _toText(addOns?['size']),
-              imageUrl: _getAddonImageFromMap(
-                addonImageMap,
-                addOns?['image_url'],
-                itemName,
-              ),
+              imageUrl: _toText(addOns?['image_url']).trim().isNotEmpty
+                  ? _toText(addOns?['image_url']).trim()
+                  : await _getAddonImageUrlById(map['add_on_id']) ??
+                        _getAddonImageFromMap(
+                          addonImageMap,
+                          null,
+                          itemName,
+                          addOnId: map['add_on_id'],
+                        ),
             ),
           );
         }
@@ -2052,22 +2090,28 @@ class _ViewReceiptState extends State<ViewReceipt>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if ((line.imageUrl ?? '').isNotEmpty)
-            ClipRRect(
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF6EEE3),
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                line.imageUrl!,
-                width: 52,
-                height: 52,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) {
-                  debugPrint('IMAGE FAILED: ${line.name} => ${line.imageUrl}');
-                  return _orderPlaceholder(line);
-                },
-              ),
-            )
-          else
-            _orderPlaceholder(line),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: line.imageUrl != null && line.imageUrl!.trim().isNotEmpty
+                ? Image.network(
+                    line.imageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) {
+                      debugPrint(
+                        'RECEIPT IMAGE FAILED: ${line.name} => ${line.imageUrl}',
+                      );
+                      return _orderPlaceholder(line);
+                    },
+                  )
+                : _orderPlaceholder(line),
+          ),
+
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -2150,22 +2194,27 @@ class _ViewReceiptState extends State<ViewReceipt>
       ),
       child: Row(
         children: [
-          if ((line.imageUrl ?? '').isNotEmpty)
-            ClipRRect(
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF6EEE3),
               borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                line.imageUrl!,
-                width: 44,
-                height: 44,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) {
-                  debugPrint('IMAGE FAILED: ${line.name} => ${line.imageUrl}');
-                  return _orderPlaceholder(line);
-                },
-              ),
-            )
-          else
-            _orderPlaceholder(line),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: line.imageUrl != null && line.imageUrl!.trim().isNotEmpty
+                ? Image.network(
+                    line.imageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) {
+                      debugPrint(
+                        'RECEIPT IMAGE FAILED: ${line.name} => ${line.imageUrl}',
+                      );
+                      return _orderPlaceholder(line);
+                    },
+                  )
+                : _orderPlaceholder(line),
+          ),
 
           const SizedBox(width: 10),
 
