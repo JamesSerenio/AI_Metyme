@@ -158,6 +158,23 @@ class _ViewReceiptState extends State<ViewReceipt>
   String _peso(double value) => '₱${value.toStringAsFixed(0)}';
   String _peso2(double value) => '₱${value.toStringAsFixed(2)}';
 
+  String? _resolveImageUrl(dynamic value) {
+    final raw = _toText(value).trim();
+    if (raw.isEmpty) return null;
+
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return raw;
+    }
+
+    final cleanPath = raw.startsWith('/') ? raw.substring(1) : raw;
+
+    try {
+      return supabase.storage.from('item-images').getPublicUrl(cleanPath);
+    } catch (_) {
+      return raw;
+    }
+  }
+
   String _formatDateTime(dynamic iso) {
     if (iso == null) return '—';
     final parsed = DateTime.tryParse(iso.toString());
@@ -719,9 +736,7 @@ class _ViewReceiptState extends State<ViewReceipt>
                 size: _toText(addOns?['size']).isEmpty
                     ? null
                     : _toText(addOns?['size']),
-                imageUrl: _toText(addOns?['image_url']).isEmpty
-                    ? null
-                    : _toText(addOns?['image_url']),
+                imageUrl: _resolveImageUrl(addOns?['image_url']),
               ),
             );
           }
@@ -946,9 +961,7 @@ class _ViewReceiptState extends State<ViewReceipt>
               size: _toText(addOns?['size']).isEmpty
                   ? null
                   : _toText(addOns?['size']),
-              imageUrl: _toText(addOns?['image_url']).isEmpty
-                  ? null
-                  : _toText(addOns?['image_url']),
+              imageUrl: _resolveImageUrl(addOns?['image_url']),
             ),
           );
         }
@@ -2019,6 +2032,242 @@ class _ViewReceiptState extends State<ViewReceipt>
     );
   }
 
+  Widget _buildMiniOrderLineCard(OrderLine line) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFCF7),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5DAC8), width: 1),
+      ),
+      child: Row(
+        children: [
+          if ((line.imageUrl ?? '').isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.network(
+                line.imageUrl!,
+                width: 44,
+                height: 44,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _orderPlaceholder(line),
+              ),
+            )
+          else
+            _orderPlaceholder(line),
+
+          const SizedBox(width: 10),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  line.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF2B1D16),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '${line.qty} × ${_peso2(line.price)}',
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF9B6E39),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          Text(
+            _peso2(line.subtotal),
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF2B1D16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniReceiptLine(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3.5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 125,
+            child: Text(label, style: ViewReceiptStyles.receiptLabel),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: ViewReceiptStyles.receiptValue,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCombinedReceiptCard() {
+    final loaded = _loadedReceipts
+        .map((e) => _buildComposedReceipt(e))
+        .toList();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: ViewReceiptStyles.receiptCardBox,
+      child: Column(
+        children: [
+          Container(
+            width: 70,
+            height: 70,
+            decoration: ViewReceiptStyles.receiptLogoWrap,
+            child: ClipOval(
+              child: Image.asset(
+                'assets/study_hub.png',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(Icons.image),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'ME TYME LOUNGE',
+            style: ViewReceiptStyles.receiptMainTitle,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'DATE: ${_formatDateOnly(DateTime.now().toIso8601String())}',
+            style: ViewReceiptStyles.receiptSubTitle,
+          ),
+          const SizedBox(height: 18),
+
+          for (int i = 0; i < loaded.length; i++) ...[
+            Builder(
+              builder: (_) {
+                final item = _loadedReceipts[i];
+                final r = loaded[i];
+                final due = _receiptTotalDue(r);
+                final orderLines = item.orderLines;
+
+                return Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(16),
+                  decoration: ViewReceiptStyles.sessionInfoBox,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _miniReceiptLine('NAME', r.fullName),
+                      _miniReceiptLine('CODE', r.code),
+                      _miniReceiptLine(
+                        'Time in',
+                        _formatDateTime(r.timeStartedAt),
+                      ),
+                      _miniReceiptLine(
+                        'Time out',
+                        _formatDateTime(r.timeEndedAt),
+                      ),
+                      _miniReceiptLine(
+                        'Time consumed',
+                        r.source == ReceiptSource.customerSession
+                            ? r.timeConsumedText
+                            : r.itemSubtitle,
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      const Text(
+                        'ORDERS',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF8A6232),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+
+                      const SizedBox(height: 6),
+
+                      if (orderLines.isEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFFCF7),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: const Color(0xFFE5DAC8),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Text(
+                            'No orders',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF9B6E39),
+                            ),
+                          ),
+                        )
+                      else
+                        for (final line in orderLines)
+                          _buildMiniOrderLineCard(line),
+
+                      const SizedBox(height: 10),
+                      const Divider(),
+
+                      _titleAmountRow('Total', _peso2(due)),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: ViewReceiptStyles.totalBox,
+            child: _titleAmountRow(
+              'GRAND TOTAL',
+              _peso2(_allReceiptsTotalDue),
+              big: true,
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isSavingPayAll ? null : _showPayAllModal,
+              style: ViewReceiptStyles.primaryButtonStyle,
+              child: Text(
+                'Pay All • ${_peso2(_allReceiptsTotalDue)}',
+                style: ViewReceiptStyles.primaryButtonText,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildReceiptCard(ReceiptData receipt) {
     final allRows = [..._addOnRows, ..._consignmentRows];
     final double orderDue = math.max(
@@ -2300,95 +2549,10 @@ class _ViewReceiptState extends State<ViewReceipt>
                                 if (_receipt != null) ...[
                                   const SizedBox(height: 18),
 
-                                  if (_loadedReceipts.isNotEmpty) ...[
-                                    Column(
-                                      children: List.generate(
-                                        _loadedReceipts.length,
-                                        (index) {
-                                          final item = _loadedReceipts[index];
-                                          final r = _buildComposedReceipt(item);
-                                          final due = _receiptTotalDue(r);
-                                          final selected =
-                                              index == _selectedReceiptIndex;
+                                  _loadedReceipts.length > 1
+                                      ? _buildCombinedReceiptCard()
+                                      : _buildReceiptCard(_receipt!),
 
-                                          return Padding(
-                                            padding: const EdgeInsets.only(
-                                              bottom: 10,
-                                            ),
-                                            child: InkWell(
-                                              onTap: () {
-                                                setState(() {
-                                                  _selectedReceiptIndex = index;
-                                                  _receipt = r;
-                                                  _addOnRows = item.addOnRows;
-                                                  _consignmentRows =
-                                                      item.consignmentRows;
-                                                  _orderLines = item.orderLines;
-                                                });
-                                              },
-                                              borderRadius:
-                                                  BorderRadius.circular(18),
-                                              child: Container(
-                                                padding: const EdgeInsets.all(
-                                                  14,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: selected
-                                                      ? const Color(0xFFE2F1D8)
-                                                      : Colors.white,
-                                                  borderRadius:
-                                                      BorderRadius.circular(18),
-                                                  border: Border.all(
-                                                    color: selected
-                                                        ? ViewReceiptStyles
-                                                              .green
-                                                        : const Color(
-                                                            0xFFE5DAC9,
-                                                          ),
-                                                  ),
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          Text(
-                                                            r.fullName,
-                                                            style:
-                                                                ViewReceiptStyles
-                                                                    .codeLabel,
-                                                          ),
-                                                          const SizedBox(
-                                                            height: 3,
-                                                          ),
-                                                          Text(
-                                                            r.code,
-                                                            style: ViewReceiptStyles
-                                                                .headerSubtitle,
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      _peso2(due),
-                                                      style: ViewReceiptStyles
-                                                          .headerChipText,
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                  ],
-
-                                  _buildReceiptCard(_receipt!),
                                   const SizedBox(height: 16),
                                   for (final message in _chatMessages) ...[
                                     Align(
@@ -2408,24 +2572,6 @@ class _ViewReceiptState extends State<ViewReceipt>
                         ),
                       ),
                       const SizedBox(height: 14),
-
-                      if (_loadedReceipts.isNotEmpty &&
-                          _allReceiptsTotalDue > 0) ...[
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _isSavingPayAll
-                                ? null
-                                : _showPayAllModal,
-                            style: ViewReceiptStyles.primaryButtonStyle,
-                            child: Text(
-                              'Pay All Receipts • ${_peso2(_allReceiptsTotalDue)}',
-                              style: ViewReceiptStyles.primaryButtonText,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                      ],
 
                       SizedBox(
                         width: double.infinity,
