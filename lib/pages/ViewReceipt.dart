@@ -186,6 +186,60 @@ class _ViewReceiptState extends State<ViewReceipt>
     return supabase.storage.from(bucket).getPublicUrl(raw);
   }
 
+  Future<String?> _getAddonImageUrlById(dynamic addOnId) async {
+    final id = _toText(addOnId).trim();
+    if (id.isEmpty) return null;
+
+    try {
+      final row = await supabase
+          .from('add_ons')
+          .select('image_url')
+          .eq('id', id)
+          .maybeSingle();
+
+      final url = _toText(row?['image_url']).trim();
+      return url.isEmpty ? null : url;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String?> _getAddonImageUrlByName(dynamic itemName) async {
+    final name = _toText(itemName).trim();
+    if (name.isEmpty) return null;
+
+    try {
+      final row = await supabase
+          .from('add_ons')
+          .select('image_url')
+          .ilike('name', name)
+          .limit(1)
+          .maybeSingle();
+
+      final url = _toText(row?['image_url']).trim();
+      return url.isEmpty ? null : url;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String?> _getConsignmentImageUrlById(dynamic consignmentId) async {
+    final id = _toText(consignmentId).trim();
+    if (id.isEmpty) return null;
+
+    try {
+      final row = await supabase
+          .from('consignment')
+          .select('image_url')
+          .eq('id', id)
+          .maybeSingle();
+
+      return _resolveBucketImage(row?['image_url'], bucket: 'consignment');
+    } catch (_) {
+      return null;
+    }
+  }
+
   String _formatDateTime(dynamic iso) {
     if (iso == null) return '—';
     final parsed = DateTime.tryParse(iso.toString());
@@ -734,6 +788,12 @@ class _ViewReceiptState extends State<ViewReceipt>
                 ? _toDouble(item['subtotal'])
                 : qty * price;
 
+            final addonImageUrl =
+                _toText(addOns?['image_url']).trim().isNotEmpty
+                ? _toText(addOns?['image_url']).trim()
+                : await _getAddonImageUrlById(item['add_on_id']) ??
+                      await _getAddonImageUrlByName(item['item_name']);
+
             orderLines.add(
               OrderLine(
                 source: OrderSource.addon,
@@ -747,10 +807,7 @@ class _ViewReceiptState extends State<ViewReceipt>
                 size: _toText(addOns?['size']).isEmpty
                     ? null
                     : _toText(addOns?['size']),
-                imageUrl: _resolveBucketImage(
-                  addOns?['image_url'],
-                  bucket: 'add-ons',
-                ),
+                imageUrl: addonImageUrl,
               ),
             );
           }
@@ -811,6 +868,13 @@ class _ViewReceiptState extends State<ViewReceipt>
                 ? _toDouble(item['subtotal'])
                 : qty * price;
 
+            final consignmentImageUrl =
+                _resolveBucketImage(
+                  consignment?['image_url'],
+                  bucket: 'consignment',
+                ) ??
+                await _getConsignmentImageUrlById(item['consignment_id']);
+
             orderLines.add(
               OrderLine(
                 source: OrderSource.consignment,
@@ -824,10 +888,7 @@ class _ViewReceiptState extends State<ViewReceipt>
                 size: _toText(consignment?['size']).isEmpty
                     ? null
                     : _toText(consignment?['size']),
-                imageUrl: _resolveBucketImage(
-                  consignment?['image_url'],
-                  bucket: 'consignment',
-                ),
+                imageUrl: consignmentImageUrl,
               ),
             );
           }
@@ -903,10 +964,12 @@ class _ViewReceiptState extends State<ViewReceipt>
               size: _toText(consignment?['size']).isEmpty
                   ? null
                   : _toText(consignment?['size']),
-              imageUrl: _resolveBucketImage(
-                consignment?['image_url'],
-                bucket: 'consignment',
-              ),
+              imageUrl:
+                  _resolveBucketImage(
+                    consignment?['image_url'],
+                    bucket: 'consignment',
+                  ) ??
+                  await _getConsignmentImageUrlById(map['consignment_id']),
             ),
           );
         }
@@ -977,10 +1040,10 @@ class _ViewReceiptState extends State<ViewReceipt>
               size: _toText(addOns?['size']).isEmpty
                   ? null
                   : _toText(addOns?['size']),
-              imageUrl: _resolveBucketImage(
-                addOns?['image_url'],
-                bucket: 'add-ons',
-              ),
+              imageUrl: _toText(addOns?['image_url']).trim().isNotEmpty
+                  ? _toText(addOns?['image_url']).trim()
+                  : await _getAddonImageUrlById(map['add_on_id']) ??
+                        await _getAddonImageUrlByName(itemName),
             ),
           );
         }
