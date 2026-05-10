@@ -158,21 +158,32 @@ class _ViewReceiptState extends State<ViewReceipt>
   String _peso(double value) => '₱${value.toStringAsFixed(0)}';
   String _peso2(double value) => '₱${value.toStringAsFixed(2)}';
 
-  String? _resolveImageUrl(dynamic value) {
-    final raw = _toText(value).trim();
+  String? _resolveBucketImage(dynamic value, {required String bucket}) {
+    String raw = _toText(value).trim();
     if (raw.isEmpty) return null;
 
     if (raw.startsWith('http://') || raw.startsWith('https://')) {
       return raw;
     }
 
-    final cleanPath = raw.startsWith('/') ? raw.substring(1) : raw;
+    raw = raw.replaceAll('\\', '/');
 
-    try {
-      return supabase.storage.from('item-images').getPublicUrl(cleanPath);
-    } catch (_) {
-      return raw;
+    while (raw.startsWith('/')) {
+      raw = raw.substring(1);
     }
+
+    // ✅ tanggalin kung may bucket name na kasama sa image_url
+    if (raw.startsWith('$bucket/')) {
+      raw = raw.substring(bucket.length + 1);
+    }
+
+    // ✅ tanggalin common supabase public path kung na-save ito sa DB
+    raw = raw.replaceFirst('storage/v1/object/public/$bucket/', '');
+    raw = raw.replaceFirst('public/$bucket/', '');
+
+    if (raw.isEmpty) return null;
+
+    return supabase.storage.from(bucket).getPublicUrl(raw);
   }
 
   String _formatDateTime(dynamic iso) {
@@ -736,7 +747,10 @@ class _ViewReceiptState extends State<ViewReceipt>
                 size: _toText(addOns?['size']).isEmpty
                     ? null
                     : _toText(addOns?['size']),
-                imageUrl: _resolveImageUrl(addOns?['image_url']),
+                imageUrl: _resolveBucketImage(
+                  addOns?['image_url'],
+                  bucket: 'add-ons',
+                ),
               ),
             );
           }
@@ -810,9 +824,10 @@ class _ViewReceiptState extends State<ViewReceipt>
                 size: _toText(consignment?['size']).isEmpty
                     ? null
                     : _toText(consignment?['size']),
-                imageUrl: _toText(consignment?['image_url']).isEmpty
-                    ? null
-                    : _toText(consignment?['image_url']),
+                imageUrl: _resolveBucketImage(
+                  consignment?['image_url'],
+                  bucket: 'consignment',
+                ),
               ),
             );
           }
@@ -888,9 +903,10 @@ class _ViewReceiptState extends State<ViewReceipt>
               size: _toText(consignment?['size']).isEmpty
                   ? null
                   : _toText(consignment?['size']),
-              imageUrl: _toText(consignment?['image_url']).isEmpty
-                  ? null
-                  : _toText(consignment?['image_url']),
+              imageUrl: _resolveBucketImage(
+                consignment?['image_url'],
+                bucket: 'consignment',
+              ),
             ),
           );
         }
@@ -961,7 +977,10 @@ class _ViewReceiptState extends State<ViewReceipt>
               size: _toText(addOns?['size']).isEmpty
                   ? null
                   : _toText(addOns?['size']),
-              imageUrl: _resolveImageUrl(addOns?['image_url']),
+              imageUrl: _resolveBucketImage(
+                addOns?['image_url'],
+                bucket: 'add-ons',
+              ),
             ),
           );
         }
@@ -1956,6 +1975,10 @@ class _ViewReceiptState extends State<ViewReceipt>
                 width: 52,
                 height: 52,
                 fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return _orderPlaceholder(line);
+                },
                 errorBuilder: (_, __, ___) => _orderPlaceholder(line),
               ),
             )
@@ -2051,6 +2074,10 @@ class _ViewReceiptState extends State<ViewReceipt>
                 width: 44,
                 height: 44,
                 fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return _orderPlaceholder(line);
+                },
                 errorBuilder: (_, __, ___) => _orderPlaceholder(line),
               ),
             )
