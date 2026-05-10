@@ -513,55 +513,73 @@ class _ViewReceiptState extends State<ViewReceipt>
   }
 
   Future<void> _loadReceipt() async {
-    final code = _codeController.text.trim().toUpperCase();
-    if (code.isEmpty || _isSearching) return;
+    final rawInput = _codeController.text.trim();
 
-    _addUserMessage(code);
+    if (rawInput.isEmpty || _isSearching) return;
+
+    // ✅ split by comma, spaces, or new line
+    final codes = rawInput
+        .split(RegExp(r'[\s,]+'))
+        .map((e) => e.trim().toUpperCase())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList();
+
+    if (codes.isEmpty) return;
 
     setState(() {
       _isSearching = true;
     });
 
     try {
-      final result = await _findReceiptByCode(code);
+      int loadedCount = 0;
 
-      if (result == null) {
-        _addAiMessage(
-          'No receipt found for that code.\n\nPlease check your booking code or promo code and try again.',
+      for (final code in codes) {
+        _addUserMessage(code);
+
+        final result = await _findReceiptByCode(code);
+
+        if (result == null) {
+          _addAiMessage('No receipt found for code: $code');
+          continue;
+        }
+
+        _syncReceiptState(result);
+
+        final composed = _buildComposedReceipt(result);
+
+        final orderRemainingValue = math.max(
+          0.0,
+          composed.orderTotal - composed.orderPaidTotal,
         );
-        return;
+
+        final totalAmountDue =
+            math.max(0.0, composed.systemBalance) +
+            math.max(0.0, orderRemainingValue);
+
+        _addAiMessage(
+          'Receipt loaded ✅\n\n'
+          'Code: ${composed.code}\n'
+          'Customer: ${composed.fullName}\n'
+          'Total Amount Due: ${_peso2(totalAmountDue)}',
+        );
+
+        loadedCount++;
       }
 
-      _syncReceiptState(result);
       _codeController.clear();
 
-      final composed = _buildComposedReceipt(result);
-      final orderRemainingValue = math.max(
-        0.0,
-        composed.orderTotal - composed.orderPaidTotal,
-      );
-
-      final totalAmountDue =
-          math.max(0.0, composed.systemBalance) +
-          math.max(0.0, orderRemainingValue);
-
-      final allTotal = _allReceiptsTotalDue;
-
-      _addAiMessage(
-        'Receipt added successfully ✅\n\n'
-        'Code: ${composed.code}\n'
-        'Customer: ${composed.fullName}\n'
-        '${composed.source == ReceiptSource.customerSession ? 'Time Consumed: ${composed.timeConsumedText}\n' : ''}'
-        'Remaining system: ${_peso2(composed.systemBalance)}\n'
-        'Remaining orders: ${_peso2(orderRemainingValue)}\n'
-        'Total Amount Due: ${_peso2(totalAmountDue)}\n\n'
-        'Loaded receipts: ${_loadedReceipts.length}\n'
-        'Total Amount Due for all receipts: ${_peso2(allTotal)}\n\n'
-        'You may pay one receipt, or use Pay All to settle everything.',
-      );
+      if (loadedCount > 0) {
+        _addAiMessage(
+          'Successfully loaded $loadedCount receipt(s) ✅\n\n'
+          'Total Amount Due: ${_peso2(_allReceiptsTotalDue)}',
+        );
+      }
     } catch (e) {
       _addAiMessage('Failed to load receipt.\n\nPlease try again.');
+
       if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to load receipt: $e')));
