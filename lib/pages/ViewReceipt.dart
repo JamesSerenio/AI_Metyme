@@ -1740,11 +1740,16 @@ class _ViewReceiptState extends State<ViewReceipt>
     }
 
     if (_receipt != null) {
+      final latestLookup = await _findReceiptByCode(bookingCode);
+      final latestReceipt = latestLookup != null
+          ? _buildComposedReceipt(latestLookup)
+          : _receipt!;
+
       await _syncFinalSessionPaidStatus(
-        receipt: _receipt!,
-        systemPaidTotal: _receipt!.systemPaidTotal,
+        receipt: latestReceipt,
+        systemPaidTotal: latestReceipt.systemPaidTotal,
         orderPaidTotal: newOrderPaid,
-        systemDue: _receipt!.discountedSystemTotal,
+        systemDue: latestReceipt.discountedSystemTotal,
         orderDue: orderTotal,
       );
     }
