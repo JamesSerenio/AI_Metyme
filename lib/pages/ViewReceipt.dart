@@ -521,7 +521,13 @@ class _ViewReceiptState extends State<ViewReceipt>
         if (receipt.source == ReceiptSource.customerSession) {
           lines.add('Time Consumed: ${receipt.timeConsumedText}');
         }
-        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        if (totalAmountDue > 0) {
+          lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        } else {
+          lines.add(
+            'Grand Total: ${_peso2(receipt.systemTotal + receipt.orderTotal)}',
+          );
+        }
         lines.add('');
         lines.add('Your receipt is now fully paid.');
         lines.add('');
@@ -540,7 +546,13 @@ class _ViewReceiptState extends State<ViewReceipt>
         if (systemRemaining > 0) {
           lines.add('Remaining system payment: ${_peso2(systemRemaining)}');
         }
-        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        if (totalAmountDue > 0) {
+          lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        } else {
+          lines.add(
+            'Grand Total: ${_peso2(receipt.systemTotal + receipt.orderTotal)}',
+          );
+        }
         lines.add('');
         lines.add('Thank you! 😊');
       }
@@ -551,7 +563,13 @@ class _ViewReceiptState extends State<ViewReceipt>
         lines.add(
           'Discount: ${receipt.discountAmount > 0 ? _peso2(receipt.discountAmount) : "₱0.00"}',
         );
-        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        if (totalAmountDue > 0) {
+          lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        } else {
+          lines.add(
+            'Grand Total: ${_peso2(receipt.systemTotal + receipt.orderTotal)}',
+          );
+        }
         lines.add('');
         lines.add('Your receipt is now fully paid.');
         lines.add('');
@@ -570,7 +588,13 @@ class _ViewReceiptState extends State<ViewReceipt>
         if (orderRemaining > 0) {
           lines.add('Remaining order payment: ${_peso2(orderRemaining)}');
         }
-        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        if (totalAmountDue > 0) {
+          lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        } else {
+          lines.add(
+            'Grand Total: ${_peso2(receipt.systemTotal + receipt.orderTotal)}',
+          );
+        }
         lines.add('');
         lines.add('Thank you! 😊');
       }
@@ -581,7 +605,13 @@ class _ViewReceiptState extends State<ViewReceipt>
         lines.add(
           'Discount: ${receipt.discountAmount > 0 ? _peso2(receipt.discountAmount) : "₱0.00"}',
         );
-        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        if (totalAmountDue > 0) {
+          lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        } else {
+          lines.add(
+            'Grand Total: ${_peso2(receipt.systemTotal + receipt.orderTotal)}',
+          );
+        }
         lines.add('');
         lines.add('Your receipt is now fully paid.');
         lines.add('');
@@ -598,7 +628,13 @@ class _ViewReceiptState extends State<ViewReceipt>
         if (orderRemaining > 0) {
           lines.add('Remaining order payment: ${_peso2(orderRemaining)}');
         }
-        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        if (totalAmountDue > 0) {
+          lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+        } else {
+          lines.add(
+            'Grand Total: ${_peso2(receipt.systemTotal + receipt.orderTotal)}',
+          );
+        }
         lines.add('');
         lines.add('Thank you! 😊');
       }
@@ -614,7 +650,13 @@ class _ViewReceiptState extends State<ViewReceipt>
       if (orderRemaining > 0) {
         lines.add('Remaining order payment: ${_peso2(orderRemaining)}');
       }
-      lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+      if (totalAmountDue > 0) {
+        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
+      } else {
+        lines.add(
+          'Grand Total: ${_peso2(receipt.systemTotal + receipt.orderTotal)}',
+        );
+      }
       lines.add('');
       lines.add('Thank you! 😊');
     }
@@ -2030,7 +2072,9 @@ class _ViewReceiptState extends State<ViewReceipt>
                 onPressed: _isSavingPayAll ? null : _showPayAllModal,
                 style: ViewReceiptStyles.primaryButtonStyle,
                 child: Text(
-                  'Pay All • ${_peso2(_allReceiptsTotalDue)}',
+                  _loadedReceipts.length > 1
+                      ? 'Pay All • ${_peso2(_allReceiptsTotalDue)}'
+                      : 'Pay Now • ${_peso2(_allReceiptsTotalDue)}',
                   style: ViewReceiptStyles.primaryButtonText,
                 ),
               ),
