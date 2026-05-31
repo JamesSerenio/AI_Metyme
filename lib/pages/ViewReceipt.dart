@@ -64,6 +64,18 @@ class _ViewReceiptState extends State<ViewReceipt>
     return math.max(0.0, r.systemBalance) + orderRemaining;
   }
 
+  double _receiptGrandTotal(ReceiptData r) {
+    return math.max(0.0, r.discountedSystemTotal) + math.max(0.0, r.orderTotal);
+  }
+
+  String _receiptBottomLabel(ReceiptData r) {
+    return r.isFullyPaid ? 'GRAND TOTAL' : 'TOTAL AMOUNT DUE';
+  }
+
+  double _receiptBottomAmount(ReceiptData r) {
+    return r.isFullyPaid ? _receiptGrandTotal(r) : _receiptTotalDue(r);
+  }
+
   double get _allReceiptsTotalDue {
     return _loadedReceipts.fold(0.0, (sum, item) {
       final composed = _buildComposedReceipt(item);
@@ -521,13 +533,7 @@ class _ViewReceiptState extends State<ViewReceipt>
         if (receipt.source == ReceiptSource.customerSession) {
           lines.add('Time Consumed: ${receipt.timeConsumedText}');
         }
-        if (totalAmountDue > 0) {
-          lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
-        } else {
-          lines.add(
-            'Grand Total: ${_peso2(receipt.systemTotal + receipt.orderTotal)}',
-          );
-        }
+        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
         lines.add('');
         lines.add('Your receipt is now fully paid.');
         lines.add('');
@@ -546,13 +552,7 @@ class _ViewReceiptState extends State<ViewReceipt>
         if (systemRemaining > 0) {
           lines.add('Remaining system payment: ${_peso2(systemRemaining)}');
         }
-        if (totalAmountDue > 0) {
-          lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
-        } else {
-          lines.add(
-            'Grand Total: ${_peso2(receipt.systemTotal + receipt.orderTotal)}',
-          );
-        }
+        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
         lines.add('');
         lines.add('Thank you! 😊');
       }
@@ -563,13 +563,7 @@ class _ViewReceiptState extends State<ViewReceipt>
         lines.add(
           'Discount: ${receipt.discountAmount > 0 ? _peso2(receipt.discountAmount) : "₱0.00"}',
         );
-        if (totalAmountDue > 0) {
-          lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
-        } else {
-          lines.add(
-            'Grand Total: ${_peso2(receipt.systemTotal + receipt.orderTotal)}',
-          );
-        }
+        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
         lines.add('');
         lines.add('Your receipt is now fully paid.');
         lines.add('');
@@ -588,13 +582,7 @@ class _ViewReceiptState extends State<ViewReceipt>
         if (orderRemaining > 0) {
           lines.add('Remaining order payment: ${_peso2(orderRemaining)}');
         }
-        if (totalAmountDue > 0) {
-          lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
-        } else {
-          lines.add(
-            'Grand Total: ${_peso2(receipt.systemTotal + receipt.orderTotal)}',
-          );
-        }
+        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
         lines.add('');
         lines.add('Thank you! 😊');
       }
@@ -605,13 +593,7 @@ class _ViewReceiptState extends State<ViewReceipt>
         lines.add(
           'Discount: ${receipt.discountAmount > 0 ? _peso2(receipt.discountAmount) : "₱0.00"}',
         );
-        if (totalAmountDue > 0) {
-          lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
-        } else {
-          lines.add(
-            'Grand Total: ${_peso2(receipt.systemTotal + receipt.orderTotal)}',
-          );
-        }
+        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
         lines.add('');
         lines.add('Your receipt is now fully paid.');
         lines.add('');
@@ -628,13 +610,7 @@ class _ViewReceiptState extends State<ViewReceipt>
         if (orderRemaining > 0) {
           lines.add('Remaining order payment: ${_peso2(orderRemaining)}');
         }
-        if (totalAmountDue > 0) {
-          lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
-        } else {
-          lines.add(
-            'Grand Total: ${_peso2(receipt.systemTotal + receipt.orderTotal)}',
-          );
-        }
+        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
         lines.add('');
         lines.add('Thank you! 😊');
       }
@@ -650,13 +626,7 @@ class _ViewReceiptState extends State<ViewReceipt>
       if (orderRemaining > 0) {
         lines.add('Remaining order payment: ${_peso2(orderRemaining)}');
       }
-      if (totalAmountDue > 0) {
-        lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
-      } else {
-        lines.add(
-          'Grand Total: ${_peso2(receipt.systemTotal + receipt.orderTotal)}',
-        );
-      }
+      lines.add('Total Amount Due: ${_peso2(totalAmountDue)}');
       lines.add('');
       lines.add('Thank you! 😊');
     }
@@ -2072,9 +2042,7 @@ class _ViewReceiptState extends State<ViewReceipt>
                 onPressed: _isSavingPayAll ? null : _showPayAllModal,
                 style: ViewReceiptStyles.primaryButtonStyle,
                 child: Text(
-                  _loadedReceipts.length > 1
-                      ? 'Pay All • ${_peso2(_allReceiptsTotalDue)}'
-                      : 'Pay Now • ${_peso2(_allReceiptsTotalDue)}',
+                  'Pay All • ${_peso2(_allReceiptsTotalDue)}',
                   style: ViewReceiptStyles.primaryButtonText,
                 ),
               ),
@@ -2365,7 +2333,7 @@ class _ViewReceiptState extends State<ViewReceipt>
               builder: (_) {
                 final item = _loadedReceipts[i];
                 final r = loaded[i];
-                final due = _receiptTotalDue(r);
+                final due = _receiptBottomAmount(r);
                 final orderLines = item.orderLines;
 
                 return Container(
@@ -2435,7 +2403,7 @@ class _ViewReceiptState extends State<ViewReceipt>
                       const SizedBox(height: 10),
                       const Divider(),
 
-                      _titleAmountRow('Total', _peso2(due)),
+                      _titleAmountRow(_receiptBottomLabel(r), _peso2(due)),
                     ],
                   ),
                 );
@@ -2447,8 +2415,20 @@ class _ViewReceiptState extends State<ViewReceipt>
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: ViewReceiptStyles.totalBox,
             child: _titleAmountRow(
-              'GRAND TOTAL',
-              _peso2(_allReceiptsTotalDue),
+              _loadedReceipts.every((e) => _buildComposedReceipt(e).isFullyPaid)
+                  ? 'GRAND TOTAL'
+                  : 'TOTAL AMOUNT DUE',
+              _peso2(
+                _loadedReceipts.every(
+                      (e) => _buildComposedReceipt(e).isFullyPaid,
+                    )
+                    ? _loadedReceipts.fold(
+                        0.0,
+                        (sum, e) =>
+                            sum + _receiptGrandTotal(_buildComposedReceipt(e)),
+                      )
+                    : _allReceiptsTotalDue,
+              ),
               big: true,
             ),
           ),
@@ -2458,7 +2438,9 @@ class _ViewReceiptState extends State<ViewReceipt>
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _isSavingPayAll ? null : _showPayAllModal,
+              onPressed: (_isSavingPayAll || _allReceiptsTotalDue <= 0)
+                  ? null
+                  : _showPayAllModal,
               style: ViewReceiptStyles.primaryButtonStyle,
               child: Text(
                 'Pay All • ${_peso2(_allReceiptsTotalDue)}',
@@ -2472,13 +2454,17 @@ class _ViewReceiptState extends State<ViewReceipt>
   }
 
   Widget _buildReceiptCard(ReceiptData receipt) {
-    final allRows = [..._addOnRows, ..._consignmentRows];
     final double orderDue = math.max(
       0,
       receipt.orderTotal - receipt.orderPaidTotal,
     );
     final double totalAmountDue =
         math.max(0, receipt.systemBalance) + math.max(0, orderDue);
+
+    final bool fullyPaid = receipt.isFullyPaid;
+    final double grandTotal = _receiptGrandTotal(receipt);
+    final String bottomLabel = fullyPaid ? 'GRAND TOTAL' : 'TOTAL AMOUNT DUE';
+    final double bottomAmount = fullyPaid ? grandTotal : totalAmountDue;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -2594,8 +2580,8 @@ class _ViewReceiptState extends State<ViewReceipt>
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: ViewReceiptStyles.totalBox,
             child: _titleAmountRow(
-              'TOTAL AMOUNT DUE',
-              _peso2(totalAmountDue),
+              bottomLabel,
+              _peso2(bottomAmount),
               big: true,
             ),
           ),
