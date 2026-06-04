@@ -291,12 +291,30 @@ class _ViewReceiptState extends State<ViewReceipt>
     }
   }
 
+  DateTime _phNow() {
+    return DateTime.now().toUtc().add(const Duration(hours: 8));
+  }
+
+  String _phIsoNow() {
+    final ph = _phNow();
+    String two(int n) => n.toString().padLeft(2, '0');
+
+    return '${ph.year}-${two(ph.month)}-${two(ph.day)}T'
+        '${two(ph.hour)}:${two(ph.minute)}:${two(ph.second)}+08:00';
+  }
+
+  DateTime _toPhilippineTime(dynamic iso) {
+    final parsed = DateTime.tryParse(iso.toString());
+    if (parsed == null) return _phNow();
+    return parsed.toUtc().add(const Duration(hours: 8));
+  }
+
   String _formatDateTime(dynamic iso) {
     if (iso == null) return '—';
     final parsed = DateTime.tryParse(iso.toString());
     if (parsed == null) return '—';
 
-    final local = parsed.toLocal();
+    final local = _toPhilippineTime(iso);
     final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
     final minute = local.minute.toString().padLeft(2, '0');
     final ampm = local.hour >= 12 ? 'PM' : 'AM';
@@ -371,14 +389,14 @@ class _ViewReceiptState extends State<ViewReceipt>
     final startedAt = DateTime.tryParse(startedRaw.toString())?.toLocal();
     if (startedAt == null) return row;
 
-    final now = DateTime.now();
+    final now = _phNow();
     final totalMinutes = _minutesBetween(startedAt, now);
     final totalAmount = _computeOpenSessionAmount(totalMinutes);
 
     await supabase
         .from('customer_sessions')
         .update({
-          'time_ended': now.toIso8601String(),
+          'time_ended': _phIsoNow(),
           'total_time': totalMinutes,
           'total_amount': totalAmount,
           'hour_avail': 'CLOSED',
