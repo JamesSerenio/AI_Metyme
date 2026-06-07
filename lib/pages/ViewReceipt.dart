@@ -304,9 +304,18 @@ class _ViewReceiptState extends State<ViewReceipt>
   }
 
   DateTime _toPhilippineTime(dynamic iso) {
-    final parsed = DateTime.tryParse(iso.toString());
+    final raw = iso?.toString().trim() ?? '';
+    final parsed = DateTime.tryParse(raw);
     if (parsed == null) return _phNow();
-    return parsed.toUtc().add(const Duration(hours: 8));
+
+    final hasTimezone =
+        raw.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(raw);
+
+    if (hasTimezone) {
+      return parsed.toUtc().add(const Duration(hours: 8));
+    }
+
+    return parsed;
   }
 
   String _formatDateTime(dynamic iso) {
@@ -386,8 +395,7 @@ class _ViewReceiptState extends State<ViewReceipt>
 
     if (sessionId.isEmpty || startedRaw == null) return row;
 
-    final startedAt = DateTime.tryParse(startedRaw.toString())?.toLocal();
-    if (startedAt == null) return row;
+    final startedAt = _toPhilippineTime(startedRaw);
 
     final now = _phNow();
     final totalMinutes = _minutesBetween(startedAt, now);
