@@ -296,7 +296,7 @@ class _ViewReceiptState extends State<ViewReceipt>
   }
 
   String _phIsoNow() {
-    return _phIsoNow();
+    return DateTime.now().toIso8601String();
   }
 
   DateTime _toPhilippineTime(dynamic iso) {
