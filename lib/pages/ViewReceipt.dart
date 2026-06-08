@@ -2937,7 +2937,7 @@ class ReceiptData {
   }
 
   static ReceiptData fromCustomerSession(Map<String, dynamic> map) {
-    final totalAmount = _toDouble(map['total_amount']);
+    double totalAmount = _toDouble(map['total_amount']);
     final discountKind = (map['discount_kind'] ?? 'none').toString();
     final discountValue = _toDouble(map['discount_value']);
 
@@ -2980,6 +2980,11 @@ class ReceiptData {
     } else {
       final totalTime = _toDouble(map['total_time']);
       minutes = totalTime.round();
+    }
+
+    // ✅ kung total_amount sa DB kay 0, compute system cost from minutes
+    if (totalAmount <= 0 && minutes > 0) {
+      totalAmount = ((minutes / 60.0) * 20.0).ceilToDouble();
     }
 
     return ReceiptData(
