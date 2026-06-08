@@ -292,30 +292,18 @@ class _ViewReceiptState extends State<ViewReceipt>
   }
 
   DateTime _phNow() {
-    return DateTime.now().toUtc().add(const Duration(hours: 8));
+    return DateTime.now();
   }
 
   String _phIsoNow() {
-    final ph = _phNow();
-    String two(int n) => n.toString().padLeft(2, '0');
-
-    return '${ph.year}-${two(ph.month)}-${two(ph.day)}T'
-        '${two(ph.hour)}:${two(ph.minute)}:${two(ph.second)}+08:00';
+    return _phIsoNow();
   }
 
   DateTime _toPhilippineTime(dynamic iso) {
-    final raw = iso?.toString().trim() ?? '';
-    final parsed = DateTime.tryParse(raw);
-    if (parsed == null) return _phNow();
+    final parsed = DateTime.tryParse('${iso ?? ''}');
+    if (parsed == null) return DateTime.now();
 
-    final hasTimezone =
-        raw.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(raw);
-
-    if (hasTimezone) {
-      return parsed.toUtc().add(const Duration(hours: 8));
-    }
-
-    return parsed;
+    return parsed.toLocal();
   }
 
   String _formatDateTime(dynamic iso) {
@@ -517,7 +505,7 @@ class _ViewReceiptState extends State<ViewReceipt>
 
     final payload = {
       'is_paid': finalPaid,
-      'paid_at': finalPaid ? DateTime.now().toIso8601String() : null,
+      'paid_at': finalPaid ? _phIsoNow() : null,
     };
 
     if (receipt.source == ReceiptSource.customerSession) {
@@ -1850,7 +1838,7 @@ class _ViewReceiptState extends State<ViewReceipt>
       'gcash_amount': newGcash,
       'cash_amount': newCash,
       'is_paid': finalPaid,
-      'paid_at': finalPaid ? DateTime.now().toIso8601String() : null,
+      'paid_at': finalPaid ? _phIsoNow() : null,
     };
 
     if (receipt.source == ReceiptSource.customerSession) {
@@ -1929,7 +1917,7 @@ class _ViewReceiptState extends State<ViewReceipt>
               'gcash_amount': rowNewGcash,
               'cash_amount': rowNewCash,
               'is_paid': rowFullyPaid,
-              'paid_at': rowFullyPaid ? DateTime.now().toIso8601String() : null,
+              'paid_at': rowFullyPaid ? _phIsoNow() : null,
             })
             .eq('id', row.id);
       }
@@ -1943,7 +1931,7 @@ class _ViewReceiptState extends State<ViewReceipt>
       'gcash_amount': newOrderGcash,
       'cash_amount': newOrderCash,
       'is_paid': orderFullyPaid,
-      'paid_at': orderFullyPaid ? DateTime.now().toIso8601String() : null,
+      'paid_at': orderFullyPaid ? _phIsoNow() : null,
     }, onConflict: 'booking_code').select();
 
     if ((upsertResult as List).isEmpty) {
@@ -2349,7 +2337,7 @@ class _ViewReceiptState extends State<ViewReceipt>
           ),
           const SizedBox(height: 4),
           Text(
-            'DATE: ${_formatDateOnly(DateTime.now().toIso8601String())}',
+            'DATE: ${_formatDateOnly(_phIsoNow())}',
             style: ViewReceiptStyles.receiptSubTitle,
           ),
           const SizedBox(height: 18),
