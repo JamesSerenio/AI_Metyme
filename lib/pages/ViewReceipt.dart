@@ -2936,8 +2936,24 @@ class ReceiptData {
       discountAmount = discountValue;
     }
 
-    final totalTime = _toDouble(map['total_time']);
-    final minutes = totalTime.round();
+    int minutes = 0;
+
+    final startedRaw = map['time_started'];
+    final endedRaw = map['time_ended'];
+
+    final startedAt = DateTime.tryParse('${startedRaw ?? ''}');
+    final endedAt = DateTime.tryParse('${endedRaw ?? ''}');
+
+    if (startedAt != null && endedAt != null) {
+      minutes = endedAt.difference(startedAt).inMinutes;
+
+      if (minutes < 0) {
+        minutes = 0;
+      }
+    } else {
+      final totalTime = _toDouble(map['total_time']);
+      minutes = totalTime.round();
+    }
 
     return ReceiptData(
       id: (map['id'] ?? '').toString(),
