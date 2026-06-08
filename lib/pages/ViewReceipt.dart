@@ -296,14 +296,26 @@ class _ViewReceiptState extends State<ViewReceipt>
   }
 
   String _phIsoNow() {
-    return DateTime.now().toIso8601String();
+    final ph = DateTime.now().toUtc().add(const Duration(hours: 8));
+    String two(int n) => n.toString().padLeft(2, '0');
+
+    return '${ph.year}-${two(ph.month)}-${two(ph.day)}T'
+        '${two(ph.hour)}:${two(ph.minute)}:${two(ph.second)}+08:00';
   }
 
   DateTime _toPhilippineTime(dynamic iso) {
-    final parsed = DateTime.tryParse('${iso ?? ''}');
+    final raw = '${iso ?? ''}'.trim();
+    final parsed = DateTime.tryParse(raw);
     if (parsed == null) return DateTime.now();
 
-    return parsed.toLocal();
+    final hasTimezone =
+        raw.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(raw);
+
+    if (hasTimezone) {
+      return parsed.toUtc().add(const Duration(hours: 8));
+    }
+
+    return parsed;
   }
 
   String _formatDateTime(dynamic iso) {
@@ -2941,8 +2953,23 @@ class ReceiptData {
     final startedRaw = map['time_started'];
     final endedRaw = map['time_ended'];
 
-    final startedAt = DateTime.tryParse('${startedRaw ?? ''}');
-    final endedAt = DateTime.tryParse('${endedRaw ?? ''}');
+    DateTime? parseDbDateTime(dynamic value) {
+      final raw = '${value ?? ''}'.trim();
+      final parsed = DateTime.tryParse(raw);
+      if (parsed == null) return null;
+
+      final hasTimezone =
+          raw.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(raw);
+
+      if (hasTimezone) {
+        return parsed.toUtc().add(const Duration(hours: 8));
+      }
+
+      return parsed;
+    }
+
+    final startedAt = parseDbDateTime(startedRaw);
+    final endedAt = parseDbDateTime(endedRaw);
 
     if (startedAt != null && endedAt != null) {
       minutes = endedAt.difference(startedAt).inMinutes;
@@ -3035,6 +3062,21 @@ class OrderRow {
     required this.gcashAmount,
     required this.cashAmount,
   });
+
+  static DateTime? _parseDbDateTime(dynamic value) {
+    final raw = '${value ?? ''}'.trim();
+    final parsed = DateTime.tryParse(raw);
+    if (parsed == null) return null;
+
+    final hasTimezone =
+        raw.endsWith('Z') || RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(raw);
+
+    if (hasTimezone) {
+      return parsed.toUtc().add(const Duration(hours: 8));
+    }
+
+    return parsed;
+  }
 
   static double _toDouble(dynamic value) {
     if (value == null) return 0;
