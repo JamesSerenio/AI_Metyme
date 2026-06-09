@@ -2559,7 +2559,7 @@ class _ViewReceiptState extends State<ViewReceipt>
 
           if (receipt.source == ReceiptSource.customerSession)
             _receiptRow('Time Consumed', receipt.timeConsumedText),
-          _receiptRow('System Cost', _peso2(receipt.systemTotal)),
+          _receiptRow('System Cost', _peso2(receipt.computedSystemTotal)),
           _receiptRow(
             'Discount',
             receipt.discountAmount > 0
@@ -2875,6 +2875,16 @@ class ReceiptData {
   double get systemPaidTotal => systemGcash + systemCash;
   double get orderPaidTotal => orderGcashPaid + orderCashPaid;
 
+  double get computedSystemTotal {
+    if (systemTotal > 0) return systemTotal;
+
+    if (timeConsumedMinutes > 0) {
+      return ((timeConsumedMinutes / 60.0) * 20.0).ceilToDouble();
+    }
+
+    return 0;
+  }
+
   String get timeConsumedText {
     final mins = timeConsumedMinutes < 0 ? 0 : timeConsumedMinutes;
     final hours = mins ~/ 60;
@@ -2890,7 +2900,7 @@ class ReceiptData {
   }
 
   double get discountedSystemTotal {
-    final value = systemTotal - discountAmount;
+    final value = computedSystemTotal - discountAmount;
     return value > 0 ? value : 0;
   }
 
