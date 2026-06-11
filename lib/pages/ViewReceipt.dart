@@ -2876,13 +2876,11 @@ class ReceiptData {
   double get orderPaidTotal => orderGcashPaid + orderCashPaid;
 
   double get computedSystemTotal {
-    if (systemTotal > 0) return systemTotal;
+    final computed = timeConsumedMinutes > 0
+        ? ((timeConsumedMinutes / 60.0) * 20.0).ceilToDouble()
+        : 0.0;
 
-    if (timeConsumedMinutes > 0) {
-      return ((timeConsumedMinutes / 60.0) * 20.0).ceilToDouble();
-    }
-
-    return 0;
+    return math.max(systemTotal, computed);
   }
 
   String get timeConsumedText {
