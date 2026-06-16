@@ -154,7 +154,8 @@ class _BookAddPageState extends State<BookAddPage>
       messages.add({
         "isAI": true,
         "text":
-            "Welcome to Me Tyme Lounge! ✨\n\nPlease choose one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo\n6. View Receipt",
+            "Welcome to Me Tyme Lounge! ✨\n\nPlease choose an option below:",
+        "showOptions": true,
       });
     });
 
@@ -704,7 +705,7 @@ class _BookAddPageState extends State<BookAddPage>
           child: Column(
             children: [
               Text(
-                "Start Your Private Lounge Booking",
+                "Start Your Booking Assistant",
                 textAlign: TextAlign.center,
                 style:
                     (isMobile
@@ -775,11 +776,20 @@ class _BookAddPageState extends State<BookAddPage>
               decoration: isAI
                   ? BookAddStyles.chatBubbleAI
                   : BookAddStyles.chatBubbleUser,
-              child: Text(
-                msg["text"]?.toString() ?? "",
-                style: isAI
-                    ? BookAddStyles.chatTextAI
-                    : BookAddStyles.chatTextUser,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    msg["text"]?.toString() ?? "",
+                    style: isAI
+                        ? BookAddStyles.chatTextAI
+                        : BookAddStyles.chatTextUser,
+                  ),
+                  if (msg["showOptions"] == true) ...[
+                    const SizedBox(height: 14),
+                    _buildChatOptionGrid(isMobile),
+                  ],
+                ],
               ),
             ),
           ),
@@ -807,10 +817,10 @@ class _BookAddPageState extends State<BookAddPage>
         : 600;
 
     final double leafWidth = isMobile
-        ? 70
+        ? 100
         : isTablet
-        ? 85
-        : 95;
+        ? 130
+        : 155;
 
     return Scaffold(
       backgroundColor: BookAddStyles.bgColor,
@@ -1096,6 +1106,10 @@ class _BookAddPageState extends State<BookAddPage>
         ),
         SizedBox(height: isMobile ? 10 : 14),
 
+        _buildLotusAnimation(isMobile),
+
+        SizedBox(height: isMobile ? 8 : 10),
+
         _buildHeroPanel(isMobile),
 
         SizedBox(height: isMobile ? 14 : 18),
@@ -1112,7 +1126,7 @@ class _BookAddPageState extends State<BookAddPage>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: const [
-                Icon(Icons.weekend_rounded, size: 20),
+                Icon(Icons.spa_rounded, size: 20),
                 SizedBox(width: 10),
                 Text("Start Booking"),
                 SizedBox(width: 10),
@@ -1122,6 +1136,63 @@ class _BookAddPageState extends State<BookAddPage>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildChatOptionGrid(bool isMobile) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        _chatOption(Icons.event_available_rounded, "Booking", _openBookingFlow),
+        _chatOption(Icons.local_offer_rounded, "Promo", _openPromoFlow),
+        _chatOption(Icons.add_circle_rounded, "Add-Ons", _openAddOnsFlow),
+        _chatOption(Icons.weekend_rounded, "Seat View", _openSeatFlow),
+        _chatOption(
+          Icons.fact_check_rounded,
+          "Attendance",
+          _openAttendanceFlow,
+        ),
+        _chatOption(Icons.receipt_long_rounded, "Receipt", _openReceiptFlow),
+      ],
+    );
+  }
+
+  Widget _chatOption(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: isBusy ? null : onTap,
+      child: Container(
+        width: 120,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.72),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withOpacity(0.75)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.045),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: BookAddStyles.primaryDark, size: 26),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF2F4A2E),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1145,7 +1216,7 @@ class _BookAddPageState extends State<BookAddPage>
                     Text(
                       isBusy
                           ? "Opening your selected view..."
-                          : "Reply with 1 to 6 to continue.",
+                          : "Tap an option to continue.",
                       style: BookAddStyles.helperText,
                     ),
                   ],
@@ -1182,37 +1253,7 @@ class _BookAddPageState extends State<BookAddPage>
           ),
         ),
         const SizedBox(height: 14),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                minLines: 1,
-                maxLines: 4,
-                enabled: !isBusy,
-                textInputAction: TextInputAction.send,
-                onSubmitted: sendMessage,
-                style: BookAddStyles.inputText,
-                decoration: BookAddStyles.inputDecoration(
-                  hintText: isBusy
-                      ? "Opening your selected view..."
-                      : "Type 1-6...",
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            SizedBox(
-              height: 56,
-              width: 56,
-              child: ElevatedButton(
-                onPressed: isBusy ? null : () => sendMessage(controller.text),
-                style: BookAddStyles.sendButton,
-                child: const Icon(Icons.send_rounded),
-              ),
-            ),
-          ],
-        ),
+        const SizedBox.shrink(),
       ],
     );
   }
