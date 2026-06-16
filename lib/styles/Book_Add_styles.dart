@@ -52,48 +52,15 @@ class BookAddStyles {
     ),
   );
 
-  static BoxDecoration displayImageWash = BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [
-        Colors.white.withOpacity(0.15),
-        Colors.white.withOpacity(0.04),
-        Colors.white.withOpacity(0.16),
-      ],
-    ),
-  );
-
-  static BoxDecoration displayImageTint = BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        const Color(0xFFF8EFDF).withOpacity(0.70),
-        const Color(0xFFF8EFDF).withOpacity(0.42),
-        const Color(0xFFF3EBDD).withOpacity(0.66),
-      ],
-      stops: const [0.0, 0.45, 1.0],
-    ),
-  );
-
   static BoxDecoration headerCard = BoxDecoration(
-    color: Colors.white.withOpacity(0.48),
-    borderRadius: BorderRadius.circular(22),
-    border: Border.all(
-      color: const Color(0xFFD8CCB3).withOpacity(0.78),
-      width: 1,
-    ),
+    color: Colors.white.withOpacity(0.54),
+    borderRadius: BorderRadius.circular(28),
+    border: Border.all(color: Colors.white.withOpacity(0.48), width: 1.2),
     boxShadow: [
       BoxShadow(
-        color: Colors.white.withOpacity(0.14),
-        blurRadius: 8,
-        offset: const Offset(0, -1),
-      ),
-      BoxShadow(
-        color: Colors.black.withOpacity(0.03),
-        blurRadius: 10,
-        offset: const Offset(0, 5),
+        color: Colors.black.withOpacity(0.045),
+        blurRadius: 18,
+        offset: const Offset(0, 8),
       ),
     ],
   );
@@ -156,7 +123,7 @@ class BookAddStyles {
     border: Border.all(color: primary.withOpacity(0.22), width: 1),
   );
 
-  static InputDecoration inputDecoration({String hintText = "Type 1-5..."}) {
+  static InputDecoration inputDecoration({String hintText = "Type 1-6..."}) {
     return InputDecoration(
       hintText: hintText,
       hintStyle: TextStyle(
@@ -185,34 +152,26 @@ class BookAddStyles {
     );
   }
 
-  static ButtonStyle primaryButton =
-      ElevatedButton.styleFrom(
-        backgroundColor: primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 42, vertical: 18),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        textStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.2,
-        ),
-      ).copyWith(
-        shadowColor: WidgetStateProperty.all(primary.withOpacity(0.20)),
-        elevation: WidgetStateProperty.all(4),
-      );
+  static ButtonStyle primaryButton = ElevatedButton.styleFrom(
+    backgroundColor: primaryDark,
+    foregroundColor: Colors.white,
+    elevation: 5,
+    padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+    textStyle: const TextStyle(
+      fontSize: 18,
+      fontWeight: FontWeight.w800,
+      letterSpacing: 0.2,
+    ),
+  );
 
-  static ButtonStyle sendButton =
-      ElevatedButton.styleFrom(
-        backgroundColor: primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        padding: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ).copyWith(
-        shadowColor: WidgetStateProperty.all(primary.withOpacity(0.22)),
-        elevation: WidgetStateProperty.all(4),
-      );
+  static ButtonStyle sendButton = ElevatedButton.styleFrom(
+    backgroundColor: primary,
+    foregroundColor: Colors.white,
+    elevation: 4,
+    padding: EdgeInsets.zero,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+  );
 
   static const TextStyle title = TextStyle(
     fontWeight: FontWeight.w800,
@@ -222,8 +181,8 @@ class BookAddStyles {
   );
 
   static const TextStyle bigTitle = TextStyle(
-    fontWeight: FontWeight.w800,
-    fontSize: 32,
+    fontWeight: FontWeight.w900,
+    fontSize: 34,
     color: textDark,
     height: 1.15,
     letterSpacing: 0.2,

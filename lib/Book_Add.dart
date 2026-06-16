@@ -684,7 +684,7 @@ class _BookAddPageState extends State<BookAddPage>
           width: double.infinity,
           padding: EdgeInsets.symmetric(
             horizontal: isMobile ? 18 : 28,
-            vertical: isMobile ? 18 : 24,
+            vertical: isMobile ? 12 : 16,
           ),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.20),
@@ -704,12 +704,12 @@ class _BookAddPageState extends State<BookAddPage>
           child: Column(
             children: [
               Text(
-                "Start Your Booking Assistant",
+                "Start Your Private Lounge Booking",
                 textAlign: TextAlign.center,
                 style:
                     (isMobile
-                            ? BookAddStyles.bigTitle.copyWith(fontSize: 26)
-                            : BookAddStyles.bigTitle)
+                            ? BookAddStyles.bigTitle.copyWith(fontSize: 22)
+                            : BookAddStyles.bigTitle.copyWith(fontSize: 28))
                         .copyWith(
                           color: const Color(0xFF1A1A1A),
                           fontWeight: FontWeight.w800,
@@ -801,16 +801,16 @@ class _BookAddPageState extends State<BookAddPage>
         : 700;
 
     final double cardHeight = isMobile
-        ? screen.height * 0.80
+        ? screen.height * 0.88
         : isTablet
-        ? 500
-        : 520;
+        ? 560
+        : 600;
 
     final double leafWidth = isMobile
-        ? 100
+        ? 70
         : isTablet
-        ? 130
-        : 155;
+        ? 85
+        : 95;
 
     return Scaffold(
       backgroundColor: BookAddStyles.bgColor,
@@ -905,6 +905,129 @@ class _BookAddPageState extends State<BookAddPage>
     );
   }
 
+  Widget _buildLotusAnimation(bool isMobile) {
+    final double size = isMobile ? 80 : 105;
+
+    return SizedBox(
+      width: size + 90,
+      height: size + 45,
+      child: AnimatedBuilder(
+        animation: Listenable.merge([leafController, ambientController]),
+        builder: (context, child) {
+          final double t = leafController.value * 2 * pi;
+          final double a = ambientController.value * 2 * pi;
+
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              // soft glow
+              Container(
+                width: size + 20,
+                height: size + 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      BookAddStyles.primary.withOpacity(0.20),
+                      Colors.white.withOpacity(0.04),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+
+              // floating leaves
+              _floatingMiniLeaf(
+                dx: -65 + sin(t) * 8,
+                dy: -8 + cos(t) * 8,
+                angle: -0.8 + sin(t) * 0.2,
+                size: isMobile ? 24 : 30,
+                opacity: 0.85,
+              ),
+              _floatingMiniLeaf(
+                dx: 65 + cos(t) * 7,
+                dy: -15 + sin(t) * 7,
+                angle: 0.8 + cos(t) * 0.2,
+                size: isMobile ? 24 : 30,
+                opacity: 0.85,
+              ),
+              _floatingMiniLeaf(
+                dx: -38 + cos(t) * 5,
+                dy: 42 + sin(t) * 5,
+                angle: 0.4,
+                size: isMobile ? 18 : 23,
+                opacity: 0.75,
+              ),
+              _floatingMiniLeaf(
+                dx: 38 + sin(t) * 5,
+                dy: 42 + cos(t) * 5,
+                angle: -0.4,
+                size: isMobile ? 18 : 23,
+                opacity: 0.75,
+              ),
+
+              // sparkles
+              _sparkle(dx: -50, dy: -40, opacity: 0.35 + sin(a) * 0.25),
+              _sparkle(dx: 50, dy: -35, opacity: 0.35 + cos(a) * 0.25),
+              _sparkle(dx: 0, dy: -58, opacity: 0.45 + sin(a) * 0.20),
+
+              // lotus icon
+              Transform.translate(
+                offset: Offset(0, sin(t) * 4),
+                child: Icon(
+                  Icons.spa_rounded,
+                  size: size,
+                  color: const Color(0xFF4F8F45).withOpacity(0.92),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _floatingMiniLeaf({
+    required double dx,
+    required double dy,
+    required double angle,
+    required double size,
+    required double opacity,
+  }) {
+    return Transform.translate(
+      offset: Offset(dx, dy),
+      child: Transform.rotate(
+        angle: angle,
+        child: Opacity(
+          opacity: opacity,
+          child: Icon(
+            Icons.eco_rounded,
+            size: size,
+            color: const Color(0xFF5C9F4A),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sparkle({
+    required double dx,
+    required double dy,
+    required double opacity,
+  }) {
+    return Transform.translate(
+      offset: Offset(dx, dy),
+      child: Opacity(
+        opacity: opacity.clamp(0.0, 1.0),
+        child: const Icon(
+          Icons.auto_awesome_rounded,
+          size: 16,
+          color: Color(0xFFE8D8A8),
+        ),
+      ),
+    );
+  }
+
   Widget _buildStartState(bool isMobile) {
     return Column(
       key: const ValueKey("start-state"),
@@ -971,9 +1094,11 @@ class _BookAddPageState extends State<BookAddPage>
             ],
           ),
         ),
-        SizedBox(height: isMobile ? 34 : 46),
+        SizedBox(height: isMobile ? 10 : 14),
+
         _buildHeroPanel(isMobile),
-        SizedBox(height: isMobile ? 26 : 34),
+
+        SizedBox(height: isMobile ? 14 : 18),
         TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.95, end: 1),
           duration: const Duration(milliseconds: 800),
@@ -984,7 +1109,16 @@ class _BookAddPageState extends State<BookAddPage>
           child: ElevatedButton(
             onPressed: startChat,
             style: BookAddStyles.primaryButton,
-            child: const Text("Start"),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.weekend_rounded, size: 20),
+                SizedBox(width: 10),
+                Text("Start Booking"),
+                SizedBox(width: 10),
+                Icon(Icons.arrow_forward_rounded, size: 22),
+              ],
+            ),
           ),
         ),
       ],
