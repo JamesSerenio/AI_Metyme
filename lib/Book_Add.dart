@@ -1330,12 +1330,21 @@ class _BookAddPageState extends State<BookAddPage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Lottie.asset(
-              'assets/lottie/flower.json',
-              width: isMobile ? 72 : 88,
-              height: isMobile ? 72 : 88,
-              repeat: true,
-              fit: BoxFit.contain,
+            InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: () {
+                setState(() {
+                  started = false;
+                  messages.clear();
+                });
+              },
+              child: Lottie.asset(
+                'assets/lottie/flower.json',
+                width: isMobile ? 72 : 88,
+                height: isMobile ? 72 : 88,
+                repeat: true,
+                fit: BoxFit.contain,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
