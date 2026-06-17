@@ -1161,7 +1161,7 @@ class _BookAddPageState extends State<BookAddPage>
       child: ClipRRect(
         borderRadius: BorderRadius.circular(26),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Container(
             width: 150,
             height: 132,
