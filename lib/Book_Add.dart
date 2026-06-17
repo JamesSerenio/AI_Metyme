@@ -141,8 +141,8 @@ class _BookAddPageState extends State<BookAddPage>
 
       displayPageController.animateToPage(
         currentAbsolutePage,
-        duration: const Duration(milliseconds: 1200),
-        curve: Curves.easeInOutCubic,
+        duration: const Duration(milliseconds: 2800),
+        curve: Curves.easeInOutExpo,
       );
     });
   }
@@ -565,6 +565,7 @@ class _BookAddPageState extends State<BookAddPage>
         children: [
           PageView.builder(
             controller: displayPageController,
+            physics: const NeverScrollableScrollPhysics(),
             onPageChanged: (index) {
               setState(() {
                 currentAbsolutePage = index;
@@ -576,19 +577,43 @@ class _BookAddPageState extends State<BookAddPage>
                   displayImages[index % displayImages.length];
 
               return AnimatedBuilder(
-                animation: ambientFloatAnim,
+                animation: displayPageController,
                 builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(ambientFloatAnim.value * 0.9, 0),
+                  double page = currentAbsolutePage.toDouble();
+
+                  if (displayPageController.hasClients &&
+                      displayPageController.position.haveDimensions) {
+                    page =
+                        displayPageController.page ??
+                        currentAbsolutePage.toDouble();
+                  }
+
+                  final double diff = (page - index).abs().clamp(0.0, 1.0);
+
+                  final double scale = lerpDouble(1.25, 1.0, 1 - diff)!;
+
+                  final double rotate = lerpDouble(0.06, 0.0, 1 - diff)!;
+
+                  final double slideX = (page - index) * 140;
+
+                  final double slideY = sin((page - index) * pi) * 25;
+
+                  return Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()
+                      ..translate(slideX, slideY)
+                      ..scale(scale)
+                      ..rotateZ(rotate),
                     child: child,
                   );
                 },
                 child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 1.10, end: 1.0),
-                  duration: const Duration(milliseconds: 1400),
+                  key: ValueKey(imagePath),
+                  tween: Tween(begin: 1.18, end: 1.0),
+                  duration: const Duration(seconds: 4),
                   curve: Curves.easeOutCubic,
-                  builder: (context, scale, child) {
-                    return Transform.scale(scale: scale, child: child);
+                  builder: (context, zoom, child) {
+                    return Transform.scale(scale: zoom, child: child);
                   },
                   child: Image.asset(
                     imagePath,
