@@ -232,4 +232,22 @@ class BookAddStyles {
     color: primaryDark,
     fontWeight: FontWeight.w700,
   );
+
+  static ShapeBorder themeMenuShape = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(18),
+    side: BorderSide(color: Colors.white.withOpacity(0.65), width: 1),
+  );
+
+  static const TextStyle themeMenuText = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: Color(0xFF24351F),
+  );
+
+  static PopupMenuThemeData themePopupMenu = PopupMenuThemeData(
+    color: Color(0xFFF8F4EC),
+    elevation: 10,
+    shape: themeMenuShape,
+    textStyle: themeMenuText,
+  );
 }

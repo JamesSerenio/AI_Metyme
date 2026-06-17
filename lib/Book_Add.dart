@@ -51,6 +51,17 @@ class _BookAddPageState extends State<BookAddPage>
   int currentAbsolutePage = _loopStartPage;
   int currentDisplayIndex = 0;
 
+  String selectedTheme = "Regular";
+
+  final Map<String, List<String>> themeImages = {
+    "Regular": List.generate(20, (index) => 'assets/${index + 1}.png'),
+    "Christmas": List.generate(20, (index) => 'assets/${index + 1}.png'),
+    "Halloween": List.generate(20, (index) => 'assets/${index + 1}.png'),
+    "Valentine": List.generate(20, (index) => 'assets/${index + 1}.png'),
+    "Summer": List.generate(20, (index) => 'assets/${index + 1}.png'),
+    "Fiesta": List.generate(20, (index) => 'assets/${index + 1}.png'),
+  };
+
   static final List<String> _allDisplayImages = List.generate(
     20,
     (index) => 'assets/${index + 1}.png',
@@ -461,27 +472,74 @@ class _BookAddPageState extends State<BookAddPage>
   }
 
   Widget _buildLogo(double size) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return PopupMenuButton<String>(
+      tooltip: "Change Theme",
+      offset: Offset(0, size - 8),
+      position: PopupMenuPosition.under,
+      color: const Color(0xFFF8F4EC),
+      elevation: 12,
+      shape: BookAddStyles.themeMenuShape,
+      onSelected: (value) {
+        setState(() {
+          selectedTheme = value;
+          displayImages = List<String>.from(themeImages[value]!)
+            ..shuffle(Random());
+          currentDisplayIndex = 0;
+          currentAbsolutePage = _loopStartPage;
+        });
+
+        if (displayPageController.hasClients) {
+          displayPageController.jumpToPage(_loopStartPage);
+        }
+      },
+      itemBuilder: (context) => const [
+        PopupMenuItem(
+          value: "Regular",
+          child: Text("🌿 Regular", style: BookAddStyles.themeMenuText),
+        ),
+        PopupMenuItem(
+          value: "Christmas",
+          child: Text("🎄 Christmas", style: BookAddStyles.themeMenuText),
+        ),
+        PopupMenuItem(
+          value: "Halloween",
+          child: Text("🎃 Halloween", style: BookAddStyles.themeMenuText),
+        ),
+        PopupMenuItem(
+          value: "Valentine",
+          child: Text("💘 Valentine", style: BookAddStyles.themeMenuText),
+        ),
+        PopupMenuItem(
+          value: "Summer",
+          child: Text("☀️ Summer", style: BookAddStyles.themeMenuText),
+        ),
+        PopupMenuItem(
+          value: "Fiesta",
+          child: Text("🎉 Fiesta", style: BookAddStyles.themeMenuText),
+        ),
+      ],
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipOval(
+          child: Image.asset(
+            'assets/study_hub.png',
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return const Icon(Icons.image_not_supported_outlined);
+            },
           ),
-        ],
-      ),
-      child: ClipOval(
-        child: Image.asset(
-          'assets/study_hub.png',
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return const Icon(Icons.image_not_supported_outlined);
-          },
         ),
       ),
     );
