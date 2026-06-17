@@ -684,7 +684,7 @@ class _BookAddPageState extends State<BookAddPage>
             color: Colors.white.withOpacity(0.20),
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: Colors.white.withOpacity(0.28),
+              color: Colors.white.withOpacity(0.46),
               width: 1.1,
             ),
             boxShadow: [
@@ -1156,47 +1156,78 @@ class _BookAddPageState extends State<BookAddPage>
 
   Widget _chatOption(IconData icon, String label, VoidCallback onTap) {
     return InkWell(
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(26),
       onTap: isBusy ? null : onTap,
-      child: Container(
-        width: 165,
-        height: 135,
-        decoration: const BoxDecoration(color: Colors.transparent),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 78,
-              height: 78,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF5FBF63), Color(0xFF1B5E20)],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(26),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            width: 150,
+            height: 132,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(26),
+              color: Colors.white.withOpacity(0.28),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.55),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: BookAddStyles.primary.withOpacity(0.30),
-                    blurRadius: 16,
-                    offset: const Offset(0, 7),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 68,
+                  height: 68,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF6EDC6F),
+                        Color(0xFF35A853),
+                        Color(0xFF176B2C),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF35A853).withOpacity(0.42),
+                        blurRadius: 22,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Icon(icon, color: Colors.white, size: 34),
+                  child: Icon(icon, color: Colors.white, size: 36),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF173B1C),
+                    letterSpacing: 0.15,
+                    shadows: [
+                      Shadow(
+                        color: Colors.white,
+                        blurRadius: 8,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF233C22),
-                letterSpacing: 0.15,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1205,79 +1236,72 @@ class _BookAddPageState extends State<BookAddPage>
   Widget _buildChatState(bool isMobile) {
     return Center(
       key: const ValueKey("chat-state"),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(34),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-          child: Container(
-            width: isMobile ? double.infinity : 610,
-            padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 18 : 30,
-              vertical: isMobile ? 22 : 30,
-            ),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(34),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withOpacity(0.28),
-                  const Color(0xFFF7EBD7).withOpacity(0.18),
-                  Colors.white.withOpacity(0.12),
+      child: Container(
+        width: isMobile ? double.infinity : 610,
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 18 : 30,
+          vertical: isMobile ? 22 : 30,
+        ),
+        decoration: const BoxDecoration(color: Colors.transparent),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.48),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: Colors.white.withOpacity(0.65)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.10),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
                 ],
               ),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.75),
-                width: 1.4,
+              child: Column(
+                children: [
+                  Lottie.asset(
+                    'assets/lottie/flower.json',
+                    width: isMobile ? 62 : 76,
+                    height: isMobile ? 62 : 76,
+                    repeat: true,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Welcome to Me Tyme Lounge",
+                    textAlign: TextAlign.center,
+                    style: BookAddStyles.bigTitle.copyWith(
+                      fontSize: isMobile ? 24 : 30,
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFF153819),
+                      shadows: [
+                        Shadow(
+                          color: Colors.white.withOpacity(0.85),
+                          blurRadius: 12,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Please choose an option below",
+                    textAlign: TextAlign.center,
+                    style: BookAddStyles.subtitle.copyWith(
+                      color: Colors.black.withOpacity(0.62),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.10),
-                  blurRadius: 28,
-                  offset: const Offset(0, 14),
-                ),
-                BoxShadow(
-                  color: const Color(0xFFE6D1A8).withOpacity(0.35),
-                  blurRadius: 18,
-                  offset: const Offset(0, -3),
-                ),
-              ],
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Lottie.asset(
-                  'assets/lottie/flower.json',
-                  width: isMobile ? 72 : 88,
-                  height: isMobile ? 72 : 88,
-                  repeat: true,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "Welcome to Me Tyme Lounge",
-                  textAlign: TextAlign.center,
-                  style: BookAddStyles.bigTitle.copyWith(
-                    fontSize: isMobile ? 24 : 30,
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFF21351F),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "Please choose an option below",
-                  textAlign: TextAlign.center,
-                  style: BookAddStyles.subtitle.copyWith(
-                    color: Colors.black.withOpacity(0.62),
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                _buildChatOptionGrid(isMobile),
-              ],
-            ),
-          ),
+            const SizedBox(height: 26),
+            _buildChatOptionGrid(isMobile),
+          ],
         ),
       ),
     );
