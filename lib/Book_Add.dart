@@ -684,7 +684,7 @@ class _BookAddPageState extends State<BookAddPage>
             color: Colors.white.withOpacity(0.20),
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: Colors.white.withOpacity(0.46),
+              color: Colors.white.withOpacity(0.28),
               width: 1.1,
             ),
             boxShadow: [
@@ -1135,48 +1135,101 @@ class _BookAddPageState extends State<BookAddPage>
   }
 
   Widget _buildChatOptionGrid(bool isMobile) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: isMobile ? 12 : 16,
-      runSpacing: isMobile ? 12 : 16,
-      children: [
-        _chatOption(Icons.event_available_rounded, "Booking", _openBookingFlow),
-        _chatOption(Icons.local_offer_rounded, "Promo", _openPromoFlow),
-        _chatOption(Icons.add_circle_rounded, "Add-Ons", _openAddOnsFlow),
-        _chatOption(Icons.weekend_rounded, "Seat View", _openSeatFlow),
-        _chatOption(
-          Icons.fact_check_rounded,
-          "Attendance",
-          _openAttendanceFlow,
-        ),
-        _chatOption(Icons.receipt_long_rounded, "Receipt", _openReceiptFlow),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double gap = isMobile ? 8 : 14;
+        final double itemWidth = (constraints.maxWidth - (gap * 2)) / 3;
+        final double itemHeight = isMobile ? 112 : 126;
+
+        return Wrap(
+          alignment: WrapAlignment.center,
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            _chatOption(
+              Icons.event_available_rounded,
+              "Booking",
+              _openBookingFlow,
+              itemWidth,
+              itemHeight,
+              isMobile,
+            ),
+            _chatOption(
+              Icons.local_offer_rounded,
+              "Promo",
+              _openPromoFlow,
+              itemWidth,
+              itemHeight,
+              isMobile,
+            ),
+            _chatOption(
+              Icons.add_circle_rounded,
+              "Add-Ons",
+              _openAddOnsFlow,
+              itemWidth,
+              itemHeight,
+              isMobile,
+            ),
+            _chatOption(
+              Icons.weekend_rounded,
+              "Seat View",
+              _openSeatFlow,
+              itemWidth,
+              itemHeight,
+              isMobile,
+            ),
+            _chatOption(
+              Icons.fact_check_rounded,
+              "Attendance",
+              _openAttendanceFlow,
+              itemWidth,
+              itemHeight,
+              isMobile,
+            ),
+            _chatOption(
+              Icons.receipt_long_rounded,
+              "Receipt",
+              _openReceiptFlow,
+              itemWidth,
+              itemHeight,
+              isMobile,
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _chatOption(IconData icon, String label, VoidCallback onTap) {
+  Widget _chatOption(
+    IconData icon,
+    String label,
+    VoidCallback onTap,
+    double width,
+    double height,
+    bool isMobile,
+  ) {
     return InkWell(
-      borderRadius: BorderRadius.circular(26),
+      borderRadius: BorderRadius.circular(24),
       onTap: isBusy ? null : onTap,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(24),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
-            width: 150,
-            height: 132,
+            width: width,
+            height: height,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(26),
-              color: Colors.white.withOpacity(0.28),
+              borderRadius: BorderRadius.circular(24),
+              color: Colors.white.withOpacity(0.48),
               border: Border.all(
-                color: Colors.white.withOpacity(0.55),
+                color: Colors.white.withOpacity(0.70),
                 width: 1.2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.12),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
+                  color: Colors.black.withOpacity(0.13),
+                  blurRadius: 16,
+                  offset: const Offset(0, 7),
                 ),
               ],
             ),
@@ -1184,8 +1237,8 @@ class _BookAddPageState extends State<BookAddPage>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: 68,
-                  height: 68,
+                  width: isMobile ? 54 : 62,
+                  height: isMobile ? 54 : 62,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: const LinearGradient(
@@ -1200,23 +1253,29 @@ class _BookAddPageState extends State<BookAddPage>
                     boxShadow: [
                       BoxShadow(
                         color: const Color(0xFF35A853).withOpacity(0.42),
-                        blurRadius: 22,
-                        offset: const Offset(0, 8),
+                        blurRadius: 18,
+                        offset: const Offset(0, 7),
                       ),
                     ],
                   ),
-                  child: Icon(icon, color: Colors.white, size: 36),
+                  child: Icon(
+                    icon,
+                    color: Colors.white,
+                    size: isMobile ? 29 : 34,
+                  ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: isMobile ? 7 : 9),
                 Text(
                   label,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 13.5,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: isMobile ? 11.5 : 13,
                     fontWeight: FontWeight.w900,
-                    color: Color(0xFF173B1C),
-                    letterSpacing: 0.15,
-                    shadows: [
+                    color: const Color(0xFF173B1C),
+                    letterSpacing: 0.1,
+                    shadows: const [
                       Shadow(
                         color: Colors.white,
                         blurRadius: 8,
@@ -1237,69 +1296,43 @@ class _BookAddPageState extends State<BookAddPage>
     return Center(
       key: const ValueKey("chat-state"),
       child: Container(
-        width: isMobile ? double.infinity : 610,
+        width: isMobile ? double.infinity : 580,
         padding: EdgeInsets.symmetric(
           horizontal: isMobile ? 18 : 30,
-          vertical: isMobile ? 22 : 30,
+          vertical: isMobile ? 10 : 24,
         ),
         decoration: const BoxDecoration(color: Colors.transparent),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.48),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: Colors.white.withOpacity(0.65)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.10),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Lottie.asset(
-                    'assets/lottie/flower.json',
-                    width: isMobile ? 62 : 76,
-                    height: isMobile ? 62 : 76,
-                    repeat: true,
-                    fit: BoxFit.contain,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Welcome to Me Tyme Lounge",
-                    textAlign: TextAlign.center,
-                    style: BookAddStyles.bigTitle.copyWith(
-                      fontSize: isMobile ? 24 : 30,
-                      fontWeight: FontWeight.w900,
-                      color: const Color(0xFF153819),
-                      shadows: [
-                        Shadow(
-                          color: Colors.white.withOpacity(0.85),
-                          blurRadius: 12,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Please choose an option below",
-                    textAlign: TextAlign.center,
-                    style: BookAddStyles.subtitle.copyWith(
-                      color: Colors.black.withOpacity(0.62),
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ],
+            Lottie.asset(
+              'assets/lottie/flower.json',
+              width: isMobile ? 72 : 88,
+              height: isMobile ? 72 : 88,
+              repeat: true,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Welcome to Me Tyme Lounge",
+              textAlign: TextAlign.center,
+              style: BookAddStyles.bigTitle.copyWith(
+                fontSize: isMobile ? 24 : 30,
+                fontWeight: FontWeight.w900,
+                color: const Color(0xFF21351F),
               ),
             ),
-            const SizedBox(height: 26),
+            const SizedBox(height: 8),
+            Text(
+              "Please choose an option below",
+              textAlign: TextAlign.center,
+              style: BookAddStyles.subtitle.copyWith(
+                color: Colors.black.withOpacity(0.62),
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(height: 24),
             _buildChatOptionGrid(isMobile),
           ],
         ),
