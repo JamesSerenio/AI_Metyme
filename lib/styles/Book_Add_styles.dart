@@ -250,4 +250,33 @@ class BookAddStyles {
     shape: themeMenuShape,
     textStyle: themeMenuText,
   );
+  // ================= THEME DROPDOWN =================
+
+  static const Color themeMenuBg = Color(0xFFF8F4EC);
+
+  static BoxDecoration themeMenuSelected = BoxDecoration(
+    borderRadius: BorderRadius.circular(14),
+    gradient: const LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      colors: [Color(0xFFE8F6E8), Color(0xFFD7F0D7)],
+    ),
+    border: Border.all(color: Color(0xFF43A047), width: 1),
+  );
+
+  static BoxDecoration themeMenuNormal = BoxDecoration(
+    borderRadius: BorderRadius.circular(14),
+  );
+
+  static const TextStyle themeMenuSelectedText = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w800,
+    color: Color(0xFF2E7D32),
+  );
+
+  static const TextStyle themeMenuNormalText = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: Color(0xFF24351F),
+  );
 }

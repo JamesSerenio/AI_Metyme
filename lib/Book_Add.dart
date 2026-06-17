@@ -492,30 +492,100 @@ class _BookAddPageState extends State<BookAddPage>
           displayPageController.jumpToPage(_loopStartPage);
         }
       },
-      itemBuilder: (context) => const [
+      itemBuilder: (context) => [
         PopupMenuItem(
           value: "Regular",
-          child: Text("🌿 Regular", style: BookAddStyles.themeMenuText),
+          child: Container(
+            decoration: selectedTheme == "Regular"
+                ? BookAddStyles.themeMenuSelected
+                : BookAddStyles.themeMenuNormal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              "🌿 Regular",
+              style: selectedTheme == "Regular"
+                  ? BookAddStyles.themeMenuSelectedText
+                  : BookAddStyles.themeMenuNormalText,
+            ),
+          ),
         ),
         PopupMenuItem(
           value: "Christmas",
-          child: Text("🎄 Christmas", style: BookAddStyles.themeMenuText),
+          child: Container(
+            decoration: selectedTheme == "Christmas"
+                ? BookAddStyles.themeMenuSelected
+                : BookAddStyles.themeMenuNormal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              "🎄 Christmas",
+              style: selectedTheme == "Christmas"
+                  ? BookAddStyles.themeMenuSelectedText
+                  : BookAddStyles.themeMenuNormalText,
+            ),
+          ),
         ),
+
         PopupMenuItem(
           value: "Halloween",
-          child: Text("🎃 Halloween", style: BookAddStyles.themeMenuText),
+          child: Container(
+            decoration: selectedTheme == "Halloween"
+                ? BookAddStyles.themeMenuSelected
+                : BookAddStyles.themeMenuNormal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              "🎃 Halloween",
+              style: selectedTheme == "Halloween"
+                  ? BookAddStyles.themeMenuSelectedText
+                  : BookAddStyles.themeMenuNormalText,
+            ),
+          ),
         ),
+
         PopupMenuItem(
           value: "Valentine",
-          child: Text("💘 Valentine", style: BookAddStyles.themeMenuText),
+          child: Container(
+            decoration: selectedTheme == "Valentine"
+                ? BookAddStyles.themeMenuSelected
+                : BookAddStyles.themeMenuNormal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              "💘 Valentine",
+              style: selectedTheme == "Valentine"
+                  ? BookAddStyles.themeMenuSelectedText
+                  : BookAddStyles.themeMenuNormalText,
+            ),
+          ),
         ),
+
         PopupMenuItem(
           value: "Summer",
-          child: Text("☀️ Summer", style: BookAddStyles.themeMenuText),
+          child: Container(
+            decoration: selectedTheme == "Summer"
+                ? BookAddStyles.themeMenuSelected
+                : BookAddStyles.themeMenuNormal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              "☀️ Summer",
+              style: selectedTheme == "Summer"
+                  ? BookAddStyles.themeMenuSelectedText
+                  : BookAddStyles.themeMenuNormalText,
+            ),
+          ),
         ),
+
         PopupMenuItem(
           value: "Fiesta",
-          child: Text("🎉 Fiesta", style: BookAddStyles.themeMenuText),
+          child: Container(
+            decoration: selectedTheme == "Fiesta"
+                ? BookAddStyles.themeMenuSelected
+                : BookAddStyles.themeMenuNormal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              "🎉 Fiesta",
+              style: selectedTheme == "Fiesta"
+                  ? BookAddStyles.themeMenuSelectedText
+                  : BookAddStyles.themeMenuNormalText,
+            ),
+          ),
         ),
       ],
       child: Container(
