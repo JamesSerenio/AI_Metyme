@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'styles/Book_Add_styles.dart';
 import 'pages/Booking.dart';
 import 'pages/Promo.dart';
@@ -151,12 +152,7 @@ class _BookAddPageState extends State<BookAddPage>
 
     setState(() {
       started = true;
-      messages.add({
-        "isAI": true,
-        "text":
-            "Welcome to Me Tyme Lounge! ✨\n\nPlease choose an option below:",
-        "showOptions": true,
-      });
+      messages.clear();
     });
 
     _scrollToBottom();
@@ -623,9 +619,9 @@ class _BookAddPageState extends State<BookAddPage>
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.white.withOpacity(0.36),
-                  Colors.white.withOpacity(0.16),
-                  Colors.white.withOpacity(0.34),
+                  Colors.white.withOpacity(0.08),
+                  Colors.white.withOpacity(0.02),
+                  Colors.white.withOpacity(0.08),
                 ],
               ),
             ),
@@ -636,9 +632,9 @@ class _BookAddPageState extends State<BookAddPage>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  const Color(0xFFF7EEDB).withOpacity(0.58),
-                  const Color(0xFFF7EEDB).withOpacity(0.25),
-                  const Color(0xFFF2E7D3).withOpacity(0.56),
+                  const Color(0xFFF7EEDB).withOpacity(0.12),
+                  const Color(0xFFF7EEDB).withOpacity(0.04),
+                  const Color(0xFFF2E7D3).withOpacity(0.12),
                 ],
                 stops: const [0.0, 0.45, 1.0],
               ),
@@ -649,10 +645,7 @@ class _BookAddPageState extends State<BookAddPage>
               gradient: RadialGradient(
                 center: const Alignment(0, 0.02),
                 radius: 0.88,
-                colors: [
-                  Colors.white.withOpacity(0.04),
-                  Colors.black.withOpacity(0.08),
-                ],
+                colors: [Colors.transparent, Colors.black.withOpacity(0.03)],
               ),
             ),
           ),
@@ -984,10 +977,12 @@ class _BookAddPageState extends State<BookAddPage>
               // lotus icon
               Transform.translate(
                 offset: Offset(0, sin(t) * 4),
-                child: Icon(
-                  Icons.spa_rounded,
-                  size: size,
-                  color: const Color(0xFF4F8F45).withOpacity(0.92),
+                child: Lottie.asset(
+                  'assets/lottie/flower.json',
+                  width: size,
+                  height: size,
+                  repeat: true,
+                  fit: BoxFit.contain,
                 ),
               ),
             ],
@@ -1141,8 +1136,9 @@ class _BookAddPageState extends State<BookAddPage>
 
   Widget _buildChatOptionGrid(bool isMobile) {
     return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+      alignment: WrapAlignment.center,
+      spacing: isMobile ? 12 : 16,
+      runSpacing: isMobile ? 12 : 16,
       children: [
         _chatOption(Icons.event_available_rounded, "Booking", _openBookingFlow),
         _chatOption(Icons.local_offer_rounded, "Promo", _openPromoFlow),
@@ -1160,34 +1156,44 @@ class _BookAddPageState extends State<BookAddPage>
 
   Widget _chatOption(IconData icon, String label, VoidCallback onTap) {
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(28),
       onTap: isBusy ? null : onTap,
       child: Container(
-        width: 120,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.72),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withOpacity(0.75)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.045),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+        width: 165,
+        height: 135,
+        decoration: const BoxDecoration(color: Colors.transparent),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: BookAddStyles.primaryDark, size: 26),
-            const SizedBox(height: 6),
+            Container(
+              width: 78,
+              height: 78,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF5FBF63), Color(0xFF1B5E20)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: BookAddStyles.primary.withOpacity(0.30),
+                    blurRadius: 16,
+                    offset: const Offset(0, 7),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: Colors.white, size: 34),
+            ),
+            const SizedBox(height: 12),
             Text(
               label,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF2F4A2E),
+                fontSize: 13.5,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF233C22),
+                letterSpacing: 0.15,
               ),
             ),
           ],
@@ -1197,64 +1203,83 @@ class _BookAddPageState extends State<BookAddPage>
   }
 
   Widget _buildChatState(bool isMobile) {
-    return Column(
+    return Center(
       key: const ValueKey("chat-state"),
-      children: [
-        Container(
-          padding: EdgeInsets.all(isMobile ? 12 : 16),
-          decoration: BookAddStyles.headerCard,
-          child: Row(
-            children: [
-              _buildLogo(isMobile ? 40 : 46),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("AI Assistant", style: BookAddStyles.title),
-                    const SizedBox(height: 2),
-                    Text(
-                      isBusy
-                          ? "Opening your selected view..."
-                          : "Tap an option to continue.",
-                      style: BookAddStyles.helperText,
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
-                decoration: BookAddStyles.onlineChip,
-                child: Text(
-                  isBusy ? "Loading" : "Online",
-                  style: BookAddStyles.onlineText,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        Expanded(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(34),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
           child: Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(isMobile ? 12 : 18),
-            decoration: BookAddStyles.chatContainer,
-            child: ListView.builder(
-              controller: scrollController,
-              padding: const EdgeInsets.only(bottom: 10),
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                return chatBubble(messages[index], isMobile);
-              },
+            width: isMobile ? double.infinity : 610,
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 18 : 30,
+              vertical: isMobile ? 22 : 30,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(34),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.28),
+                  const Color(0xFFF7EBD7).withOpacity(0.18),
+                  Colors.white.withOpacity(0.12),
+                ],
+              ),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.75),
+                width: 1.4,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.10),
+                  blurRadius: 28,
+                  offset: const Offset(0, 14),
+                ),
+                BoxShadow(
+                  color: const Color(0xFFE6D1A8).withOpacity(0.35),
+                  blurRadius: 18,
+                  offset: const Offset(0, -3),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Lottie.asset(
+                  'assets/lottie/flower.json',
+                  width: isMobile ? 72 : 88,
+                  height: isMobile ? 72 : 88,
+                  repeat: true,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Welcome to Me Tyme Lounge",
+                  textAlign: TextAlign.center,
+                  style: BookAddStyles.bigTitle.copyWith(
+                    fontSize: isMobile ? 24 : 30,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFF21351F),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Please choose an option below",
+                  textAlign: TextAlign.center,
+                  style: BookAddStyles.subtitle.copyWith(
+                    color: Colors.black.withOpacity(0.62),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _buildChatOptionGrid(isMobile),
+              ],
             ),
           ),
         ),
-        const SizedBox(height: 14),
-        const SizedBox.shrink(),
-      ],
+      ),
     );
   }
 }
