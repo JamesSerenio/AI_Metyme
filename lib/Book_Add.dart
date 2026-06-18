@@ -620,32 +620,30 @@ class _BookAddPageState extends State<BookAddPage>
     required double angle,
     required bool invertY,
   }) {
+    final bool isChristmas = selectedTheme == "Christmas";
+
     return IgnorePointer(
       child: AnimatedBuilder(
         animation: leafFloatAnim,
         builder: (context, child) {
           return Transform.translate(
             offset: Offset(0, leafFloatAnim.value),
-            child: Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()
-                ..rotateZ(angle)
-                ..scale(1.0, invertY ? -1.0 : 1.0),
-              child: child,
-            ),
+            child: Transform.rotate(angle: angle, child: child),
           );
         },
-        child: Opacity(
-          opacity: 0.95,
-          child: Image.asset(
-            'assets/leave.png',
-            width: width,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return const SizedBox.shrink();
-            },
-          ),
-        ),
+        child: isChristmas
+            ? Lottie.asset(
+                BookAddStyles.christmasOrnamentJson,
+                width: width * 0.72,
+                height: width * 0.72,
+                repeat: true,
+                fit: BoxFit.contain,
+              )
+            : Image.asset(
+                'assets/leave.png',
+                width: width,
+                fit: BoxFit.contain,
+              ),
       ),
     );
   }
@@ -1134,7 +1132,7 @@ class _BookAddPageState extends State<BookAddPage>
                 offset: Offset(0, sin(t) * 4),
                 child: Lottie.asset(
                   selectedTheme == "Christmas"
-                      ? BookAddStyles.christmasTreeJson
+                      ? BookAddStyles.christmasCardJson
                       : 'assets/lottie/flower.json',
                   width: size,
                   height: size,
@@ -1271,7 +1269,16 @@ class _BookAddPageState extends State<BookAddPage>
         ),
         SizedBox(height: isMobile ? 10 : 14),
 
-        _buildLotusAnimation(isMobile),
+        selectedTheme == "Christmas"
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Lottie.asset(BookAddStyles.christmasLightsJson, width: 90),
+                  _buildLotusAnimation(isMobile),
+                  Lottie.asset(BookAddStyles.christmasBallJson, width: 70),
+                ],
+              )
+            : _buildLotusAnimation(isMobile),
 
         SizedBox(height: isMobile ? 8 : 10),
 
@@ -1292,8 +1299,18 @@ class _BookAddPageState extends State<BookAddPage>
                 : BookAddStyles.primaryButton,
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.spa_rounded, size: 20),
+              children: [
+                selectedTheme == "Christmas"
+                    ? SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: Lottie.asset(
+                          BookAddStyles.christmasCardJson,
+                          repeat: true,
+                          fit: BoxFit.contain,
+                        ),
+                      )
+                    : const Icon(Icons.spa_rounded, size: 20),
                 SizedBox(width: 10),
                 Text("Start Booking"),
                 SizedBox(width: 10),
