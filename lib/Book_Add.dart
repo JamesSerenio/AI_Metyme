@@ -615,12 +615,87 @@ class _BookAddPageState extends State<BookAddPage>
     );
   }
 
-  Widget _leafInside({
-    required double width,
-    required double angle,
-    required bool invertY,
-  }) {
+  Widget _cornerDecor({required double width, required String position}) {
     final bool isChristmas = selectedTheme == "Christmas";
+
+    if (!isChristmas) {
+      return _leafInsideRegular(width: width, position: position);
+    }
+
+    String asset;
+    double size;
+    Alignment align;
+
+    switch (position) {
+      case "topLeft":
+        asset = BookAddStyles.christmasLightsJson;
+        size = width * 1.05;
+        align = Alignment.topLeft;
+        break;
+      case "topRight":
+        asset = BookAddStyles.christmasLightsJson;
+        size = width * 1.05;
+        align = Alignment.topRight;
+        break;
+      case "bottomLeft":
+        asset = BookAddStyles.christmasBallJson;
+        size = width * 0.62;
+        align = Alignment.bottomLeft;
+        break;
+      default:
+        asset = BookAddStyles.christmasOrnamentJson;
+        size = width * 0.62;
+        align = Alignment.bottomRight;
+    }
+
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: leafFloatAnim,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, leafFloatAnim.value * 0.35),
+            child: child,
+          );
+        },
+        child: SizedBox(
+          width: width,
+          height: width,
+          child: Align(
+            alignment: align,
+            child: Lottie.asset(
+              asset,
+              width: size,
+              height: size,
+              repeat: true,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _leafInsideRegular({required double width, required String position}) {
+    double angle;
+    bool invertY;
+
+    switch (position) {
+      case "topLeft":
+        angle = 0;
+        invertY = true;
+        break;
+      case "topRight":
+        angle = 3.14159;
+        invertY = false;
+        break;
+      case "bottomLeft":
+        angle = 0;
+        invertY = false;
+        break;
+      default:
+        angle = -1.5708;
+        invertY = false;
+    }
 
     return IgnorePointer(
       child: AnimatedBuilder(
@@ -628,22 +703,20 @@ class _BookAddPageState extends State<BookAddPage>
         builder: (context, child) {
           return Transform.translate(
             offset: Offset(0, leafFloatAnim.value),
-            child: Transform.rotate(angle: angle, child: child),
+            child: Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..rotateZ(angle)
+                ..scale(1.0, invertY ? -1.0 : 1.0),
+              child: child,
+            ),
           );
         },
-        child: isChristmas
-            ? Lottie.asset(
-                BookAddStyles.christmasOrnamentJson,
-                width: width * 0.72,
-                height: width * 0.72,
-                repeat: true,
-                fit: BoxFit.contain,
-              )
-            : Image.asset(
-                'assets/leave.png',
-                width: width,
-                fit: BoxFit.contain,
-              ),
+        child: Image.asset(
+          'assets/leave.png',
+          width: width,
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
@@ -1015,39 +1088,35 @@ class _BookAddPageState extends State<BookAddPage>
                         ),
                       ),
                       Positioned(
-                        top: isMobile ? -8 : -10,
-                        left: isMobile ? -6 : -10,
-                        child: _leafInside(
+                        top: isMobile ? -5 : -8,
+                        left: isMobile ? -5 : -8,
+                        child: _cornerDecor(
                           width: leafWidth,
-                          angle: 0,
-                          invertY: true,
+                          position: "topLeft",
                         ),
                       ),
                       Positioned(
-                        top: isMobile ? -8 : -10,
-                        right: isMobile ? -6 : -10,
-                        child: _leafInside(
+                        top: isMobile ? -5 : -8,
+                        right: isMobile ? -5 : -8,
+                        child: _cornerDecor(
                           width: leafWidth,
-                          angle: 3.14159,
-                          invertY: false,
+                          position: "topRight",
                         ),
                       ),
                       Positioned(
-                        bottom: isMobile ? -8 : -10,
-                        left: isMobile ? -6 : -10,
-                        child: _leafInside(
+                        bottom: isMobile ? -5 : -8,
+                        left: isMobile ? -5 : -8,
+                        child: _cornerDecor(
                           width: leafWidth,
-                          angle: 0,
-                          invertY: false,
+                          position: "bottomLeft",
                         ),
                       ),
                       Positioned(
-                        bottom: isMobile ? -8 : -10,
-                        right: isMobile ? -6 : -10,
-                        child: _leafInside(
+                        bottom: isMobile ? -5 : -8,
+                        right: isMobile ? -5 : -8,
+                        child: _cornerDecor(
                           width: leafWidth,
-                          angle: -1.5708,
-                          invertY: false,
+                          position: "bottomRight",
                         ),
                       ),
                     ],
@@ -1269,16 +1338,7 @@ class _BookAddPageState extends State<BookAddPage>
         ),
         SizedBox(height: isMobile ? 10 : 14),
 
-        selectedTheme == "Christmas"
-            ? Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Lottie.asset(BookAddStyles.christmasLightsJson, width: 90),
-                  _buildLotusAnimation(isMobile),
-                  Lottie.asset(BookAddStyles.christmasBallJson, width: 70),
-                ],
-              )
-            : _buildLotusAnimation(isMobile),
+        _buildLotusAnimation(isMobile),
 
         SizedBox(height: isMobile ? 8 : 10),
 
