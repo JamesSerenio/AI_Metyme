@@ -625,27 +625,35 @@ class _BookAddPageState extends State<BookAddPage>
     String asset;
     double size;
     Alignment align;
+    Offset offset;
 
     switch (position) {
       case "topLeft":
-        asset = BookAddStyles.christmasLightsJson;
-        size = width * 1.05;
+        asset = BookAddStyles.christmasBellsJson;
+        size = width * 0.52;
         align = Alignment.topLeft;
+        offset = const Offset(8, 8);
         break;
+
       case "topRight":
-        asset = BookAddStyles.christmasLightsJson;
-        size = width * 1.05;
+        asset = BookAddStyles.christmasBellsJson;
+        size = width * 0.52;
         align = Alignment.topRight;
+        offset = const Offset(-8, 8);
         break;
+
       case "bottomLeft":
-        asset = BookAddStyles.christmasBallJson;
-        size = width * 0.62;
+        asset = BookAddStyles.christmasBellsJson;
+        size = width * 0.52;
         align = Alignment.bottomLeft;
+        offset = const Offset(8, -8);
         break;
+
       default:
-        asset = BookAddStyles.christmasOrnamentJson;
-        size = width * 0.62;
+        asset = BookAddStyles.christmasBellsJson;
+        size = width * 0.52;
         align = Alignment.bottomRight;
+        offset = const Offset(-8, -8);
     }
 
     return IgnorePointer(
@@ -653,7 +661,7 @@ class _BookAddPageState extends State<BookAddPage>
         animation: leafFloatAnim,
         builder: (context, child) {
           return Transform.translate(
-            offset: Offset(0, leafFloatAnim.value * 0.35),
+            offset: Offset(offset.dx, offset.dy + leafFloatAnim.value * 0.12),
             child: child,
           );
         },
@@ -1067,6 +1075,60 @@ class _BookAddPageState extends State<BookAddPage>
                               fit: StackFit.expand,
                               children: [
                                 _buildDisplayBackground(isMobile),
+
+                                if (selectedTheme == "Christmas")
+                                  Positioned.fill(
+                                    child: IgnorePointer(
+                                      child: AnimatedBuilder(
+                                        animation: ambientController,
+                                        builder: (context, child) {
+                                          return CustomPaint(
+                                            painter:
+                                                ChristmasLightsBorderPainter(
+                                                  progress:
+                                                      ambientController.value,
+                                                  radius: 32,
+                                                ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+
+                                if (selectedTheme == "Christmas") ...[
+                                  Positioned(
+                                    top: isMobile ? 18 : 20,
+                                    left: 0,
+                                    right: 0,
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: isMobile ? 300 : 420,
+                                        height: isMobile ? 90 : 120,
+                                        child: Lottie.asset(
+                                          BookAddStyles.christmasSleighJson,
+                                          repeat: true,
+                                          fit: BoxFit.contain,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned.fill(
+                                    child: IgnorePointer(
+                                      child: Opacity(
+                                        opacity: 0.16,
+                                        child: Transform.scale(
+                                          scale: 0.62,
+                                          child: Lottie.asset(
+                                            BookAddStyles.snowflakesJson,
+                                            repeat: true,
+                                            fit: BoxFit.contain,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+
                                 Container(
                                   decoration:
                                       BookAddStyles.mainCardGlassOverlay,
@@ -1365,7 +1427,7 @@ class _BookAddPageState extends State<BookAddPage>
                         width: 28,
                         height: 28,
                         child: Lottie.asset(
-                          BookAddStyles.christmasCardJson,
+                          BookAddStyles.snowGlobeJson,
                           repeat: true,
                           fit: BoxFit.contain,
                         ),
@@ -1598,5 +1660,71 @@ class _BookAddPageState extends State<BookAddPage>
         ),
       ),
     );
+  }
+}
+
+class ChristmasLightsBorderPainter extends CustomPainter {
+  final double progress;
+  final double radius;
+
+  ChristmasLightsBorderPainter({required this.progress, required this.radius});
+
+  final List<Color> bulbColors = const [
+    Color(0xFFE53935), // red
+    Color(0xFF43A047), // green
+    Color(0xFFFFC107), // gold
+    Color(0xFF1E88E5), // blue
+    Color(0xFFFF7043), // orange
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(radius),
+    );
+
+    final borderPaint = Paint()
+      ..color = const Color(0xFFFFD166).withOpacity(0.45)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    canvas.drawRRect(rect.deflate(1.5), borderPaint);
+
+    final bulbPaint = Paint()..style = PaintingStyle.fill;
+    const double gap = 34;
+    const double bulbSize = 4.8;
+
+    void drawBulb(double x, double y, int index) {
+      final color =
+          bulbColors[(index + (progress * 10).floor()) % bulbColors.length];
+      final glow = 0.45 + (sin((progress * 6.28) + index) * 0.25);
+
+      bulbPaint.color = color.withOpacity(0.95);
+
+      final glowPaint = Paint()
+        ..color = color.withOpacity(glow)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
+
+      canvas.drawCircle(Offset(x, y), bulbSize + 3, glowPaint);
+      canvas.drawCircle(Offset(x, y), bulbSize, bulbPaint);
+    }
+
+    int i = 0;
+
+    for (double x = 28; x < size.width - 28; x += gap) {
+      drawBulb(x, 4, i++);
+      drawBulb(x, size.height - 4, i++);
+    }
+
+    for (double y = 28; y < size.height - 28; y += gap) {
+      drawBulb(4, y, i++);
+      drawBulb(size.width - 4, y, i++);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant ChristmasLightsBorderPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }

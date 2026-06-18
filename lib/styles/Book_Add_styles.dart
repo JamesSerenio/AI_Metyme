@@ -294,6 +294,21 @@ class BookAddStyles {
   static const String christmasCardJson =
       'assets/lottie/Merry Christmas Lottie Animation.json';
 
+  static const String christmasBellsJson = 'assets/lottie/Christmas Bells.json';
+
+  static const String christmasBellsAltJson =
+      'assets/lottie/Christmas bells1.json';
+
+  static const String snowflakesJson = 'assets/lottie/Snowflakes.json';
+
+  static const String christmasSleighJson =
+      'assets/lottie/Christmas Sleigh.json';
+
+  static const String jumpingGiftBoxesJson =
+      'assets/lottie/Jumping gift boxes.json';
+
+  static const String snowGlobeJson = 'assets/lottie/Snow Globe.json';
+
   static const Color christmasRed = Color(0xFFD32F2F);
   static const Color christmasGreen = Color(0xFF1B5E20);
   static const Color christmasGold = Color(0xFFFFC857);
@@ -301,7 +316,7 @@ class BookAddStyles {
   static BoxDecoration christmasMainCard = BoxDecoration(
     color: const Color(0xFFFFF7EA).withOpacity(0.78),
     borderRadius: BorderRadius.circular(32),
-    border: Border.all(color: christmasGold.withOpacity(0.95), width: 1.6),
+    border: Border.all(color: Colors.white.withOpacity(0.35), width: 1.1),
     boxShadow: [
       BoxShadow(
         color: christmasRed.withOpacity(0.22),
