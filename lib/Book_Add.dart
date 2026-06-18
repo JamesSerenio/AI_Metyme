@@ -1097,13 +1097,26 @@ class _BookAddPageState extends State<BookAddPage>
 
                                 if (selectedTheme == "Christmas") ...[
                                   Positioned(
-                                    top: isMobile ? 18 : 20,
+                                    top: screen.width < 500
+                                        ? 18
+                                        : screen.width < 1100
+                                        ? -8
+                                        : 20,
                                     left: 0,
                                     right: 0,
                                     child: Center(
                                       child: SizedBox(
-                                        width: isMobile ? 300 : 420,
-                                        height: isMobile ? 90 : 120,
+                                        width: isMobile
+                                            ? 240
+                                            : isTablet
+                                            ? 320
+                                            : 420,
+
+                                        height: isMobile
+                                            ? 70
+                                            : isTablet
+                                            ? 90
+                                            : 120,
                                         child: Lottie.asset(
                                           BookAddStyles.christmasSleighJson,
                                           repeat: true,
@@ -1529,46 +1542,50 @@ class _BookAddPageState extends State<BookAddPage>
           child: Container(
             width: width,
             height: height,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              color: Colors.white.withOpacity(0.48),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.70),
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.13),
-                  blurRadius: 16,
-                  offset: const Offset(0, 7),
-                ),
-              ],
-            ),
+            decoration: selectedTheme == "Christmas"
+                ? BookAddStyles.christmasOptionCard
+                : BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    color: Colors.white.withOpacity(0.48),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.70),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.13),
+                        blurRadius: 16,
+                        offset: const Offset(0, 7),
+                      ),
+                    ],
+                  ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
                   width: isMobile ? 54 : 62,
                   height: isMobile ? 54 : 62,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF6EDC6F),
-                        Color(0xFF35A853),
-                        Color(0xFF176B2C),
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF35A853).withOpacity(0.42),
-                        blurRadius: 18,
-                        offset: const Offset(0, 7),
-                      ),
-                    ],
-                  ),
+                  decoration: selectedTheme == "Christmas"
+                      ? BookAddStyles.christmasOptionIcon
+                      : BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF6EDC6F),
+                              Color(0xFF35A853),
+                              Color(0xFF176B2C),
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF35A853).withOpacity(0.42),
+                              blurRadius: 18,
+                              offset: const Offset(0, 7),
+                            ),
+                          ],
+                        ),
                   child: Icon(
                     icon,
                     color: Colors.white,
@@ -1581,19 +1598,23 @@ class _BookAddPageState extends State<BookAddPage>
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: isMobile ? 11.5 : 13,
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFF173B1C),
-                    letterSpacing: 0.1,
-                    shadows: const [
-                      Shadow(
-                        color: Colors.white,
-                        blurRadius: 8,
-                        offset: Offset(0, 1),
-                      ),
-                    ],
-                  ),
+                  style: selectedTheme == "Christmas"
+                      ? BookAddStyles.christmasOptionText.copyWith(
+                          fontSize: isMobile ? 11.5 : 13,
+                        )
+                      : TextStyle(
+                          fontSize: isMobile ? 11.5 : 13,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF173B1C),
+                          letterSpacing: 0.1,
+                          shadows: const [
+                            Shadow(
+                              color: Colors.white,
+                              blurRadius: 8,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
                 ),
               ],
             ),

@@ -385,4 +385,41 @@ class BookAddStyles {
       ],
     );
   }
+
+  static BoxDecoration christmasOptionCard = BoxDecoration(
+    borderRadius: BorderRadius.circular(24),
+    color: Colors.white.withOpacity(0.52),
+    border: Border.all(color: christmasGold.withOpacity(0.85), width: 1.4),
+    boxShadow: [
+      BoxShadow(
+        color: christmasRed.withOpacity(0.18),
+        blurRadius: 18,
+        offset: const Offset(0, 8),
+      ),
+    ],
+  );
+
+  static BoxDecoration christmasOptionIcon = BoxDecoration(
+    shape: BoxShape.circle,
+    gradient: const LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFFFFD166), Color(0xFFE53935), Color(0xFF8B0000)],
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: christmasRed.withOpacity(0.35),
+        blurRadius: 18,
+        offset: const Offset(0, 7),
+      ),
+    ],
+  );
+
+  static const TextStyle christmasOptionText = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w900,
+    color: Color(0xFF7A1515),
+    letterSpacing: 0.1,
+    shadows: [Shadow(color: Colors.white, blurRadius: 8, offset: Offset(0, 1))],
+  );
 }
