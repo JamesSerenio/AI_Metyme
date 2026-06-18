@@ -279,4 +279,54 @@ class BookAddStyles {
     fontWeight: FontWeight.w700,
     color: Color(0xFF24351F),
   );
+
+  // ================= CHRISTMAS THEME =================
+
+  static const Color christmasRed = Color(0xFFD32F2F);
+  static const Color christmasGreen = Color(0xFF1B5E20);
+  static const Color christmasGold = Color(0xFFFFC857);
+
+  static BoxDecoration christmasMainCard = BoxDecoration(
+    color: const Color(0xFFFFF8EC).withOpacity(0.78),
+    borderRadius: BorderRadius.circular(32),
+    border: Border.all(color: christmasGold.withOpacity(0.75), width: 1.4),
+    boxShadow: [
+      BoxShadow(
+        color: christmasRed.withOpacity(0.18),
+        blurRadius: 34,
+        spreadRadius: 2,
+        offset: const Offset(0, 14),
+      ),
+      BoxShadow(
+        color: christmasGold.withOpacity(0.20),
+        blurRadius: 18,
+        offset: const Offset(0, -3),
+      ),
+    ],
+  );
+
+  static BoxDecoration christmasReadyChip = BoxDecoration(
+    color: const Color(0xFFFFF3F3).withOpacity(0.95),
+    borderRadius: BorderRadius.circular(999),
+    border: Border.all(color: christmasRed.withOpacity(0.35), width: 1),
+  );
+
+  static const TextStyle christmasReadyText = TextStyle(
+    fontSize: 12,
+    color: christmasRed,
+    fontWeight: FontWeight.w800,
+  );
+
+  static BoxDecoration christmasHeaderCard = BoxDecoration(
+    color: Colors.white.withOpacity(0.58),
+    borderRadius: BorderRadius.circular(28),
+    border: Border.all(color: christmasGold.withOpacity(0.55), width: 1.2),
+    boxShadow: [
+      BoxShadow(
+        color: christmasRed.withOpacity(0.12),
+        blurRadius: 18,
+        offset: const Offset(0, 8),
+      ),
+    ],
+  );
 }

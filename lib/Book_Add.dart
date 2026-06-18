@@ -987,7 +987,9 @@ class _BookAddPageState extends State<BookAddPage>
                       Positioned.fill(
                         child: Container(
                           margin: EdgeInsets.all(isMobile ? 10 : 8),
-                          decoration: BookAddStyles.mainCard,
+                          decoration: selectedTheme == "Christmas"
+                              ? BookAddStyles.christmasMainCard
+                              : BookAddStyles.mainCard,
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(32),
                             child: Stack(
@@ -1193,7 +1195,9 @@ class _BookAddPageState extends State<BookAddPage>
       children: [
         Container(
           padding: EdgeInsets.all(isMobile ? 12 : 16),
-          decoration: BookAddStyles.headerCard,
+          decoration: selectedTheme == "Christmas"
+              ? BookAddStyles.christmasHeaderCard
+              : BookAddStyles.headerCard,
           child: Row(
             children: [
               _buildLogo(isMobile ? 46 : 52),
@@ -1232,7 +1236,9 @@ class _BookAddPageState extends State<BookAddPage>
                     horizontal: 14,
                     vertical: 8,
                   ),
-                  decoration: BookAddStyles.readyChip,
+                  decoration: selectedTheme == "Christmas"
+                      ? BookAddStyles.christmasReadyChip
+                      : BookAddStyles.readyChip,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1245,7 +1251,14 @@ class _BookAddPageState extends State<BookAddPage>
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text("Ready for booking", style: BookAddStyles.readyText),
+                      Text(
+                        selectedTheme == "Christmas"
+                            ? "Christmas booking"
+                            : "Ready for booking",
+                        style: selectedTheme == "Christmas"
+                            ? BookAddStyles.christmasReadyText
+                            : BookAddStyles.readyText,
+                      ),
                     ],
                   ),
                 ),
