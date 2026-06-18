@@ -1133,7 +1133,9 @@ class _BookAddPageState extends State<BookAddPage>
               Transform.translate(
                 offset: Offset(0, sin(t) * 4),
                 child: Lottie.asset(
-                  'assets/lottie/flower.json',
+                  selectedTheme == "Christmas"
+                      ? BookAddStyles.christmasTreeJson
+                      : 'assets/lottie/flower.json',
                   width: size,
                   height: size,
                   repeat: true,
@@ -1207,7 +1209,9 @@ class _BookAddPageState extends State<BookAddPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Welcome to Me Tyme Lounge!",
+                      selectedTheme == "Christmas"
+                          ? "Merry Christmas, Me Tyme Lounge!"
+                          : "Welcome to Me Tyme Lounge!",
                       style: BookAddStyles.title.copyWith(
                         color: const Color(0xFF232323),
                         shadows: [
@@ -1283,7 +1287,9 @@ class _BookAddPageState extends State<BookAddPage>
           },
           child: ElevatedButton(
             onPressed: startChat,
-            style: BookAddStyles.primaryButton,
+            style: selectedTheme == "Christmas"
+                ? BookAddStyles.christmasPrimaryButton
+                : BookAddStyles.primaryButton,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: const [
@@ -1480,7 +1486,9 @@ class _BookAddPageState extends State<BookAddPage>
                 });
               },
               child: Lottie.asset(
-                'assets/lottie/flower.json',
+                selectedTheme == "Christmas"
+                    ? BookAddStyles.christmasTreeJson
+                    : 'assets/lottie/flower.json',
                 width: isMobile ? 72 : 88,
                 height: isMobile ? 72 : 88,
                 repeat: true,

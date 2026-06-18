@@ -282,51 +282,92 @@ class BookAddStyles {
 
   // ================= CHRISTMAS THEME =================
 
+  // ================= CHRISTMAS THEME =================
+
+  static const String christmasTreeJson = 'assets/lottie/Christmas Tree.json';
+  static const String christmasBallJson = 'assets/lottie/Christmas Ball.json';
+  static const String christmasBallsJson = 'assets/lottie/Christmas Balls.json';
+  static const String christmasLightsJson =
+      'assets/lottie/Christmas Light Bulbs.json';
+  static const String christmasOrnamentJson =
+      'assets/lottie/Christmas Ornament.json';
+  static const String christmasCardJson =
+      'assets/lottie/Merry Christmas Lottie Animation.json';
+
   static const Color christmasRed = Color(0xFFD32F2F);
   static const Color christmasGreen = Color(0xFF1B5E20);
   static const Color christmasGold = Color(0xFFFFC857);
 
   static BoxDecoration christmasMainCard = BoxDecoration(
-    color: const Color(0xFFFFF8EC).withOpacity(0.78),
+    color: const Color(0xFFFFF7EA).withOpacity(0.78),
     borderRadius: BorderRadius.circular(32),
-    border: Border.all(color: christmasGold.withOpacity(0.75), width: 1.4),
+    border: Border.all(color: christmasGold.withOpacity(0.95), width: 1.6),
     boxShadow: [
       BoxShadow(
-        color: christmasRed.withOpacity(0.18),
-        blurRadius: 34,
-        spreadRadius: 2,
-        offset: const Offset(0, 14),
+        color: christmasRed.withOpacity(0.22),
+        blurRadius: 42,
+        spreadRadius: 3,
+        offset: const Offset(0, 16),
       ),
       BoxShadow(
-        color: christmasGold.withOpacity(0.20),
-        blurRadius: 18,
-        offset: const Offset(0, -3),
+        color: christmasGold.withOpacity(0.32),
+        blurRadius: 24,
+        spreadRadius: 1,
+        offset: const Offset(0, -4),
+      ),
+    ],
+  );
+
+  static BoxDecoration christmasHeaderCard = BoxDecoration(
+    color: Colors.white.withOpacity(0.62),
+    borderRadius: BorderRadius.circular(28),
+    border: Border.all(color: christmasGold.withOpacity(0.70), width: 1.3),
+    boxShadow: [
+      BoxShadow(
+        color: christmasRed.withOpacity(0.14),
+        blurRadius: 20,
+        offset: const Offset(0, 8),
       ),
     ],
   );
 
   static BoxDecoration christmasReadyChip = BoxDecoration(
-    color: const Color(0xFFFFF3F3).withOpacity(0.95),
+    color: const Color(0xFFFFF3F3).withOpacity(0.96),
     borderRadius: BorderRadius.circular(999),
-    border: Border.all(color: christmasRed.withOpacity(0.35), width: 1),
+    border: Border.all(color: christmasRed.withOpacity(0.40), width: 1),
   );
 
   static const TextStyle christmasReadyText = TextStyle(
     fontSize: 12,
     color: christmasRed,
-    fontWeight: FontWeight.w800,
+    fontWeight: FontWeight.w900,
   );
 
-  static BoxDecoration christmasHeaderCard = BoxDecoration(
-    color: Colors.white.withOpacity(0.58),
-    borderRadius: BorderRadius.circular(28),
-    border: Border.all(color: christmasGold.withOpacity(0.55), width: 1.2),
-    boxShadow: [
-      BoxShadow(
-        color: christmasRed.withOpacity(0.12),
-        blurRadius: 18,
-        offset: const Offset(0, 8),
-      ),
-    ],
+  static ButtonStyle christmasPrimaryButton = ElevatedButton.styleFrom(
+    backgroundColor: christmasRed,
+    foregroundColor: Colors.white,
+    elevation: 7,
+    padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+    textStyle: const TextStyle(
+      fontSize: 18,
+      fontWeight: FontWeight.w900,
+      letterSpacing: 0.2,
+    ),
   );
+
+  static TextStyle christmasTitleText(double fontSize) {
+    return TextStyle(
+      fontSize: fontSize,
+      fontWeight: FontWeight.w900,
+      color: christmasGreen,
+      shadows: [
+        Shadow(
+          color: christmasGold.withOpacity(0.55),
+          blurRadius: 10,
+          offset: const Offset(0, 1),
+        ),
+      ],
+    );
+  }
 }
