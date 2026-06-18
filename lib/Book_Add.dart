@@ -45,7 +45,7 @@ class _BookAddPageState extends State<BookAddPage>
   late final PageController displayPageController;
   Timer? autoSlideTimer;
 
-  late final List<String> displayImages;
+  late List<String> displayImages;
 
   static const int _loopStartPage = 10000;
   int currentAbsolutePage = _loopStartPage;
