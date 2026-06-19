@@ -8,6 +8,7 @@ class PromoModalStyles {
 
   static const Color christmasRed = Color(0xFFD32F2F);
   static const Color christmasGold = Color(0xFFFFC857);
+  static const Color christmasGreen = Color(0xFF2E7D32);
   static const Color christmasCream = Color(0xFFFFF8EC);
   static const Color pageBg = Color(0xFFF4F2EC);
   static const Color cardBg = Color(0xFFF5EEDC);
@@ -41,15 +42,22 @@ class PromoModalStyles {
   );
 
   static BoxDecoration headerCard = BoxDecoration(
-    color: Colors.white.withOpacity(0.40),
-    borderRadius: BorderRadius.circular(18),
-    border: Border.all(color: Colors.black.withOpacity(0.06)),
+    color: Colors.white.withOpacity(0.55),
+    borderRadius: BorderRadius.circular(22),
+    border: Border.all(color: christmasGold.withOpacity(0.35), width: 1),
+    boxShadow: [
+      BoxShadow(
+        color: christmasGold.withOpacity(0.12),
+        blurRadius: 14,
+        offset: const Offset(0, 5),
+      ),
+    ],
   );
 
   static BoxDecoration chatArea = BoxDecoration(
-    color: Colors.white.withOpacity(0.25),
-    borderRadius: BorderRadius.circular(20),
-    border: Border.all(color: Colors.black.withOpacity(0.06)),
+    color: Colors.white.withOpacity(0.30),
+    borderRadius: BorderRadius.circular(24),
+    border: Border.all(color: christmasGold.withOpacity(0.25), width: 1),
   );
 
   static BoxDecoration formCard = BoxDecoration(
@@ -72,16 +80,27 @@ class PromoModalStyles {
   );
 
   static BoxDecoration successBubble = BoxDecoration(
-    color: primary,
+    gradient: const LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFFE53935), Color(0xFFB71C1C)],
+    ),
     borderRadius: BorderRadius.circular(
       20,
     ).copyWith(topRight: const Radius.circular(8)),
+    boxShadow: [
+      BoxShadow(
+        color: christmasRed.withOpacity(0.24),
+        blurRadius: 14,
+        offset: const Offset(0, 6),
+      ),
+    ],
   );
 
   static BoxDecoration statusChip = BoxDecoration(
-    color: primary.withOpacity(0.15),
+    color: christmasGreen.withOpacity(0.12),
     borderRadius: BorderRadius.circular(999),
-    border: Border.all(color: primary.withOpacity(0.18)),
+    border: Border.all(color: christmasGreen.withOpacity(0.22)),
   );
 
   static BoxDecoration seatGroupCard = BoxDecoration(
