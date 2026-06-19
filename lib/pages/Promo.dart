@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../styles/Promo_styles.dart';
 
@@ -41,6 +42,7 @@ class _PromoModalPageState extends State<PromoModalPage>
   String? startDateTimeError;
 
   late final AnimationController pageController;
+  late final AnimationController christmasLightsController;
   late final Animation<double> fadeAnim;
   late final Animation<Offset> slideAnim;
 
@@ -55,6 +57,11 @@ class _PromoModalPageState extends State<PromoModalPage>
       vsync: this,
       duration: const Duration(milliseconds: 700),
     );
+
+    christmasLightsController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
 
     fadeAnim = CurvedAnimation(
       parent: pageController,
@@ -93,6 +100,7 @@ class _PromoModalPageState extends State<PromoModalPage>
     phoneNumberController.dispose();
     scrollController.dispose();
     pageController.dispose();
+    christmasLightsController.dispose();
     super.dispose();
   }
 
@@ -987,365 +995,519 @@ class _PromoModalPageState extends State<PromoModalPage>
           child: SlideTransition(
             position: slideAnim,
             child: Center(
-              child: Container(
-                width: modalWidth,
-                height: modalHeight,
-                margin: EdgeInsets.all(isMobile ? 10 : 18),
-                padding: EdgeInsets.all(isMobile ? 14 : 20),
-                decoration: PromoModalStyles.modalCard,
-                child: Column(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(isMobile ? 12 : 16),
-                      decoration: PromoModalStyles.headerCard,
-                      child: Row(
-                        children: [
-                          buildLogo(isMobile ? 42 : 48),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Promo Assistant',
-                                  style: PromoModalStyles.title,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: modalWidth,
+                    height: modalHeight,
+                    margin: EdgeInsets.all(isMobile ? 10 : 18),
+                    padding: EdgeInsets.all(isMobile ? 14 : 20),
+                    decoration: PromoModalStyles.modalCard,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(isMobile ? 12 : 16),
+                          decoration: PromoModalStyles.headerCard,
+                          child: Row(
+                            children: [
+                              buildLogo(isMobile ? 42 : 48),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Promo Assistant',
+                                      style: PromoModalStyles.title,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Please complete the promo booking details below.',
+                                      style: PromoModalStyles.subtitle,
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Please complete the promo booking details below.',
-                                  style: PromoModalStyles.subtitle,
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 7,
                                 ),
-                              ],
-                            ),
+                                decoration: PromoModalStyles.statusChip,
+                                child: Text(
+                                  'Promo',
+                                  style: PromoModalStyles.chipText,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: () => Navigator.pop(context),
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                            ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 7,
-                            ),
-                            decoration: PromoModalStyles.statusChip,
-                            child: Text(
-                              'Promo',
-                              style: PromoModalStyles.chipText,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(isMobile ? 12 : 18),
-                        decoration: PromoModalStyles.chatArea,
-                        child: loading
-                            ? const Center(child: CircularProgressIndicator())
-                            : ListView(
-                                controller: scrollController,
-                                children: [
-                                  buildSuccessBubble('You selected Promo 🎉'),
-                                  buildAiBubble(
-                                    text:
-                                        'Please fill in the promo booking information below.',
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: EdgeInsets.all(isMobile ? 14 : 18),
-                                    decoration: PromoModalStyles.formCard,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Promo Booking Information',
-                                          style: PromoModalStyles.sectionTitle,
+                        ),
+                        const SizedBox(height: 14),
+                        Expanded(
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.all(isMobile ? 12 : 18),
+                            decoration: PromoModalStyles.chatArea,
+                            child: loading
+                                ? const Center(
+                                    child: CircularProgressIndicator(),
+                                  )
+                                : ListView(
+                                    controller: scrollController,
+                                    children: [
+                                      buildSuccessBubble(
+                                        'You selected Promo 🎉',
+                                      ),
+                                      buildAiBubble(
+                                        text:
+                                            'Please fill in the promo booking information below.',
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Container(
+                                        padding: EdgeInsets.all(
+                                          isMobile ? 14 : 18,
                                         ),
-                                        const SizedBox(height: 14),
-                                        buildTextField(
-                                          label: 'Full Name',
-                                          controller: fullNameController,
-                                          hintText: 'Enter full name',
-                                          errorText: fullNameError,
-                                        ),
-                                        const SizedBox(height: 14),
-                                        buildTextField(
-                                          label: 'Phone Number',
-                                          controller: phoneNumberController,
-                                          hintText: 'Enter phone number',
-                                          errorText: phoneNumberError,
-                                          keyboardType: TextInputType.phone,
-                                        ),
-                                        const SizedBox(height: 14),
-                                        buildDropdownField(
-                                          label: 'Area',
-                                          valueText: formatAreaText(
-                                            selectedArea,
-                                          ),
-                                          onTap: pickArea,
-                                          errorText: areaError,
-                                        ),
-                                        const SizedBox(height: 14),
-                                        buildDropdownField(
-                                          label: 'Promo Package',
-                                          valueText:
-                                              selectedPackage?['title']
-                                                  ?.toString() ??
-                                              '',
-                                          emptyText: filteredPackages.isEmpty
-                                              ? 'No available package for this area'
-                                              : 'Select promo package',
-                                          onTap: pickPackage,
-                                          icon: Icons.local_offer_rounded,
-                                          errorText: packageError,
-                                        ),
-                                        if (selectedPackage != null) ...[
-                                          const SizedBox(height: 14),
-                                          Container(
-                                            width: double.infinity,
-                                            padding: const EdgeInsets.all(14),
-                                            decoration:
-                                                PromoModalStyles.infoCard,
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'Amenities',
-                                                  style: PromoModalStyles
-                                                      .infoTitle,
-                                                ),
-                                                const SizedBox(height: 8),
-                                                if (amenitiesList.isEmpty)
-                                                  Text(
-                                                    selectedPackage?['amenities']
-                                                                ?.toString()
-                                                                .trim()
-                                                                .isNotEmpty ==
-                                                            true
-                                                        ? selectedPackage!['amenities']
-                                                              .toString()
-                                                        : 'No amenities listed for this package.',
-                                                    style: PromoModalStyles
-                                                        .infoText,
-                                                  )
-                                                else
-                                                  ...amenitiesList.map(
-                                                    (item) => Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                            bottom: 6,
-                                                          ),
-                                                      child: Row(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          const Text(
-                                                            '• ',
-                                                            style:
-                                                                PromoModalStyles
-                                                                    .infoText,
-                                                          ),
-                                                          Expanded(
-                                                            child: Text(
-                                                              item,
-                                                              style:
-                                                                  PromoModalStyles
-                                                                      .infoText,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                        if (requiresSeatNumber) ...[
-                                          const SizedBox(height: 14),
-                                          buildDropdownField(
-                                            label: 'Seat Number',
-                                            valueText: selectedSeatNumber ?? '',
-                                            emptyText: selectedPackageId == null
-                                                ? 'Select promo package first'
-                                                : 'Select seat number',
-                                            onTap: pickSeatNumber,
-                                            icon: Icons.event_seat_rounded,
-                                            errorText: seatNumberError,
-                                          ),
-                                        ],
-                                        const SizedBox(height: 14),
-                                        buildDropdownField(
-                                          label: 'Duration / Price',
-                                          valueText: selectedOption != null
-                                              ? formatDurationPrice(
-                                                  selectedOption!,
-                                                )
-                                              : '',
-                                          emptyText: selectedPackage == null
-                                              ? 'Select promo package first'
-                                              : 'Select duration and price',
-                                          onTap: pickOption,
-                                          icon: Icons.payments_rounded,
-                                          errorText: optionError,
-                                        ),
-                                        if (selectedOption != null) ...[
-                                          const SizedBox(height: 14),
-                                          Container(
-                                            width: double.infinity,
-                                            padding: const EdgeInsets.all(14),
-                                            decoration:
-                                                PromoModalStyles.infoCard,
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'Selected Promo Details',
-                                                  style: PromoModalStyles
-                                                      .infoTitle,
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Text(
-                                                  formatDurationPrice(
-                                                    selectedOption!,
-                                                  ),
-                                                  style:
-                                                      PromoModalStyles.infoText,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                        const SizedBox(height: 14),
-                                        buildDropdownField(
-                                          label: 'Start Date & Time',
-                                          valueText: formatDateTimeReadable(
-                                            selectedStartDateTime,
-                                          ),
-                                          emptyText: 'Pick start date and time',
-                                          onTap: pickStartDateTime,
-                                          icon: Icons.calendar_month_rounded,
-                                          errorText: startDateTimeError,
-                                        ),
-                                        if (selectedStartDateTime != null &&
-                                            computedEnd != null) ...[
-                                          const SizedBox(height: 14),
-                                          Container(
-                                            width: double.infinity,
-                                            padding: const EdgeInsets.all(14),
-                                            decoration:
-                                                PromoModalStyles.infoCard,
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'Schedule Preview',
-                                                  style: PromoModalStyles
-                                                      .infoTitle,
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Text(
-                                                  'Start: ${formatDateTimeReadable(selectedStartDateTime)}',
-                                                  style:
-                                                      PromoModalStyles.infoText,
-                                                ),
-                                                const SizedBox(height: 6),
-                                                Text(
-                                                  'End: ${formatDateTimeReadable(computedEnd)}',
-                                                  style:
-                                                      PromoModalStyles.infoText,
-                                                ),
-                                                if (requiresSeatNumber &&
-                                                    selectedSeatNumber !=
-                                                        null) ...[
-                                                  const SizedBox(height: 6),
-                                                  Text(
-                                                    'Seat: $selectedSeatNumber',
-                                                    style: PromoModalStyles
-                                                        .infoText,
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                        const SizedBox(height: 18),
-                                        Row(
+                                        decoration: PromoModalStyles.formCard,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Expanded(
-                                              child: ElevatedButton(
-                                                onPressed: submitting
-                                                    ? null
-                                                    : submitPromo,
-                                                style: PromoModalStyles
-                                                    .primaryButton,
-                                                child: submitting
-                                                    ? const SizedBox(
-                                                        width: 22,
-                                                        height: 22,
-                                                        child:
-                                                            CircularProgressIndicator(
-                                                              strokeWidth: 2.4,
-                                                              color:
-                                                                  Colors.white,
-                                                            ),
-                                                      )
-                                                    : const Text(
-                                                        'Submit Promo',
-                                                      ),
+                                            Text(
+                                              'Promo Booking Information',
+                                              style:
+                                                  PromoModalStyles.sectionTitle,
+                                            ),
+                                            const SizedBox(height: 14),
+                                            buildTextField(
+                                              label: 'Full Name',
+                                              controller: fullNameController,
+                                              hintText: 'Enter full name',
+                                              errorText: fullNameError,
+                                            ),
+                                            const SizedBox(height: 14),
+                                            buildTextField(
+                                              label: 'Phone Number',
+                                              controller: phoneNumberController,
+                                              hintText: 'Enter phone number',
+                                              errorText: phoneNumberError,
+                                              keyboardType: TextInputType.phone,
+                                            ),
+                                            const SizedBox(height: 14),
+                                            buildDropdownField(
+                                              label: 'Area',
+                                              valueText: formatAreaText(
+                                                selectedArea,
                                               ),
+                                              onTap: pickArea,
+                                              errorText: areaError,
+                                            ),
+                                            const SizedBox(height: 14),
+                                            buildDropdownField(
+                                              label: 'Promo Package',
+                                              valueText:
+                                                  selectedPackage?['title']
+                                                      ?.toString() ??
+                                                  '',
+                                              emptyText:
+                                                  filteredPackages.isEmpty
+                                                  ? 'No available package for this area'
+                                                  : 'Select promo package',
+                                              onTap: pickPackage,
+                                              icon: Icons.local_offer_rounded,
+                                              errorText: packageError,
+                                            ),
+                                            if (selectedPackage != null) ...[
+                                              const SizedBox(height: 14),
+                                              Container(
+                                                width: double.infinity,
+                                                padding: const EdgeInsets.all(
+                                                  14,
+                                                ),
+                                                decoration:
+                                                    PromoModalStyles.infoCard,
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Amenities',
+                                                      style: PromoModalStyles
+                                                          .infoTitle,
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    if (amenitiesList.isEmpty)
+                                                      Text(
+                                                        selectedPackage?['amenities']
+                                                                    ?.toString()
+                                                                    .trim()
+                                                                    .isNotEmpty ==
+                                                                true
+                                                            ? selectedPackage!['amenities']
+                                                                  .toString()
+                                                            : 'No amenities listed for this package.',
+                                                        style: PromoModalStyles
+                                                            .infoText,
+                                                      )
+                                                    else
+                                                      ...amenitiesList.map(
+                                                        (item) => Padding(
+                                                          padding:
+                                                              const EdgeInsets.only(
+                                                                bottom: 6,
+                                                              ),
+                                                          child: Row(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              const Text(
+                                                                '• ',
+                                                                style:
+                                                                    PromoModalStyles
+                                                                        .infoText,
+                                                              ),
+                                                              Expanded(
+                                                                child: Text(
+                                                                  item,
+                                                                  style: PromoModalStyles
+                                                                      .infoText,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                            if (requiresSeatNumber) ...[
+                                              const SizedBox(height: 14),
+                                              buildDropdownField(
+                                                label: 'Seat Number',
+                                                valueText:
+                                                    selectedSeatNumber ?? '',
+                                                emptyText:
+                                                    selectedPackageId == null
+                                                    ? 'Select promo package first'
+                                                    : 'Select seat number',
+                                                onTap: pickSeatNumber,
+                                                icon: Icons.event_seat_rounded,
+                                                errorText: seatNumberError,
+                                              ),
+                                            ],
+                                            const SizedBox(height: 14),
+                                            buildDropdownField(
+                                              label: 'Duration / Price',
+                                              valueText: selectedOption != null
+                                                  ? formatDurationPrice(
+                                                      selectedOption!,
+                                                    )
+                                                  : '',
+                                              emptyText: selectedPackage == null
+                                                  ? 'Select promo package first'
+                                                  : 'Select duration and price',
+                                              onTap: pickOption,
+                                              icon: Icons.payments_rounded,
+                                              errorText: optionError,
+                                            ),
+                                            if (selectedOption != null) ...[
+                                              const SizedBox(height: 14),
+                                              Container(
+                                                width: double.infinity,
+                                                padding: const EdgeInsets.all(
+                                                  14,
+                                                ),
+                                                decoration:
+                                                    PromoModalStyles.infoCard,
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Selected Promo Details',
+                                                      style: PromoModalStyles
+                                                          .infoTitle,
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    Text(
+                                                      formatDurationPrice(
+                                                        selectedOption!,
+                                                      ),
+                                                      style: PromoModalStyles
+                                                          .infoText,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                            const SizedBox(height: 14),
+                                            buildDropdownField(
+                                              label: 'Start Date & Time',
+                                              valueText: formatDateTimeReadable(
+                                                selectedStartDateTime,
+                                              ),
+                                              emptyText:
+                                                  'Pick start date and time',
+                                              onTap: pickStartDateTime,
+                                              icon:
+                                                  Icons.calendar_month_rounded,
+                                              errorText: startDateTimeError,
+                                            ),
+                                            if (selectedStartDateTime != null &&
+                                                computedEnd != null) ...[
+                                              const SizedBox(height: 14),
+                                              Container(
+                                                width: double.infinity,
+                                                padding: const EdgeInsets.all(
+                                                  14,
+                                                ),
+                                                decoration:
+                                                    PromoModalStyles.infoCard,
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Schedule Preview',
+                                                      style: PromoModalStyles
+                                                          .infoTitle,
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    Text(
+                                                      'Start: ${formatDateTimeReadable(selectedStartDateTime)}',
+                                                      style: PromoModalStyles
+                                                          .infoText,
+                                                    ),
+                                                    const SizedBox(height: 6),
+                                                    Text(
+                                                      'End: ${formatDateTimeReadable(computedEnd)}',
+                                                      style: PromoModalStyles
+                                                          .infoText,
+                                                    ),
+                                                    if (requiresSeatNumber &&
+                                                        selectedSeatNumber !=
+                                                            null) ...[
+                                                      const SizedBox(height: 6),
+                                                      Text(
+                                                        'Seat: $selectedSeatNumber',
+                                                        style: PromoModalStyles
+                                                            .infoText,
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                            const SizedBox(height: 18),
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: ElevatedButton(
+                                                    onPressed: submitting
+                                                        ? null
+                                                        : submitPromo,
+                                                    style: PromoModalStyles
+                                                        .primaryButton,
+                                                    child: submitting
+                                                        ? const SizedBox(
+                                                            width: 22,
+                                                            height: 22,
+                                                            child:
+                                                                CircularProgressIndicator(
+                                                                  strokeWidth:
+                                                                      2.4,
+                                                                  color: Colors
+                                                                      .white,
+                                                                ),
+                                                          )
+                                                        : const Text(
+                                                            'Submit Promo',
+                                                          ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),
+                                      ),
+                                      if (submitted &&
+                                          generatedPromoCode != null) ...[
+                                        const SizedBox(height: 12),
+                                        buildAiBubble(
+                                          text:
+                                              'Your promo booking information has been received successfully.',
+                                        ),
+                                        buildCodeBubble(generatedPromoCode!),
+                                        if (aiFinalMessage != null)
+                                          buildAiBubble(text: aiFinalMessage!),
+                                      ] else if (aiFinalMessage != null) ...[
+                                        const SizedBox(height: 12),
+                                        buildAiBubble(text: aiFinalMessage!),
                                       ],
-                                    ),
+                                    ],
                                   ),
-                                  if (submitted &&
-                                      generatedPromoCode != null) ...[
-                                    const SizedBox(height: 12),
-                                    buildAiBubble(
-                                      text:
-                                          'Your promo booking information has been received successfully.',
-                                    ),
-                                    buildCodeBubble(generatedPromoCode!),
-                                    if (aiFinalMessage != null)
-                                      buildAiBubble(text: aiFinalMessage!),
-                                  ] else if (aiFinalMessage != null) ...[
-                                    const SizedBox(height: 12),
-                                    buildAiBubble(text: aiFinalMessage!),
-                                  ],
-                                ],
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: PromoModalStyles.secondaryButton,
-                            child: const Text('Close'),
                           ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: PromoModalStyles.secondaryButton,
+                                child: const Text('Close'),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: AnimatedBuilder(
+                        animation: christmasLightsController,
+                        builder: (context, child) {
+                          return CustomPaint(
+                            painter: PromoChristmasLightsPainter(
+                              progress: christmasLightsController.value,
+                              radius: 28,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+
+                  Positioned(
+                    top: -18,
+                    left: -12,
+                    child: Lottie.asset(
+                      PromoModalStyles.christmasBellsJson,
+                      width: isMobile ? 70 : 90,
+                      height: isMobile ? 70 : 90,
+                      repeat: true,
+                    ),
+                  ),
+
+                  Positioned(
+                    top: -18,
+                    right: -12,
+                    child: Lottie.asset(
+                      PromoModalStyles.christmasBellsJson,
+                      width: isMobile ? 70 : 90,
+                      height: isMobile ? 70 : 90,
+                      repeat: true,
+                    ),
+                  ),
+
+                  Positioned(
+                    bottom: -50,
+                    left: -62,
+                    child: Lottie.asset(
+                      PromoModalStyles.giftBoxJson,
+                      width: isMobile ? 145 : 170,
+                      height: isMobile ? 145 : 170,
+                      repeat: true,
+                    ),
+                  ),
+
+                  Positioned(
+                    bottom: -50,
+                    right: -62,
+                    child: Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()..scale(-1.0, 1.0),
+                      child: Lottie.asset(
+                        PromoModalStyles.giftBoxJson,
+                        width: isMobile ? 145 : 170,
+                        height: isMobile ? 145 : 170,
+                        repeat: true,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+class PromoChristmasLightsPainter extends CustomPainter {
+  final double progress;
+  final double radius;
+
+  PromoChristmasLightsPainter({required this.progress, required this.radius});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final colors = [
+      Colors.red,
+      Colors.green,
+      Colors.blue,
+      Colors.orange,
+      Colors.yellow,
+    ];
+
+    final bulbPaint = Paint()..style = PaintingStyle.fill;
+    final wirePaint = Paint()
+      ..color = Colors.green.withOpacity(0.45)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final path = Path()
+      ..moveTo(radius, 8)
+      ..lineTo(size.width - radius, 8)
+      ..moveTo(8, radius)
+      ..lineTo(8, size.height - radius)
+      ..moveTo(size.width - 8, radius)
+      ..lineTo(size.width - 8, size.height - radius)
+      ..moveTo(radius, size.height - 8)
+      ..lineTo(size.width - radius, size.height - 8);
+
+    canvas.drawPath(path, wirePaint);
+
+    int index = 0;
+
+    void drawBulb(double x, double y) {
+      final blink = 0.65 + 0.35 * sin((progress * 6.28) + index);
+
+      bulbPaint.color = colors[index % colors.length].withOpacity(blink);
+      canvas.drawCircle(Offset(x, y), 5, bulbPaint);
+
+      bulbPaint.color = colors[index % colors.length].withOpacity(0.22);
+      canvas.drawCircle(Offset(x, y), 11, bulbPaint);
+
+      index++;
+    }
+
+    const spacing = 34.0;
+
+    for (double x = radius + 10; x <= size.width - radius - 10; x += spacing) {
+      drawBulb(x, 8);
+      drawBulb(x, size.height - 8);
+    }
+
+    for (double y = radius + 10; y <= size.height - radius - 10; y += spacing) {
+      drawBulb(8, y);
+      drawBulb(size.width - 8, y);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant PromoChristmasLightsPainter oldDelegate) {
+    return true;
   }
 }
 

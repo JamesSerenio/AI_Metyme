@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 
 class PromoModalStyles {
+  static const bool christmasMode = true;
+
+  static const String christmasBellsJson = 'assets/lottie/Christmas Bells.json';
+  static const String giftBoxJson = 'assets/lottie/Gift box.json';
+
+  static const Color christmasRed = Color(0xFFD32F2F);
+  static const Color christmasGold = Color(0xFFFFC857);
+  static const Color christmasCream = Color(0xFFFFF8EC);
   static const Color pageBg = Color(0xFFF4F2EC);
   static const Color cardBg = Color(0xFFF5EEDC);
   static const Color panelBg = Color(0xFFFFFBF4);
@@ -13,9 +21,23 @@ class PromoModalStyles {
   static const Color error = Color(0xFFD32F2F);
 
   static BoxDecoration modalCard = BoxDecoration(
-    color: cardBg,
-    borderRadius: BorderRadius.circular(24),
-    border: Border.all(color: Colors.black.withOpacity(0.06)),
+    color: christmasMode ? christmasCream.withOpacity(0.98) : cardBg,
+    borderRadius: BorderRadius.circular(28),
+    border: Border.all(
+      color: christmasMode
+          ? christmasGold.withOpacity(0.65)
+          : Colors.black.withOpacity(0.06),
+      width: christmasMode ? 1.4 : 1,
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: christmasMode
+            ? christmasRed.withOpacity(0.16)
+            : Colors.black.withOpacity(0.10),
+        blurRadius: 30,
+        offset: const Offset(0, 16),
+      ),
+    ],
   );
 
   static BoxDecoration headerCard = BoxDecoration(
