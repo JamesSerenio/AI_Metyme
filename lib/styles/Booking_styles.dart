@@ -7,6 +7,7 @@ class BookingModalStyles {
   static const String christmasBellsJson = 'assets/lottie/Christmas Bells.json';
   static const String christmasBallJson = 'assets/lottie/Christmas Ball.json';
   static const String snowflakesJson = 'assets/lottie/Snowflakes.json';
+  static const String giftBoxJson = 'assets/lottie/Gift box.json';
 
   static const Color christmasRed = Color(0xFFD32F2F);
   static const Color christmasGold = Color(0xFFFFC857);

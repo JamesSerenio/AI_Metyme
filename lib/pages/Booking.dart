@@ -55,6 +55,7 @@ class _BookingModalPageState extends State<BookingModalPage>
   String? timeAvailError;
 
   late final AnimationController pageController;
+  late final AnimationController christmasLightsController;
   late final Animation<double> fadeAnim;
   late final Animation<Offset> slideAnim;
 
@@ -100,6 +101,11 @@ class _BookingModalPageState extends State<BookingModalPage>
       vsync: this,
       duration: const Duration(milliseconds: 700),
     );
+
+    christmasLightsController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
 
     fadeAnim = CurvedAnimation(
       parent: pageController,
@@ -154,6 +160,7 @@ class _BookingModalPageState extends State<BookingModalPage>
     timeAvailController.dispose();
     scrollController.dispose();
     pageController.dispose();
+    christmasLightsController.dispose();
     super.dispose();
   }
 
@@ -1370,6 +1377,22 @@ class _BookingModalPageState extends State<BookingModalPage>
                     ),
                   ),
 
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: AnimatedBuilder(
+                        animation: christmasLightsController,
+                        builder: (context, child) {
+                          return CustomPaint(
+                            painter: BookingChristmasLightsPainter(
+                              progress: christmasLightsController.value,
+                              radius: 28,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+
                   Positioned(
                     top: -18,
                     left: -12,
@@ -1386,6 +1409,28 @@ class _BookingModalPageState extends State<BookingModalPage>
                     right: -12,
                     child: Lottie.asset(
                       BookingModalStyles.christmasBellsJson,
+                      width: isMobile ? 70 : 90,
+                      height: isMobile ? 70 : 90,
+                      repeat: true,
+                    ),
+                  ),
+
+                  Positioned(
+                    bottom: -18,
+                    left: -12,
+                    child: Lottie.asset(
+                      BookingModalStyles.giftBoxJson,
+                      width: isMobile ? 70 : 90,
+                      height: isMobile ? 70 : 90,
+                      repeat: true,
+                    ),
+                  ),
+
+                  Positioned(
+                    bottom: -18,
+                    right: -12,
+                    child: Lottie.asset(
+                      BookingModalStyles.giftBoxJson,
                       width: isMobile ? 70 : 90,
                       height: isMobile ? 70 : 90,
                       repeat: true,
@@ -1705,5 +1750,78 @@ class _SeatPickerSheetState extends State<_SeatPickerSheet> {
         ),
       ),
     );
+  }
+}
+
+class BookingChristmasLightsPainter extends CustomPainter {
+  final double progress;
+  final double radius;
+
+  BookingChristmasLightsPainter({required this.progress, required this.radius});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final colors = [
+      Colors.red,
+      Colors.green,
+      Colors.blue,
+      Colors.orange,
+      Colors.yellow,
+    ];
+
+    final bulbPaint = Paint()..style = PaintingStyle.fill;
+    final wirePaint = Paint()
+      ..color = Colors.green.withOpacity(0.45)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final path = Path()
+      // top
+      ..moveTo(radius, 8)
+      ..lineTo(size.width - radius, 8)
+      // left
+      ..moveTo(8, radius)
+      ..lineTo(8, size.height - radius)
+      // right
+      ..moveTo(size.width - 8, radius)
+      ..lineTo(size.width - 8, size.height - radius)
+      // bottom
+      ..moveTo(radius, size.height - 8)
+      ..lineTo(size.width - radius, size.height - 8);
+
+    canvas.drawPath(path, wirePaint);
+
+    int index = 0;
+
+    void drawBulb(double x, double y) {
+      final blink = 0.65 + 0.35 * sin((progress * 6.28) + index);
+
+      bulbPaint.color = colors[index % colors.length].withOpacity(blink);
+      canvas.drawCircle(Offset(x, y), 5, bulbPaint);
+
+      bulbPaint.color = colors[index % colors.length].withOpacity(0.22);
+      canvas.drawCircle(Offset(x, y), 11, bulbPaint);
+
+      index++;
+    }
+
+    const spacing = 34.0;
+
+    for (double x = radius + 10; x <= size.width - radius - 10; x += spacing) {
+      drawBulb(x, 8);
+    }
+
+    for (double y = radius + 10; y <= size.height - radius - 10; y += spacing) {
+      drawBulb(8, y);
+      drawBulb(size.width - 8, y);
+    }
+    for (double x = radius + 10; x <= size.width - radius - 10; x += spacing) {
+      drawBulb(x, size.height - 8);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant BookingChristmasLightsPainter oldDelegate) {
+    return true;
   }
 }
