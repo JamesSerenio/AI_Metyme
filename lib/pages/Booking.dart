@@ -1387,6 +1387,22 @@ class _BookingModalPageState extends State<BookingModalPage>
                           animation: christmasLightsController,
                           builder: (context, child) {
                             return CustomPaint(
+                              painter: BookingFallingSnowPainter(
+                                progress: christmasLightsController.value,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
+                  if (BookingModalStyles.christmasMode)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: christmasLightsController,
+                          builder: (context, child) {
+                            return CustomPaint(
                               painter: BookingChristmasLightsPainter(
                                 progress: christmasLightsController.value,
                                 radius: 28,
@@ -1835,5 +1851,83 @@ class BookingChristmasLightsPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant BookingChristmasLightsPainter oldDelegate) {
     return true;
+  }
+}
+
+class BookingFallingSnowPainter extends CustomPainter {
+  final double progress;
+
+  BookingFallingSnowPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.lightBlueAccent.withOpacity(0.16)
+      ..strokeWidth = 1.1
+      ..style = PaintingStyle.stroke;
+
+    const flakes = [
+      Offset(40, 25),
+      Offset(130, 70),
+      Offset(230, 35),
+      Offset(330, 90),
+      Offset(450, 45),
+      Offset(560, 85),
+      Offset(660, 30),
+      Offset(75, 150),
+      Offset(180, 190),
+      Offset(290, 145),
+      Offset(410, 200),
+      Offset(530, 155),
+      Offset(640, 210),
+      Offset(35, 285),
+      Offset(145, 330),
+      Offset(260, 275),
+      Offset(375, 340),
+      Offset(490, 290),
+      Offset(610, 335),
+      Offset(95, 430),
+      Offset(215, 465),
+      Offset(345, 420),
+      Offset(470, 475),
+      Offset(590, 430),
+    ];
+
+    for (int i = 0; i < flakes.length; i++) {
+      final base = flakes[i];
+      final speed = 35 + (i % 5) * 10;
+      final y = (base.dy + progress * speed) % size.height;
+      final x = base.dx % size.width;
+
+      _drawSnowflake(canvas, Offset(x, y), paint, 5 + (i % 3).toDouble());
+    }
+  }
+
+  void _drawSnowflake(Canvas canvas, Offset center, Paint paint, double r) {
+    canvas.drawLine(
+      Offset(center.dx - r, center.dy),
+      Offset(center.dx + r, center.dy),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(center.dx, center.dy - r),
+      Offset(center.dx, center.dy + r),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(center.dx - r * 0.7, center.dy - r * 0.7),
+      Offset(center.dx + r * 0.7, center.dy + r * 0.7),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(center.dx - r * 0.7, center.dy + r * 0.7),
+      Offset(center.dx + r * 0.7, center.dy - r * 0.7),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant BookingFallingSnowPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }

@@ -242,7 +242,7 @@ class _BookAddPageState extends State<BookAddPage>
 
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const PromoModalPage()),
+      MaterialPageRoute(builder: (_) => PromoModalPage(theme: selectedTheme)),
     );
 
     if (!mounted) return;
@@ -1127,16 +1127,15 @@ class _BookAddPageState extends State<BookAddPage>
                                   ),
                                   Positioned.fill(
                                     child: IgnorePointer(
-                                      child: Opacity(
-                                        opacity: 0.16,
-                                        child: Transform.scale(
-                                          scale: 0.62,
-                                          child: Lottie.asset(
-                                            BookAddStyles.snowflakesJson,
-                                            repeat: true,
-                                            fit: BoxFit.contain,
-                                          ),
-                                        ),
+                                      child: AnimatedBuilder(
+                                        animation: ambientController,
+                                        builder: (context, child) {
+                                          return CustomPaint(
+                                            painter: ChristmasSnowPainter(
+                                              progress: ambientController.value,
+                                            ),
+                                          );
+                                        },
                                       ),
                                     ),
                                   ),
@@ -1746,6 +1745,78 @@ class ChristmasLightsBorderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant ChristmasLightsBorderPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
+
+class ChristmasSnowPainter extends CustomPainter {
+  final double progress;
+
+  ChristmasSnowPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.18)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    const spacingX = 90.0;
+    const spacingY = 70.0;
+
+    int index = 0;
+
+    for (double x = 20; x < size.width; x += spacingX) {
+      for (double y = 0; y < size.height; y += spacingY) {
+        final offsetY = ((progress * (30 + (index % 5) * 8)) + y) % size.height;
+
+        final offsetX = x + sin(progress * 6.28 + index) * 6;
+
+        _drawSnowflake(
+          canvas,
+          Offset(offsetX, offsetY),
+          paint,
+          3 + (index % 3),
+        );
+
+        index++;
+      }
+    }
+  }
+
+  void _drawSnowflake(
+    Canvas canvas,
+    Offset center,
+    Paint paint,
+    double radius,
+  ) {
+    canvas.drawLine(
+      Offset(center.dx - radius, center.dy),
+      Offset(center.dx + radius, center.dy),
+      paint,
+    );
+
+    canvas.drawLine(
+      Offset(center.dx, center.dy - radius),
+      Offset(center.dx, center.dy + radius),
+      paint,
+    );
+
+    canvas.drawLine(
+      Offset(center.dx - radius * .7, center.dy - radius * .7),
+      Offset(center.dx + radius * .7, center.dy + radius * .7),
+      paint,
+    );
+
+    canvas.drawLine(
+      Offset(center.dx - radius * .7, center.dy + radius * .7),
+      Offset(center.dx + radius * .7, center.dy - radius * .7),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant ChristmasSnowPainter oldDelegate) {
     return oldDelegate.progress != progress;
   }
 }

@@ -54,6 +54,7 @@ class _PromoModalPageState extends State<PromoModalPage>
   @override
   void initState() {
     super.initState();
+    PromoModalStyles.christmasMode = widget.theme == "Christmas";
 
     pageController = AnimationController(
       vsync: this,
@@ -1373,61 +1374,51 @@ class _PromoModalPageState extends State<PromoModalPage>
                     ),
                   ),
 
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: AnimatedBuilder(
-                        animation: christmasLightsController,
-                        builder: (context, child) {
-                          return CustomPaint(
-                            painter: PromoChristmasLightsPainter(
-                              progress: christmasLightsController.value,
-                              radius: 28,
-                            ),
-                          );
-                        },
+                  if (PromoModalStyles.christmasMode)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: christmasLightsController,
+                          builder: (context, child) {
+                            return CustomPaint(
+                              painter: PromoChristmasLightsPainter(
+                                progress: christmasLightsController.value,
+                                radius: 28,
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
-                  ),
 
-                  Positioned(
-                    top: -18,
-                    left: -12,
-                    child: Lottie.asset(
-                      PromoModalStyles.christmasBellsJson,
-                      width: isMobile ? 70 : 90,
-                      height: isMobile ? 70 : 90,
-                      repeat: true,
+                  if (PromoModalStyles.christmasMode)
+                    Positioned(
+                      top: -18,
+                      left: -12,
+                      child: Lottie.asset(
+                        PromoModalStyles.christmasBellsJson,
+                        width: isMobile ? 70 : 90,
+                        height: isMobile ? 70 : 90,
+                        repeat: true,
+                      ),
                     ),
-                  ),
 
-                  Positioned(
-                    top: -18,
-                    right: -12,
-                    child: Lottie.asset(
-                      PromoModalStyles.christmasBellsJson,
-                      width: isMobile ? 70 : 90,
-                      height: isMobile ? 70 : 90,
-                      repeat: true,
+                  if (PromoModalStyles.christmasMode)
+                    Positioned(
+                      top: -18,
+                      right: -12,
+                      child: Lottie.asset(
+                        PromoModalStyles.christmasBellsJson,
+                        width: isMobile ? 70 : 90,
+                        height: isMobile ? 70 : 90,
+                        repeat: true,
+                      ),
                     ),
-                  ),
 
-                  Positioned(
-                    bottom: -50,
-                    left: -62,
-                    child: Lottie.asset(
-                      PromoModalStyles.giftBoxJson,
-                      width: isMobile ? 145 : 170,
-                      height: isMobile ? 145 : 170,
-                      repeat: true,
-                    ),
-                  ),
-
-                  Positioned(
-                    bottom: -50,
-                    right: -62,
-                    child: Transform(
-                      alignment: Alignment.center,
-                      transform: Matrix4.identity()..scale(-1.0, 1.0),
+                  if (PromoModalStyles.christmasMode)
+                    Positioned(
+                      bottom: -50,
+                      left: -62,
                       child: Lottie.asset(
                         PromoModalStyles.giftBoxJson,
                         width: isMobile ? 145 : 170,
@@ -1435,7 +1426,22 @@ class _PromoModalPageState extends State<PromoModalPage>
                         repeat: true,
                       ),
                     ),
-                  ),
+
+                  if (PromoModalStyles.christmasMode)
+                    Positioned(
+                      bottom: -50,
+                      right: -62,
+                      child: Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.identity()..scale(-1.0, 1.0),
+                        child: Lottie.asset(
+                          PromoModalStyles.giftBoxJson,
+                          width: isMobile ? 145 : 170,
+                          height: isMobile ? 145 : 170,
+                          repeat: true,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
