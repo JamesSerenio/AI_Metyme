@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import '../styles/Booking_styles.dart';
 import '../utils/supabase_client.dart';
 
@@ -1113,241 +1114,284 @@ class _BookingModalPageState extends State<BookingModalPage>
           child: SlideTransition(
             position: slideAnim,
             child: Center(
-              child: Container(
-                width: modalWidth,
-                height: modalHeight,
-                margin: EdgeInsets.all(isMobile ? 10 : 18),
-                padding: EdgeInsets.all(isMobile ? 14 : 20),
-                decoration: BookingModalStyles.modalCard,
-                child: Column(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(isMobile ? 12 : 16),
-                      decoration: BookingModalStyles.headerCard,
-                      child: Row(
-                        children: [
-                          buildLogo(isMobile ? 42 : 48),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: modalWidth,
+                    height: modalHeight,
+                    margin: EdgeInsets.all(isMobile ? 10 : 18),
+                    padding: EdgeInsets.all(isMobile ? 14 : 20),
+                    decoration: BookingModalStyles.modalCard,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(isMobile ? 12 : 16),
+                          decoration: BookingModalStyles.headerCard,
+                          child: Row(
+                            children: [
+                              buildLogo(isMobile ? 42 : 48),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Booking Assistant',
+                                      style: BookingModalStyles.title,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Please complete the booking information below.',
+                                      style: BookingModalStyles.subtitle,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 7,
+                                ),
+                                decoration: BookingModalStyles.statusChip,
+                                child: Text(
+                                  'Booking',
+                                  style: BookingModalStyles.chipText,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: () => Navigator.pop(context),
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Expanded(
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.all(isMobile ? 12 : 18),
+                            decoration: BookingModalStyles.chatArea,
+                            child: ListView(
+                              controller: scrollController,
                               children: [
-                                Text(
-                                  'Booking Assistant',
-                                  style: BookingModalStyles.title,
+                                buildSuccessBubble('You selected Booking ✅'),
+                                buildAiBubble(
+                                  text:
+                                      'Please fill in the booking details below.',
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Please complete the booking information below.',
-                                  style: BookingModalStyles.subtitle,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 7,
-                            ),
-                            decoration: BookingModalStyles.statusChip,
-                            child: Text(
-                              'Booking',
-                              style: BookingModalStyles.chipText,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(isMobile ? 12 : 18),
-                        decoration: BookingModalStyles.chatArea,
-                        child: ListView(
-                          controller: scrollController,
-                          children: [
-                            buildSuccessBubble('You selected Booking ✅'),
-                            buildAiBubble(
-                              text: 'Please fill in the booking details below.',
-                            ),
-                            if (showForm) ...[
-                              const SizedBox(height: 8),
-                              AnimatedOpacity(
-                                duration: const Duration(milliseconds: 350),
-                                opacity: 1,
-                                child: Container(
-                                  padding: EdgeInsets.all(isMobile ? 14 : 18),
-                                  decoration: BookingModalStyles.formCard,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Booking Information',
-                                        style: BookingModalStyles.sectionTitle,
+                                if (showForm) ...[
+                                  const SizedBox(height: 8),
+                                  AnimatedOpacity(
+                                    duration: const Duration(milliseconds: 350),
+                                    opacity: 1,
+                                    child: Container(
+                                      padding: EdgeInsets.all(
+                                        isMobile ? 14 : 18,
                                       ),
-                                      const SizedBox(height: 14),
-                                      buildTextField(
-                                        label: 'Full Name',
-                                        controller: fullNameController,
-                                        hintText: 'Enter full name',
-                                        errorText: fullNameError,
-                                      ),
-                                      const SizedBox(height: 14),
-                                      buildTextField(
-                                        label: 'Contact Number',
-                                        controller: contactNumberController,
-                                        hintText: 'Enter contact number',
-                                        errorText: contactNumberError,
-                                        keyboardType: TextInputType.phone,
-                                      ),
-                                      const SizedBox(height: 14),
-                                      buildDropdownField(
-                                        label: 'Customer Type',
-                                        valueText: customerTypeText(
-                                          selectedCustomerType,
-                                        ),
-                                        onTap: pickCustomerType,
-                                        errorText: customerTypeError,
-                                      ),
-                                      const SizedBox(height: 14),
-                                      buildDropdownField(
-                                        label: 'ID',
-                                        valueText: idTypeText(selectedIdType),
-                                        onTap: pickIdType,
-                                        errorText: idTypeError,
-                                      ),
-                                      const SizedBox(height: 14),
-                                      buildDropdownField(
-                                        label: 'Reservation',
-                                        valueText: reservationTypeText(
-                                          selectedReservationType,
-                                        ),
-                                        onTap: pickReservationType,
-                                        errorText: reservationTypeError,
-                                      ),
-                                      if (shouldShowOpenTime) ...[
-                                        const SizedBox(height: 14),
-                                        buildDropdownField(
-                                          label: 'Open Time',
-                                          valueText: openTimeText(
-                                            selectedOpenTimeType,
-                                          ),
-                                          onTap: pickOpenTimeType,
-                                          errorText: openTimeError,
-                                        ),
-                                      ],
-                                      if (shouldShowReservationFields) ...[
-                                        const SizedBox(height: 14),
-                                        buildDropdownField(
-                                          label: 'Reservation Date Range',
-                                          valueText: reservationRangeText(
-                                            selectedReservationRange,
-                                          ),
-                                          emptyText:
-                                              'Pick reservation date range',
-                                          onTap: pickReservationRange,
-                                          icon: Icons.calendar_month_rounded,
-                                          errorText: reservationRangeError,
-                                        ),
-                                        const SizedBox(height: 14),
-                                        buildDropdownField(
-                                          label: 'Time Started (Reservation)',
-                                          valueText: reservationStartTimeText(
-                                            selectedReservationStartTime,
-                                          ),
-                                          emptyText: 'Pick reservation time',
-                                          onTap: pickReservationStartTime,
-                                          icon: Icons.access_time_rounded,
-                                          errorText: reservationStartTimeError,
-                                        ),
-                                      ],
-                                      if (shouldShowSeatField) ...[
-                                        const SizedBox(height: 14),
-                                        buildDropdownField(
-                                          label: 'Seat Number',
-                                          valueText: seatText(),
-                                          emptyText: 'Pick seat number',
-                                          onTap: pickSeat,
-                                          icon: Icons.event_seat_rounded,
-                                          errorText: seatNumberError,
-                                        ),
-                                      ],
-                                      if (shouldShowTimeAvail) ...[
-                                        const SizedBox(height: 14),
-                                        buildDropdownField(
-                                          label: 'Time Avail (HH:MM or hours)',
-                                          valueText: timeAvailController.text,
-                                          emptyText: 'Pick time available',
-                                          onTap: pickTimeAvail,
-                                          icon: Icons.schedule_rounded,
-                                          errorText: timeAvailError,
-                                        ),
-                                      ],
-                                      const SizedBox(height: 18),
-                                      Row(
+                                      decoration: BookingModalStyles.formCard,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Expanded(
-                                            child: ElevatedButton(
-                                              onPressed: isSubmitting
-                                                  ? null
-                                                  : submitForm,
-                                              style: BookingModalStyles
-                                                  .primaryButton,
-                                              child: isSubmitting
-                                                  ? const SizedBox(
-                                                      width: 22,
-                                                      height: 22,
-                                                      child:
-                                                          CircularProgressIndicator(
-                                                            strokeWidth: 2.4,
-                                                            color: Colors.white,
-                                                          ),
-                                                    )
-                                                  : const Text('Submit'),
+                                          Text(
+                                            'Booking Information',
+                                            style:
+                                                BookingModalStyles.sectionTitle,
+                                          ),
+                                          const SizedBox(height: 14),
+                                          buildTextField(
+                                            label: 'Full Name',
+                                            controller: fullNameController,
+                                            hintText: 'Enter full name',
+                                            errorText: fullNameError,
+                                          ),
+                                          const SizedBox(height: 14),
+                                          buildTextField(
+                                            label: 'Contact Number',
+                                            controller: contactNumberController,
+                                            hintText: 'Enter contact number',
+                                            errorText: contactNumberError,
+                                            keyboardType: TextInputType.phone,
+                                          ),
+                                          const SizedBox(height: 14),
+                                          buildDropdownField(
+                                            label: 'Customer Type',
+                                            valueText: customerTypeText(
+                                              selectedCustomerType,
                                             ),
+                                            onTap: pickCustomerType,
+                                            errorText: customerTypeError,
+                                          ),
+                                          const SizedBox(height: 14),
+                                          buildDropdownField(
+                                            label: 'ID',
+                                            valueText: idTypeText(
+                                              selectedIdType,
+                                            ),
+                                            onTap: pickIdType,
+                                            errorText: idTypeError,
+                                          ),
+                                          const SizedBox(height: 14),
+                                          buildDropdownField(
+                                            label: 'Reservation',
+                                            valueText: reservationTypeText(
+                                              selectedReservationType,
+                                            ),
+                                            onTap: pickReservationType,
+                                            errorText: reservationTypeError,
+                                          ),
+                                          if (shouldShowOpenTime) ...[
+                                            const SizedBox(height: 14),
+                                            buildDropdownField(
+                                              label: 'Open Time',
+                                              valueText: openTimeText(
+                                                selectedOpenTimeType,
+                                              ),
+                                              onTap: pickOpenTimeType,
+                                              errorText: openTimeError,
+                                            ),
+                                          ],
+                                          if (shouldShowReservationFields) ...[
+                                            const SizedBox(height: 14),
+                                            buildDropdownField(
+                                              label: 'Reservation Date Range',
+                                              valueText: reservationRangeText(
+                                                selectedReservationRange,
+                                              ),
+                                              emptyText:
+                                                  'Pick reservation date range',
+                                              onTap: pickReservationRange,
+                                              icon:
+                                                  Icons.calendar_month_rounded,
+                                              errorText: reservationRangeError,
+                                            ),
+                                            const SizedBox(height: 14),
+                                            buildDropdownField(
+                                              label:
+                                                  'Time Started (Reservation)',
+                                              valueText:
+                                                  reservationStartTimeText(
+                                                    selectedReservationStartTime,
+                                                  ),
+                                              emptyText:
+                                                  'Pick reservation time',
+                                              onTap: pickReservationStartTime,
+                                              icon: Icons.access_time_rounded,
+                                              errorText:
+                                                  reservationStartTimeError,
+                                            ),
+                                          ],
+                                          if (shouldShowSeatField) ...[
+                                            const SizedBox(height: 14),
+                                            buildDropdownField(
+                                              label: 'Seat Number',
+                                              valueText: seatText(),
+                                              emptyText: 'Pick seat number',
+                                              onTap: pickSeat,
+                                              icon: Icons.event_seat_rounded,
+                                              errorText: seatNumberError,
+                                            ),
+                                          ],
+                                          if (shouldShowTimeAvail) ...[
+                                            const SizedBox(height: 14),
+                                            buildDropdownField(
+                                              label:
+                                                  'Time Avail (HH:MM or hours)',
+                                              valueText:
+                                                  timeAvailController.text,
+                                              emptyText: 'Pick time available',
+                                              onTap: pickTimeAvail,
+                                              icon: Icons.schedule_rounded,
+                                              errorText: timeAvailError,
+                                            ),
+                                          ],
+                                          const SizedBox(height: 18),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: ElevatedButton(
+                                                  onPressed: isSubmitting
+                                                      ? null
+                                                      : submitForm,
+                                                  style: BookingModalStyles
+                                                      .primaryButton,
+                                                  child: isSubmitting
+                                                      ? const SizedBox(
+                                                          width: 22,
+                                                          height: 22,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                                strokeWidth:
+                                                                    2.4,
+                                                                color: Colors
+                                                                    .white,
+                                                              ),
+                                                        )
+                                                      : const Text('Submit'),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                ),
-                              ),
-                            ],
-                            if (submitted && generatedBookingCode != null) ...[
-                              const SizedBox(height: 12),
-                              buildAiBubble(
-                                text:
-                                    'Your booking information has been received successfully.',
-                              ),
-                              buildCodeBubble(generatedBookingCode!),
-                              if (aiFinalMessage != null)
-                                buildAiBubble(text: aiFinalMessage!),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: BookingModalStyles.secondaryButton,
-                            child: const Text('Close'),
+                                ],
+                                if (submitted &&
+                                    generatedBookingCode != null) ...[
+                                  const SizedBox(height: 12),
+                                  buildAiBubble(
+                                    text:
+                                        'Your booking information has been received successfully.',
+                                  ),
+                                  buildCodeBubble(generatedBookingCode!),
+                                  if (aiFinalMessage != null)
+                                    buildAiBubble(text: aiFinalMessage!),
+                                ],
+                              ],
+                            ),
                           ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: BookingModalStyles.secondaryButton,
+                                child: const Text('Close'),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  Positioned(
+                    top: -18,
+                    left: -12,
+                    child: Lottie.asset(
+                      BookingModalStyles.christmasBellsJson,
+                      width: isMobile ? 70 : 90,
+                      height: isMobile ? 70 : 90,
+                      repeat: true,
+                    ),
+                  ),
+
+                  Positioned(
+                    top: -18,
+                    right: -12,
+                    child: Lottie.asset(
+                      BookingModalStyles.christmasBellsJson,
+                      width: isMobile ? 70 : 90,
+                      height: isMobile ? 70 : 90,
+                      repeat: true,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
