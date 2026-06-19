@@ -14,7 +14,9 @@ enum ReservationType { yes, no }
 enum OpenTimeType { yes, no }
 
 class BookingModalPage extends StatefulWidget {
-  const BookingModalPage({super.key});
+  final String theme;
+
+  const BookingModalPage({super.key, this.theme = "Regular"});
 
   @override
   State<BookingModalPage> createState() => _BookingModalPageState();
@@ -96,6 +98,7 @@ class _BookingModalPageState extends State<BookingModalPage>
   @override
   void initState() {
     super.initState();
+    BookingModalStyles.christmasMode = widget.theme == "Christmas";
 
     pageController = AnimationController(
       vsync: this,
@@ -1377,61 +1380,51 @@ class _BookingModalPageState extends State<BookingModalPage>
                     ),
                   ),
 
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: AnimatedBuilder(
-                        animation: christmasLightsController,
-                        builder: (context, child) {
-                          return CustomPaint(
-                            painter: BookingChristmasLightsPainter(
-                              progress: christmasLightsController.value,
-                              radius: 28,
-                            ),
-                          );
-                        },
+                  if (BookingModalStyles.christmasMode)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: christmasLightsController,
+                          builder: (context, child) {
+                            return CustomPaint(
+                              painter: BookingChristmasLightsPainter(
+                                progress: christmasLightsController.value,
+                                radius: 28,
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
-                  ),
 
-                  Positioned(
-                    top: -18,
-                    left: -12,
-                    child: Lottie.asset(
-                      BookingModalStyles.christmasBellsJson,
-                      width: isMobile ? 70 : 90,
-                      height: isMobile ? 70 : 90,
-                      repeat: true,
+                  if (BookingModalStyles.christmasMode)
+                    Positioned(
+                      top: -18,
+                      left: -12,
+                      child: Lottie.asset(
+                        BookingModalStyles.christmasBellsJson,
+                        width: isMobile ? 70 : 90,
+                        height: isMobile ? 70 : 90,
+                        repeat: true,
+                      ),
                     ),
-                  ),
 
-                  Positioned(
-                    top: -18,
-                    right: -12,
-                    child: Lottie.asset(
-                      BookingModalStyles.christmasBellsJson,
-                      width: isMobile ? 70 : 90,
-                      height: isMobile ? 70 : 90,
-                      repeat: true,
+                  if (BookingModalStyles.christmasMode)
+                    Positioned(
+                      top: -18,
+                      right: -12,
+                      child: Lottie.asset(
+                        BookingModalStyles.christmasBellsJson,
+                        width: isMobile ? 70 : 90,
+                        height: isMobile ? 70 : 90,
+                        repeat: true,
+                      ),
                     ),
-                  ),
 
-                  Positioned(
-                    bottom: -50,
-                    left: -65,
-                    child: Lottie.asset(
-                      BookingModalStyles.giftBoxJson,
-                      width: isMobile ? 145 : 170,
-                      height: isMobile ? 145 : 170,
-                      repeat: true,
-                    ),
-                  ),
-
-                  Positioned(
-                    bottom: -50,
-                    right: -65,
-                    child: Transform(
-                      alignment: Alignment.center,
-                      transform: Matrix4.identity()..scale(-1.0, 1.0),
+                  if (BookingModalStyles.christmasMode)
+                    Positioned(
+                      bottom: -50,
+                      left: -65,
                       child: Lottie.asset(
                         BookingModalStyles.giftBoxJson,
                         width: isMobile ? 145 : 170,
@@ -1439,7 +1432,22 @@ class _BookingModalPageState extends State<BookingModalPage>
                         repeat: true,
                       ),
                     ),
-                  ),
+
+                  if (BookingModalStyles.christmasMode)
+                    Positioned(
+                      bottom: -50,
+                      right: -65,
+                      child: Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.identity()..scale(-1.0, 1.0),
+                        child: Lottie.asset(
+                          BookingModalStyles.giftBoxJson,
+                          width: isMobile ? 145 : 170,
+                          height: isMobile ? 145 : 170,
+                          repeat: true,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

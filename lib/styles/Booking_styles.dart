@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class BookingModalStyles {
-  static const bool christmasMode = true;
+  static bool christmasMode = false;
 
   static const String christmasBellsJson = 'assets/lottie/Christmas Bells.json';
   static const String christmasBallJson = 'assets/lottie/Christmas Ball.json';
@@ -23,7 +23,7 @@ class BookingModalStyles {
   static const Color textSoft = Color(0xFF666666);
   static const Color borderSoft = Color(0x1A000000);
 
-  static BoxDecoration modalCard = BoxDecoration(
+  static BoxDecoration get modalCard => BoxDecoration(
     color: christmasMode
         ? christmasCream.withOpacity(0.98)
         : cardBg.withOpacity(0.98),
@@ -79,18 +79,22 @@ class BookingModalStyles {
     ],
   );
 
-  static BoxDecoration successBubble = BoxDecoration(
-    gradient: const LinearGradient(
+  static BoxDecoration get successBubble => BoxDecoration(
+    gradient: LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: [Color(0xFFE53935), Color(0xFFB71C1C)],
+      colors: christmasMode
+          ? const [Color(0xFFE53935), Color(0xFFB71C1C)]
+          : const [Color(0xFF4CAF50), Color(0xFF2E7D32)],
     ),
     borderRadius: BorderRadius.circular(
       22,
     ).copyWith(topRight: const Radius.circular(8)),
     boxShadow: [
       BoxShadow(
-        color: christmasRed.withOpacity(0.24),
+        color: christmasMode
+            ? christmasRed.withOpacity(0.24)
+            : primary.withOpacity(0.22),
         blurRadius: 14,
         offset: const Offset(0, 6),
       ),

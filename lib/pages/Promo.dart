@@ -6,7 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../styles/Promo_styles.dart';
 
 class PromoModalPage extends StatefulWidget {
-  const PromoModalPage({super.key});
+  final String theme;
+
+  const PromoModalPage({super.key, this.theme = "Regular"});
 
   @override
   State<PromoModalPage> createState() => _PromoModalPageState();

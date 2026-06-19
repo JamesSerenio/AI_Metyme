@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class PromoModalStyles {
-  static const bool christmasMode = true;
+  static bool christmasMode = false;
 
   static const String christmasBellsJson = 'assets/lottie/Christmas Bells.json';
   static const String giftBoxJson = 'assets/lottie/Gift box.json';
@@ -21,7 +21,7 @@ class PromoModalStyles {
   static const Color textMuted = Color(0xFF666666);
   static const Color error = Color(0xFFD32F2F);
 
-  static BoxDecoration modalCard = BoxDecoration(
+  static BoxDecoration get modalCard => BoxDecoration(
     color: christmasMode ? christmasCream.withOpacity(0.98) : cardBg,
     borderRadius: BorderRadius.circular(28),
     border: Border.all(
@@ -79,18 +79,22 @@ class PromoModalStyles {
     ).copyWith(topLeft: const Radius.circular(8)),
   );
 
-  static BoxDecoration successBubble = BoxDecoration(
-    gradient: const LinearGradient(
+  static BoxDecoration get successBubble => BoxDecoration(
+    gradient: LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: [Color(0xFFE53935), Color(0xFFB71C1C)],
+      colors: christmasMode
+          ? const [Color(0xFFE53935), Color(0xFFB71C1C)]
+          : const [Color(0xFF4CAF50), Color(0xFF2E7D32)],
     ),
     borderRadius: BorderRadius.circular(
       20,
     ).copyWith(topRight: const Radius.circular(8)),
     boxShadow: [
       BoxShadow(
-        color: christmasRed.withOpacity(0.24),
+        color: christmasMode
+            ? christmasRed.withOpacity(0.24)
+            : primary.withOpacity(0.22),
         blurRadius: 14,
         offset: const Offset(0, 6),
       ),
