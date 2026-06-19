@@ -1416,24 +1416,28 @@ class _BookingModalPageState extends State<BookingModalPage>
                   ),
 
                   Positioned(
-                    bottom: -18,
-                    left: -12,
+                    bottom: -50,
+                    left: -65,
                     child: Lottie.asset(
                       BookingModalStyles.giftBoxJson,
-                      width: isMobile ? 70 : 90,
-                      height: isMobile ? 70 : 90,
+                      width: isMobile ? 145 : 170,
+                      height: isMobile ? 145 : 170,
                       repeat: true,
                     ),
                   ),
 
                   Positioned(
-                    bottom: -18,
-                    right: -12,
-                    child: Lottie.asset(
-                      BookingModalStyles.giftBoxJson,
-                      width: isMobile ? 70 : 90,
-                      height: isMobile ? 70 : 90,
-                      repeat: true,
+                    bottom: -50,
+                    right: -65,
+                    child: Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()..scale(-1.0, 1.0),
+                      child: Lottie.asset(
+                        BookingModalStyles.giftBoxJson,
+                        width: isMobile ? 145 : 170,
+                        height: isMobile ? 145 : 170,
+                        repeat: true,
+                      ),
                     ),
                   ),
                 ],
