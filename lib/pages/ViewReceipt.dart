@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../styles/Attendance_styles.dart';
 import '../styles/ViewReceipt_styles.dart';
@@ -8,8 +9,14 @@ import 'ViewReceipt.dart';
 class ViewReceipt extends StatefulWidget {
   final String? initialCode;
   final bool autoLoadOnOpen;
+  final String theme;
 
-  const ViewReceipt({super.key, this.initialCode, this.autoLoadOnOpen = false});
+  const ViewReceipt({
+    super.key,
+    this.initialCode,
+    this.autoLoadOnOpen = false,
+    this.theme = "Regular",
+  });
 
   @override
   State<ViewReceipt> createState() => _ViewReceiptState();
@@ -25,7 +32,7 @@ class ViewReceiptPage extends StatelessWidget {
 }
 
 class _ViewReceiptState extends State<ViewReceipt>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final supabase = Supabase.instance.client;
 
   static const double _hourlyRate = 20.0;
@@ -35,6 +42,7 @@ class _ViewReceiptState extends State<ViewReceipt>
   final ScrollController _scrollController = ScrollController();
 
   late final AnimationController _animController;
+  late final AnimationController _christmasController;
   late final Animation<double> _fadeAnim;
   late final Animation<Offset> _slideAnim;
 
@@ -86,6 +94,7 @@ class _ViewReceiptState extends State<ViewReceipt>
   @override
   void initState() {
     super.initState();
+    ViewReceiptStyles.christmasMode = widget.theme == "Christmas";
 
     _animController = AnimationController(
       vsync: this,
@@ -97,6 +106,10 @@ class _ViewReceiptState extends State<ViewReceipt>
       curve: Curves.easeOutCubic,
     );
 
+    _christmasController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
     _slideAnim = Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
         .animate(
           CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic),
@@ -130,6 +143,7 @@ class _ViewReceiptState extends State<ViewReceipt>
     _codeController.dispose();
     _scrollController.dispose();
     _animController.dispose();
+    _christmasController.dispose();
     super.dispose();
   }
 
@@ -2664,143 +2678,238 @@ class _ViewReceiptState extends State<ViewReceipt>
             child: SlideTransition(
               position: _slideAnim,
               child: Center(
-                child: Container(
-                  width: isMobile ? screen.width * 0.96 : 600,
-                  height: isMobile ? screen.height * 0.92 : 760,
-                  padding: const EdgeInsets.all(20),
-                  decoration: ViewReceiptStyles.mainCard,
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: ViewReceiptStyles.topHeaderCard,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 58,
-                              height: 58,
-                              decoration: ViewReceiptStyles.topHeaderAvatar,
-                              child: ClipOval(
-                                child: Image.asset(
-                                  'assets/study_hub.png',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      const Icon(Icons.image),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Receipt Assistant',
-                                    style: ViewReceiptStyles.headerTitle,
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'Paste your code to view and pay your receipt below.',
-                                    style: ViewReceiptStyles.headerSubtitle,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 10,
-                              ),
-                              decoration: ViewReceiptStyles.headerChip,
-                              child: const Text(
-                                'View Receipt',
-                                style: ViewReceiptStyles.headerChipText,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: const Icon(
-                                Icons.close_rounded,
-                                color: Color(0xFF3A3534),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(18),
-                          decoration: ViewReceiptStyles.chatAreaCard,
-                          child: SingleChildScrollView(
-                            controller: _scrollController,
-                            child: Column(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: isMobile ? screen.width * 0.96 : 600,
+                      height: isMobile ? screen.height * 0.92 : 760,
+                      padding: const EdgeInsets.all(20),
+                      decoration: ViewReceiptStyles.mainCard,
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: ViewReceiptStyles.topHeaderCard,
+                            child: Row(
                               children: [
-                                const SizedBox(height: 10),
-                                Center(
-                                  child: SizedBox(
-                                    width: isMobile ? double.infinity : 620,
-                                    child: _buildCodeInput(),
+                                Container(
+                                  width: 58,
+                                  height: 58,
+                                  decoration: ViewReceiptStyles.topHeaderAvatar,
+                                  child: ClipOval(
+                                    child: Image.asset(
+                                      'assets/study_hub.png',
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          const Icon(Icons.image),
+                                    ),
                                   ),
                                 ),
-
-                                if (_receipt == null) ...[
-                                  const SizedBox(height: 16),
-                                  for (final message in _chatMessages) ...[
-                                    Align(
-                                      alignment: message.isAI
-                                          ? Alignment.centerLeft
-                                          : Alignment.centerRight,
-                                      child: message.isAI
-                                          ? _buildAiBubble(message.text)
-                                          : _buildUserBubble(message.text),
-                                    ),
-                                    const SizedBox(height: 6),
-                                  ],
-                                ],
-
-                                if (_receipt != null) ...[
-                                  const SizedBox(height: 18),
-
-                                  _loadedReceipts.length > 1
-                                      ? _buildCombinedReceiptCard()
-                                      : _buildReceiptCard(_receipt!),
-
-                                  const SizedBox(height: 16),
-                                  for (final message in _chatMessages) ...[
-                                    Align(
-                                      alignment: message.isAI
-                                          ? Alignment.centerLeft
-                                          : Alignment.centerRight,
-                                      child: message.isAI
-                                          ? _buildAiBubble(message.text)
-                                          : _buildUserBubble(message.text),
-                                    ),
-                                    const SizedBox(height: 6),
-                                  ],
-                                ],
+                                const SizedBox(width: 14),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Receipt Assistant',
+                                        style: ViewReceiptStyles.headerTitle,
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'Paste your code to view and pay your receipt below.',
+                                        style: ViewReceiptStyles.headerSubtitle,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  decoration: ViewReceiptStyles.headerChip,
+                                  child: const Text(
+                                    'View Receipt',
+                                    style: ViewReceiptStyles.headerChipText,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                IconButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  icon: const Icon(
+                                    Icons.close_rounded,
+                                    color: Color(0xFF3A3534),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
+                          const SizedBox(height: 16),
+                          Expanded(
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(18),
+                              decoration: ViewReceiptStyles.chatAreaCard,
+                              child: SingleChildScrollView(
+                                controller: _scrollController,
+                                child: Column(
+                                  children: [
+                                    const SizedBox(height: 10),
+                                    Center(
+                                      child: SizedBox(
+                                        width: isMobile ? double.infinity : 620,
+                                        child: _buildCodeInput(),
+                                      ),
+                                    ),
 
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: ViewReceiptStyles.bottomCloseButtonStyle,
-                          child: const Text(
-                            'Close',
-                            style: ViewReceiptStyles.bottomCloseButtonText,
+                                    if (_receipt == null) ...[
+                                      const SizedBox(height: 16),
+                                      for (final message in _chatMessages) ...[
+                                        Align(
+                                          alignment: message.isAI
+                                              ? Alignment.centerLeft
+                                              : Alignment.centerRight,
+                                          child: message.isAI
+                                              ? _buildAiBubble(message.text)
+                                              : _buildUserBubble(message.text),
+                                        ),
+                                        const SizedBox(height: 6),
+                                      ],
+                                    ],
+
+                                    if (_receipt != null) ...[
+                                      const SizedBox(height: 18),
+
+                                      _loadedReceipts.length > 1
+                                          ? _buildCombinedReceiptCard()
+                                          : _buildReceiptCard(_receipt!),
+
+                                      const SizedBox(height: 16),
+                                      for (final message in _chatMessages) ...[
+                                        Align(
+                                          alignment: message.isAI
+                                              ? Alignment.centerLeft
+                                              : Alignment.centerRight,
+                                          child: message.isAI
+                                              ? _buildAiBubble(message.text)
+                                              : _buildUserBubble(message.text),
+                                        ),
+                                        const SizedBox(height: 6),
+                                      ],
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: ViewReceiptStyles.bottomCloseButtonStyle,
+                              child: const Text(
+                                'Close',
+                                style: ViewReceiptStyles.bottomCloseButtonText,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    if (ViewReceiptStyles.christmasMode)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: AnimatedBuilder(
+                            animation: _christmasController,
+                            builder: (context, child) {
+                              return CustomPaint(
+                                painter: ViewReceiptSnowPainter(
+                                  progress: _christmasController.value,
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),
-                    ],
-                  ),
+
+                    if (ViewReceiptStyles.christmasMode)
+                      Positioned(
+                        top: -32,
+                        left: -32,
+                        right: -32,
+                        bottom: -32,
+                        child: IgnorePointer(
+                          child: AnimatedBuilder(
+                            animation: _christmasController,
+                            builder: (context, child) {
+                              return CustomPaint(
+                                painter: ViewReceiptChristmasLightsPainter(
+                                  progress: _christmasController.value,
+                                  radius: 34,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+
+                    if (ViewReceiptStyles.christmasMode)
+                      Positioned(
+                        top: -20,
+                        left: -18,
+                        child: Lottie.asset(
+                          ViewReceiptStyles.christmasBellsJson,
+                          width: isMobile ? 70 : 90,
+                          height: isMobile ? 70 : 90,
+                          repeat: true,
+                        ),
+                      ),
+
+                    if (ViewReceiptStyles.christmasMode)
+                      Positioned(
+                        top: -20,
+                        right: -18,
+                        child: Lottie.asset(
+                          ViewReceiptStyles.christmasBellsJson,
+                          width: isMobile ? 70 : 90,
+                          height: isMobile ? 70 : 90,
+                          repeat: true,
+                        ),
+                      ),
+
+                    if (ViewReceiptStyles.christmasMode)
+                      Positioned(
+                        bottom: -50,
+                        left: -62,
+                        child: Lottie.asset(
+                          ViewReceiptStyles.giftBoxJson,
+                          width: isMobile ? 145 : 170,
+                          height: isMobile ? 145 : 170,
+                          repeat: true,
+                        ),
+                      ),
+
+                    if (ViewReceiptStyles.christmasMode)
+                      Positioned(
+                        bottom: -50,
+                        right: -62,
+                        child: Transform(
+                          alignment: Alignment.center,
+                          transform: Matrix4.identity()..scale(-1.0, 1.0),
+                          child: Lottie.asset(
+                            ViewReceiptStyles.giftBoxJson,
+                            width: isMobile ? 145 : 170,
+                            height: isMobile ? 145 : 170,
+                            repeat: true,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -2808,6 +2917,121 @@ class _ViewReceiptState extends State<ViewReceipt>
         ),
       ),
     );
+  }
+}
+
+class ViewReceiptSnowPainter extends CustomPainter {
+  final double progress;
+
+  ViewReceiptSnowPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.lightBlueAccent.withOpacity(0.16)
+      ..strokeWidth = 1.1
+      ..style = PaintingStyle.stroke;
+
+    for (int i = 0; i < 38; i++) {
+      final x = (i * 47.0) % size.width;
+      final y = ((i * 80.0) + (progress * size.height)) % size.height;
+      _snow(canvas, Offset(x, y), paint, 4 + (i % 3).toDouble());
+    }
+  }
+
+  void _snow(Canvas canvas, Offset c, Paint p, double r) {
+    canvas.drawLine(Offset(c.dx - r, c.dy), Offset(c.dx + r, c.dy), p);
+    canvas.drawLine(Offset(c.dx, c.dy - r), Offset(c.dx, c.dy + r), p);
+    canvas.drawLine(
+      Offset(c.dx - r * .7, c.dy - r * .7),
+      Offset(c.dx + r * .7, c.dy + r * .7),
+      p,
+    );
+    canvas.drawLine(
+      Offset(c.dx - r * .7, c.dy + r * .7),
+      Offset(c.dx + r * .7, c.dy - r * .7),
+      p,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant ViewReceiptSnowPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
+
+class ViewReceiptChristmasLightsPainter extends CustomPainter {
+  final double progress;
+  final double radius;
+
+  ViewReceiptChristmasLightsPainter({
+    required this.progress,
+    required this.radius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const inset = 24.0;
+
+    final wirePaint = Paint()
+      ..color = Colors.green.withOpacity(0.45)
+      ..strokeWidth = 1.3
+      ..style = PaintingStyle.stroke;
+
+    final rect = Rect.fromLTWH(
+      inset,
+      inset,
+      size.width - inset * 2,
+      size.height - inset * 2,
+    );
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(radius)),
+      wirePaint,
+    );
+
+    final colors = [
+      Colors.red,
+      Colors.green,
+      Colors.blue,
+      Colors.orange,
+      Colors.yellow,
+    ];
+
+    final points = <Offset>[];
+
+    for (double x = inset + 25; x < size.width - inset - 20; x += 38) {
+      points.add(Offset(x, inset));
+      points.add(Offset(x, size.height - inset));
+    }
+
+    for (double y = inset + 30; y < size.height - inset - 20; y += 38) {
+      points.add(Offset(inset, y));
+      points.add(Offset(size.width - inset, y));
+    }
+
+    for (int i = 0; i < points.length; i++) {
+      final color = colors[i % colors.length];
+
+      canvas.drawCircle(
+        points[i],
+        13,
+        Paint()..color = color.withOpacity(0.22),
+      );
+      canvas.drawCircle(
+        points[i],
+        6,
+        Paint()
+          ..color = color.withOpacity(
+            0.65 + 0.35 * ((progress + i * 0.08) % 1),
+          ),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant ViewReceiptChristmasLightsPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
 

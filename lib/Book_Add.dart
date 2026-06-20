@@ -389,7 +389,7 @@ class _BookAddPageState extends State<BookAddPage>
 
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ViewReceipt()),
+      MaterialPageRoute(builder: (_) => ViewReceipt(theme: selectedTheme)),
     );
 
     if (!mounted) return;
