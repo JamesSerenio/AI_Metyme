@@ -279,7 +279,7 @@ class _BookAddPageState extends State<BookAddPage>
 
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const AddOnsPage()),
+      MaterialPageRoute(builder: (_) => AddOnsPage(theme: selectedTheme)),
     );
 
     if (!mounted) return;

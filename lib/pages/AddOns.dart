@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:lottie/lottie.dart';
 import '../styles/AddOns_styles.dart';
 
 enum CatalogKind { addOn, otherItems }
@@ -75,7 +76,9 @@ class SubmittedOrderSummary {
 }
 
 class AddOnsPage extends StatefulWidget {
-  const AddOnsPage({super.key});
+  final String theme;
+
+  const AddOnsPage({super.key, this.theme = "Regular"});
 
   @override
   State<AddOnsPage> createState() => _AddOnsPageState();
@@ -106,6 +109,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
   SubmittedOrderSummary? submittedOrder;
 
   late final AnimationController pageController;
+  late final AnimationController christmasController;
   late final Animation<double> fadeAnim;
   late final Animation<Offset> slideAnim;
 
@@ -147,6 +151,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    AddOnsStyles.christmasMode = widget.theme == "Christmas";
 
     pageController = AnimationController(
       vsync: this,
@@ -164,6 +169,12 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
         );
 
     pageController.forward();
+
+    christmasController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
+
     _loadCatalog();
 
     chatMessages = [];
@@ -183,6 +194,7 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
     gcashController.dispose();
     cashController.dispose();
     pageController.dispose();
+    christmasController.dispose();
     super.dispose();
   }
 
@@ -1708,238 +1720,482 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           child: SlideTransition(
             position: slideAnim,
             child: Center(
-              child: Container(
-                width: modalWidth,
-                height: modalHeight,
-                margin: EdgeInsets.all(isMobile ? 10 : 18),
-                padding: EdgeInsets.all(isMobile ? 14 : 20),
-                decoration: AddOnsStyles.modalCard,
-                child: Column(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(isMobile ? 12 : 16),
-                      decoration: AddOnsStyles.headerCard,
-                      child: Row(
-                        children: [
-                          buildLogo(isMobile ? 42 : 48),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Add-Ons Assistant',
-                                  style: AddOnsStyles.title,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Please complete the order details below.',
-                                  style: AddOnsStyles.subtitle,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 7,
-                            ),
-                            decoration: AddOnsStyles.statusChip,
-                            child: Text('Order', style: AddOnsStyles.chipText),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(isMobile ? 12 : 18),
-                        decoration: AddOnsStyles.chatArea,
-                        child: isLoading
-                            ? const Center(child: CircularProgressIndicator())
-                            : ListView(
-                                controller: scrollController,
-                                children: [
-                                  buildSuccessBubble('You selected Add-Ons 🍔'),
-                                  buildAiBubble(
-                                    text:
-                                        'Please fill up the order details below.',
-                                  ),
-
-                                  if (showForm) ...[
-                                    const SizedBox(height: 8),
-                                    AnimatedOpacity(
-                                      duration: const Duration(
-                                        milliseconds: 350,
-                                      ),
-                                      opacity: 1,
-                                      child: Container(
-                                        padding: EdgeInsets.all(
-                                          isMobile ? 14 : 18,
-                                        ),
-                                        decoration: AddOnsStyles.formCard,
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Order Information',
-                                              style: AddOnsStyles.sectionTitle,
-                                            ),
-                                            const SizedBox(height: 14),
-                                            Text(
-                                              'Full Name',
-                                              style: AddOnsStyles.label,
-                                            ),
-                                            const SizedBox(height: 8),
-                                            TextField(
-                                              controller: fullNameController,
-                                              enabled: !formLocked,
-                                              decoration:
-                                                  AddOnsStyles.inputDecoration(
-                                                    hintText: 'Enter full name',
-                                                  ),
-                                            ),
-                                            const SizedBox(height: 14),
-                                            buildField(
-                                              label: 'Seat Number',
-                                              valueText: selectedSeat ?? '',
-                                              emptyText: 'Pick seat number',
-                                              icon: Icons.event_seat_rounded,
-                                              onTap: pickSeat,
-                                            ),
-                                            const SizedBox(height: 16),
-                                            ...List.generate(
-                                              orderRows.length,
-                                              (index) => buildOrderRowCard(
-                                                index,
-                                                isMobile,
-                                              ),
-                                            ),
-                                            Container(
-                                              width: double.infinity,
-                                              padding: const EdgeInsets.all(16),
-                                              decoration: AddOnsStyles.formCard,
-                                              child: Row(
-                                                children: [
-                                                  const Expanded(
-                                                    child: Text(
-                                                      'Total',
-                                                      style: TextStyle(
-                                                        fontSize: 16,
-                                                        fontWeight:
-                                                            FontWeight.w800,
-                                                        color: AddOnsStyles
-                                                            .textDark,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    '₱${totalAmount.toStringAsFixed(2)}',
-                                                    style: AddOnsStyles
-                                                        .priceText
-                                                        .copyWith(fontSize: 16),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(height: 16),
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: ElevatedButton(
-                                                    onPressed: formLocked
-                                                        ? null
-                                                        : addMoreOrder,
-                                                    style: AddOnsStyles
-                                                        .secondaryButton,
-                                                    child: const Text(
-                                                      'ADD MORE ORDER',
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 10),
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: ElevatedButton(
-                                                    onPressed:
-                                                        (isSubmitting ||
-                                                            formLocked)
-                                                        ? null
-                                                        : submitOrder,
-                                                    style: AddOnsStyles
-                                                        .primaryButton,
-                                                    child: Text(
-                                                      isSubmitting
-                                                          ? 'Submitting...'
-                                                          : 'SUBMIT ORDER',
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 10),
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: ElevatedButton(
-                                                    onPressed: resetOrder,
-                                                    style: AddOnsStyles
-                                                        .dangerButton,
-                                                    child: const Text(
-                                                      'RESET ORDER',
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: modalWidth,
+                    height: modalHeight,
+                    margin: EdgeInsets.all(isMobile ? 10 : 18),
+                    padding: EdgeInsets.all(isMobile ? 14 : 20),
+                    decoration: AddOnsStyles.modalCard,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(isMobile ? 12 : 16),
+                          decoration: AddOnsStyles.headerCard,
+                          child: Row(
+                            children: [
+                              buildLogo(isMobile ? 42 : 48),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Add-Ons Assistant',
+                                      style: AddOnsStyles.title,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Please complete the order details below.',
+                                      style: AddOnsStyles.subtitle,
                                     ),
                                   ],
-                                  const SizedBox(height: 10),
-                                  for (final msg in chatMessages)
-                                    msg.isUser
-                                        ? buildSuccessBubble(msg.text)
-                                        : buildAiBubble(
-                                            text: msg.text,
-                                            showAvatar: msg.showAvatar,
-                                            bottomAction: msg.bottomAction,
-                                          ),
-                                ],
+                                ),
                               ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: AddOnsStyles.secondaryButton,
-                            child: const Text('Close'),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 7,
+                                ),
+                                decoration: AddOnsStyles.statusChip,
+                                child: Text(
+                                  'Order',
+                                  style: AddOnsStyles.chipText,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: () => Navigator.pop(context),
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                            ],
                           ),
+                        ),
+                        const SizedBox(height: 14),
+                        Expanded(
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.all(isMobile ? 12 : 18),
+                            decoration: AddOnsStyles.chatArea,
+                            child: isLoading
+                                ? const Center(
+                                    child: CircularProgressIndicator(),
+                                  )
+                                : ListView(
+                                    controller: scrollController,
+                                    children: [
+                                      buildSuccessBubble(
+                                        'You selected Add-Ons 🍔',
+                                      ),
+                                      buildAiBubble(
+                                        text:
+                                            'Please fill up the order details below.',
+                                      ),
+
+                                      if (showForm) ...[
+                                        const SizedBox(height: 8),
+                                        AnimatedOpacity(
+                                          duration: const Duration(
+                                            milliseconds: 350,
+                                          ),
+                                          opacity: 1,
+                                          child: Container(
+                                            padding: EdgeInsets.all(
+                                              isMobile ? 14 : 18,
+                                            ),
+                                            decoration: AddOnsStyles.formCard,
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Order Information',
+                                                  style:
+                                                      AddOnsStyles.sectionTitle,
+                                                ),
+                                                const SizedBox(height: 14),
+                                                Text(
+                                                  'Full Name',
+                                                  style: AddOnsStyles.label,
+                                                ),
+                                                const SizedBox(height: 8),
+                                                TextField(
+                                                  controller:
+                                                      fullNameController,
+                                                  enabled: !formLocked,
+                                                  decoration:
+                                                      AddOnsStyles.inputDecoration(
+                                                        hintText:
+                                                            'Enter full name',
+                                                      ),
+                                                ),
+                                                const SizedBox(height: 14),
+                                                buildField(
+                                                  label: 'Seat Number',
+                                                  valueText: selectedSeat ?? '',
+                                                  emptyText: 'Pick seat number',
+                                                  icon:
+                                                      Icons.event_seat_rounded,
+                                                  onTap: pickSeat,
+                                                ),
+                                                const SizedBox(height: 16),
+                                                ...List.generate(
+                                                  orderRows.length,
+                                                  (index) => buildOrderRowCard(
+                                                    index,
+                                                    isMobile,
+                                                  ),
+                                                ),
+                                                Container(
+                                                  width: double.infinity,
+                                                  padding: const EdgeInsets.all(
+                                                    16,
+                                                  ),
+                                                  decoration:
+                                                      AddOnsStyles.formCard,
+                                                  child: Row(
+                                                    children: [
+                                                      const Expanded(
+                                                        child: Text(
+                                                          'Total',
+                                                          style: TextStyle(
+                                                            fontSize: 16,
+                                                            fontWeight:
+                                                                FontWeight.w800,
+                                                            color: AddOnsStyles
+                                                                .textDark,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        '₱${totalAmount.toStringAsFixed(2)}',
+                                                        style: AddOnsStyles
+                                                            .priceText
+                                                            .copyWith(
+                                                              fontSize: 16,
+                                                            ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 16),
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: ElevatedButton(
+                                                        onPressed: formLocked
+                                                            ? null
+                                                            : addMoreOrder,
+                                                        style: AddOnsStyles
+                                                            .secondaryButton,
+                                                        child: const Text(
+                                                          'ADD MORE ORDER',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 10),
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: ElevatedButton(
+                                                        onPressed:
+                                                            (isSubmitting ||
+                                                                formLocked)
+                                                            ? null
+                                                            : submitOrder,
+                                                        style: AddOnsStyles
+                                                            .primaryButton,
+                                                        child: Text(
+                                                          isSubmitting
+                                                              ? 'Submitting...'
+                                                              : 'SUBMIT ORDER',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 10),
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: ElevatedButton(
+                                                        onPressed: resetOrder,
+                                                        style: AddOnsStyles
+                                                            .dangerButton,
+                                                        child: const Text(
+                                                          'RESET ORDER',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                      const SizedBox(height: 10),
+                                      for (final msg in chatMessages)
+                                        msg.isUser
+                                            ? buildSuccessBubble(msg.text)
+                                            : buildAiBubble(
+                                                text: msg.text,
+                                                showAvatar: msg.showAvatar,
+                                                bottomAction: msg.bottomAction,
+                                              ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: AddOnsStyles.secondaryButton,
+                                child: const Text('Close'),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  if (AddOnsStyles.christmasMode)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: christmasController,
+                          builder: (context, child) {
+                            return CustomPaint(
+                              painter: AddOnsSnowPainter(
+                                progress: christmasController.value,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
+                  if (AddOnsStyles.christmasMode)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: christmasController,
+                          builder: (context, child) {
+                            return CustomPaint(
+                              painter: AddOnsChristmasLightsPainter(
+                                progress: christmasController.value,
+                                radius: 28,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
+                  if (AddOnsStyles.christmasMode)
+                    Positioned(
+                      top: -18,
+                      left: -12,
+                      child: Lottie.asset(
+                        AddOnsStyles.christmasBellsJson,
+                        width: isMobile ? 70 : 90,
+                        height: isMobile ? 70 : 90,
+                        repeat: true,
+                      ),
+                    ),
+
+                  if (AddOnsStyles.christmasMode)
+                    Positioned(
+                      top: -18,
+                      right: -12,
+                      child: Lottie.asset(
+                        AddOnsStyles.christmasBellsJson,
+                        width: isMobile ? 70 : 90,
+                        height: isMobile ? 70 : 90,
+                        repeat: true,
+                      ),
+                    ),
+
+                  if (AddOnsStyles.christmasMode)
+                    Positioned(
+                      bottom: -40,
+                      left: -62,
+                      child: Lottie.asset(
+                        AddOnsStyles.giftBoxJson,
+                        width: isMobile ? 145 : 170,
+                        height: isMobile ? 145 : 170,
+                        repeat: true,
+                      ),
+                    ),
+
+                  if (AddOnsStyles.christmasMode)
+                    Positioned(
+                      bottom: -40,
+                      right: -62,
+                      child: Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.identity()..scale(-1.0, 1.0),
+                        child: Lottie.asset(
+                          AddOnsStyles.giftBoxJson,
+                          width: isMobile ? 145 : 170,
+                          height: isMobile ? 145 : 170,
+                          repeat: true,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+class AddOnsSnowPainter extends CustomPainter {
+  final double progress;
+
+  AddOnsSnowPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.lightBlueAccent.withOpacity(0.16)
+      ..strokeWidth = 1.1
+      ..style = PaintingStyle.stroke;
+
+    const flakes = [
+      Offset(40, 25),
+      Offset(130, 70),
+      Offset(230, 35),
+      Offset(330, 90),
+      Offset(450, 45),
+      Offset(560, 85),
+      Offset(660, 30),
+      Offset(75, 150),
+      Offset(180, 190),
+      Offset(290, 145),
+      Offset(410, 200),
+      Offset(530, 155),
+      Offset(640, 210),
+      Offset(35, 285),
+      Offset(145, 330),
+      Offset(260, 275),
+      Offset(375, 340),
+      Offset(490, 290),
+      Offset(610, 335),
+      Offset(95, 430),
+      Offset(215, 465),
+      Offset(345, 420),
+      Offset(470, 475),
+      Offset(590, 430),
+    ];
+
+    for (int i = 0; i < flakes.length; i++) {
+      final base = flakes[i];
+      final speed = 35 + (i % 5) * 10;
+      final y = (base.dy + progress * speed) % size.height;
+      final x = base.dx % size.width;
+      _snow(canvas, Offset(x, y), paint, 5 + (i % 3).toDouble());
+    }
+  }
+
+  void _snow(Canvas canvas, Offset c, Paint p, double r) {
+    canvas.drawLine(Offset(c.dx - r, c.dy), Offset(c.dx + r, c.dy), p);
+    canvas.drawLine(Offset(c.dx, c.dy - r), Offset(c.dx, c.dy + r), p);
+    canvas.drawLine(
+      Offset(c.dx - r * .7, c.dy - r * .7),
+      Offset(c.dx + r * .7, c.dy + r * .7),
+      p,
+    );
+    canvas.drawLine(
+      Offset(c.dx - r * .7, c.dy + r * .7),
+      Offset(c.dx + r * .7, c.dy - r * .7),
+      p,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant AddOnsSnowPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
+
+class AddOnsChristmasLightsPainter extends CustomPainter {
+  final double progress;
+  final double radius;
+
+  AddOnsChristmasLightsPainter({required this.progress, required this.radius});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final wirePaint = Paint()
+      ..color = Colors.green.withOpacity(0.45)
+      ..strokeWidth = 1.3
+      ..style = PaintingStyle.stroke;
+
+    final inset = 14.0;
+
+    final rrect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        inset,
+        inset,
+        size.width - (inset * 2),
+        size.height - (inset * 2),
+      ),
+      Radius.circular(radius),
+    );
+
+    canvas.drawRRect(rrect, wirePaint);
+
+    final colors = [
+      Colors.red,
+      Colors.green,
+      Colors.blue,
+      Colors.orange,
+      Colors.yellow,
+    ];
+
+    final points = <Offset>[];
+
+    for (double x = 25; x < size.width - 20; x += 38) {
+      points.add(Offset(x, inset));
+      points.add(Offset(x, size.height - inset));
+    }
+
+    for (double y = 30; y < size.height - 20; y += 38) {
+      points.add(Offset(inset, y));
+      points.add(Offset(size.width - inset, y));
+    }
+
+    for (int i = 0; i < points.length; i++) {
+      final glowPaint = Paint()
+        ..color = colors[i % colors.length].withOpacity(0.22)
+        ..style = PaintingStyle.fill;
+
+      final bulbPaint = Paint()
+        ..color = colors[i % colors.length].withOpacity(
+          0.65 + 0.35 * ((progress + i * 0.08) % 1),
+        )
+        ..style = PaintingStyle.fill;
+
+      canvas.drawCircle(points[i], 13, glowPaint);
+      canvas.drawCircle(points[i], 6, bulbPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant AddOnsChristmasLightsPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
 
