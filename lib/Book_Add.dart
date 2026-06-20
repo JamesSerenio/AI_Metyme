@@ -316,7 +316,7 @@ class _BookAddPageState extends State<BookAddPage>
 
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const SeatPage()),
+      MaterialPageRoute(builder: (_) => SeatPage(theme: selectedTheme)),
     );
 
     if (!mounted) return;
@@ -353,7 +353,7 @@ class _BookAddPageState extends State<BookAddPage>
 
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const AttendancePage()),
+      MaterialPageRoute(builder: (_) => AttendancePage(theme: selectedTheme)),
     );
 
     if (!mounted) return;

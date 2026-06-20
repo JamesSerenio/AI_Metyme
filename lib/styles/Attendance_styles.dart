@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 
 class AttendanceStyles {
+  static bool christmasMode = false;
+
+  static const String christmasBellsJson = 'assets/lottie/Christmas Bells.json';
+  static const String giftBoxJson = 'assets/lottie/Gift box.json';
+
+  static const Color christmasRed = Color(0xFFD32F2F);
+  static const Color christmasGold = Color(0xFFFFC857);
+  static const Color christmasCream = Color(0xFFFFF8EC);
   static const Color pageBg = Color(0xFFF4F2EC);
   static const Color cardBg = Color(0xFFF7EEDB);
   static const Color panelBg = Color(0xFFFFFBF4);
@@ -12,20 +20,24 @@ class AttendanceStyles {
   static const Color textDark = Color(0xFF1F1F1F);
   static const Color textSoft = Color(0xFF666666);
 
-  static BoxDecoration modalCard = BoxDecoration(
-    color: cardBg.withOpacity(0.98),
+  static BoxDecoration get modalCard => BoxDecoration(
+    color: christmasMode
+        ? christmasCream.withOpacity(0.98)
+        : cardBg.withOpacity(0.98),
     borderRadius: BorderRadius.circular(28),
-    border: Border.all(color: Colors.black.withOpacity(0.08), width: 1),
+    border: Border.all(
+      color: christmasMode
+          ? christmasGold.withOpacity(0.65)
+          : Colors.black.withOpacity(0.08),
+      width: christmasMode ? 1.4 : 1,
+    ),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withOpacity(0.14),
+        color: christmasMode
+            ? christmasRed.withOpacity(0.16)
+            : Colors.black.withOpacity(0.14),
         blurRadius: 30,
         offset: const Offset(0, 16),
-      ),
-      BoxShadow(
-        color: Colors.white.withOpacity(0.18),
-        blurRadius: 8,
-        offset: const Offset(0, -2),
       ),
     ],
   );
@@ -57,18 +69,20 @@ class AttendanceStyles {
     ],
   );
 
-  static BoxDecoration userBubble = BoxDecoration(
-    gradient: const LinearGradient(
+  static BoxDecoration get userBubble => BoxDecoration(
+    gradient: LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+      colors: christmasMode
+          ? const [Color(0xFFE53935), Color(0xFFB71C1C)]
+          : const [Color(0xFF4CAF50), Color(0xFF2E7D32)],
     ),
     borderRadius: BorderRadius.circular(
       22,
     ).copyWith(topRight: const Radius.circular(8)),
     boxShadow: [
       BoxShadow(
-        color: primary.withOpacity(0.22),
+        color: (christmasMode ? christmasRed : primary).withOpacity(0.22),
         blurRadius: 14,
         offset: const Offset(0, 6),
       ),

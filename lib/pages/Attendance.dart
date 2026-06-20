@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../styles/Attendance_styles.dart';
+import 'package:lottie/lottie.dart';
 import 'ViewReceipt.dart';
 
 const double _hourlyRate = 20;
@@ -10,7 +11,9 @@ const int _freeMinutes = 0;
 enum AttendanceReceiptSource { reservation, promo }
 
 class AttendancePage extends StatefulWidget {
-  const AttendancePage({super.key});
+  final String theme;
+
+  const AttendancePage({super.key, this.theme = "Regular"});
 
   @override
   State<AttendancePage> createState() => _AttendancePageState();
@@ -24,6 +27,7 @@ class _AttendancePageState extends State<AttendancePage>
   final ScrollController scrollController = ScrollController();
 
   late final AnimationController pageController;
+  late final AnimationController christmasController;
   late final Animation<double> fadeAnim;
   late final Animation<Offset> slideAnim;
 
@@ -36,6 +40,7 @@ class _AttendancePageState extends State<AttendancePage>
   @override
   void initState() {
     super.initState();
+    AttendanceStyles.christmasMode = widget.theme == "Christmas";
 
     pageController = AnimationController(
       vsync: this,
@@ -54,6 +59,11 @@ class _AttendancePageState extends State<AttendancePage>
 
     pageController.forward();
 
+    christmasController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
+
     addAI(
       'Welcome to Attendance Assistant.\n\nEnter your Booking Code or Promo Code, then choose IN or OUT.',
       scroll: false,
@@ -66,6 +76,7 @@ class _AttendancePageState extends State<AttendancePage>
     noteController.dispose();
     scrollController.dispose();
     pageController.dispose();
+    christmasController.dispose();
     super.dispose();
   }
 
@@ -1051,194 +1062,411 @@ class _AttendancePageState extends State<AttendancePage>
           child: SlideTransition(
             position: slideAnim,
             child: Center(
-              child: Container(
-                width: modalWidth,
-                height: modalHeight,
-                margin: EdgeInsets.all(isMobile ? 10 : 18),
-                padding: EdgeInsets.all(isMobile ? 14 : 20),
-                decoration: AttendanceStyles.modalCard,
-                child: Column(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(isMobile ? 12 : 16),
-                      decoration: AttendanceStyles.headerCard,
-                      child: Row(
-                        children: [
-                          buildLogo(isMobile ? 42 : 48),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: modalWidth,
+                    height: modalHeight,
+                    margin: EdgeInsets.all(isMobile ? 10 : 18),
+                    padding: EdgeInsets.all(isMobile ? 14 : 20),
+                    decoration: AttendanceStyles.modalCard,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(isMobile ? 12 : 16),
+                          decoration: AttendanceStyles.headerCard,
+                          child: Row(
+                            children: [
+                              buildLogo(isMobile ? 42 : 48),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Attendance Assistant',
+                                      style: AttendanceStyles.title,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Use Booking Code or Promo Code for attendance IN / OUT.',
+                                      style: AttendanceStyles.subtitle,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 7,
+                                ),
+                                decoration: AttendanceStyles.statusChip,
+                                child: Text(
+                                  'Attendance',
+                                  style: AttendanceStyles.chipText,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: () => Navigator.pop(context),
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Expanded(
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.all(isMobile ? 12 : 18),
+                            decoration: AttendanceStyles.chatArea,
+                            child: ListView(
+                              controller: scrollController,
                               children: [
-                                Text(
-                                  'Attendance Assistant',
-                                  style: AttendanceStyles.title,
+                                buildTopIntroArea(isMobile),
+
+                                Container(
+                                  padding: EdgeInsets.all(isMobile ? 14 : 18),
+                                  decoration: AttendanceStyles.formCard,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Attendance Form',
+                                        style: AttendanceStyles.sectionTitle,
+                                      ),
+                                      const SizedBox(height: 14),
+
+                                      Text(
+                                        'Code',
+                                        style: AttendanceStyles.label,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      TextField(
+                                        controller: codeController,
+                                        textCapitalization:
+                                            TextCapitalization.characters,
+                                        decoration:
+                                            AttendanceStyles.inputDecoration(
+                                              hintText:
+                                                  'Enter Booking Code or Promo Code',
+                                              suffixIcon: const Icon(
+                                                Icons.qr_code_rounded,
+                                              ),
+                                            ),
+                                      ),
+
+                                      const SizedBox(height: 14),
+                                      Text(
+                                        'Note (Optional)',
+                                        style: AttendanceStyles.label,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      TextField(
+                                        controller: noteController,
+                                        maxLines: 3,
+                                        decoration:
+                                            AttendanceStyles.inputDecoration(
+                                              hintText: 'Enter note if needed',
+                                            ),
+                                      ),
+
+                                      const SizedBox(height: 14),
+                                      Text(
+                                        'Action',
+                                        style: AttendanceStyles.label,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: ElevatedButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  attendanceAction = 'IN';
+                                                });
+                                              },
+                                              style: attendanceAction == 'IN'
+                                                  ? AttendanceStyles
+                                                        .primaryButton
+                                                  : AttendanceStyles
+                                                        .secondaryButton,
+                                              child: const Text('IN'),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: ElevatedButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  attendanceAction = 'OUT';
+                                                });
+                                              },
+                                              style: attendanceAction == 'OUT'
+                                                  ? AttendanceStyles
+                                                        .dangerButton
+                                                  : AttendanceStyles
+                                                        .secondaryButton,
+                                              child: const Text('OUT'),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+
+                                      const SizedBox(height: 16),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: ElevatedButton(
+                                              onPressed: isSubmitting
+                                                  ? null
+                                                  : handleAttendance,
+                                              style: attendanceAction == 'IN'
+                                                  ? AttendanceStyles
+                                                        .primaryButton
+                                                  : AttendanceStyles
+                                                        .dangerButton,
+                                              child: Text(
+                                                isSubmitting
+                                                    ? 'Submitting...'
+                                                    : 'Submit Attendance',
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Use Booking Code or Promo Code for attendance IN / OUT.',
-                                  style: AttendanceStyles.subtitle,
-                                ),
+
+                                buildResponseArea(isMobile),
                               ],
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 7,
-                            ),
-                            decoration: AttendanceStyles.statusChip,
-                            child: Text(
-                              'Attendance',
-                              style: AttendanceStyles.chipText,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(isMobile ? 12 : 18),
-                        decoration: AttendanceStyles.chatArea,
-                        child: ListView(
-                          controller: scrollController,
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
                           children: [
-                            buildTopIntroArea(isMobile),
-
-                            Container(
-                              padding: EdgeInsets.all(isMobile ? 14 : 18),
-                              decoration: AttendanceStyles.formCard,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Attendance Form',
-                                    style: AttendanceStyles.sectionTitle,
-                                  ),
-                                  const SizedBox(height: 14),
-
-                                  Text('Code', style: AttendanceStyles.label),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: codeController,
-                                    textCapitalization:
-                                        TextCapitalization.characters,
-                                    decoration: AttendanceStyles.inputDecoration(
-                                      hintText:
-                                          'Enter Booking Code or Promo Code',
-                                      suffixIcon: const Icon(
-                                        Icons.qr_code_rounded,
-                                      ),
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 14),
-                                  Text(
-                                    'Note (Optional)',
-                                    style: AttendanceStyles.label,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextField(
-                                    controller: noteController,
-                                    maxLines: 3,
-                                    decoration:
-                                        AttendanceStyles.inputDecoration(
-                                          hintText: 'Enter note if needed',
-                                        ),
-                                  ),
-
-                                  const SizedBox(height: 14),
-                                  Text('Action', style: AttendanceStyles.label),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: ElevatedButton(
-                                          onPressed: () {
-                                            setState(() {
-                                              attendanceAction = 'IN';
-                                            });
-                                          },
-                                          style: attendanceAction == 'IN'
-                                              ? AttendanceStyles.primaryButton
-                                              : AttendanceStyles
-                                                    .secondaryButton,
-                                          child: const Text('IN'),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: ElevatedButton(
-                                          onPressed: () {
-                                            setState(() {
-                                              attendanceAction = 'OUT';
-                                            });
-                                          },
-                                          style: attendanceAction == 'OUT'
-                                              ? AttendanceStyles.dangerButton
-                                              : AttendanceStyles
-                                                    .secondaryButton,
-                                          child: const Text('OUT'),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: ElevatedButton(
-                                          onPressed: isSubmitting
-                                              ? null
-                                              : handleAttendance,
-                                          style: attendanceAction == 'IN'
-                                              ? AttendanceStyles.primaryButton
-                                              : AttendanceStyles.dangerButton,
-                                          child: Text(
-                                            isSubmitting
-                                                ? 'Submitting...'
-                                                : 'Submit Attendance',
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: AttendanceStyles.secondaryButton,
+                                child: const Text('Close'),
                               ),
                             ),
-
-                            buildResponseArea(isMobile),
                           ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: AttendanceStyles.secondaryButton,
-                            child: const Text('Close'),
-                          ),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  if (AttendanceStyles.christmasMode)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: christmasController,
+                          builder: (context, child) {
+                            return CustomPaint(
+                              painter: AttendanceSnowPainter(
+                                progress: christmasController.value,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
+                  if (AttendanceStyles.christmasMode)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: christmasController,
+                          builder: (context, child) {
+                            return CustomPaint(
+                              painter: AttendanceChristmasLightsPainter(
+                                progress: christmasController.value,
+                                radius: 28,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
+                  if (AttendanceStyles.christmasMode)
+                    Positioned(
+                      top: -18,
+                      left: -12,
+                      child: Lottie.asset(
+                        AttendanceStyles.christmasBellsJson,
+                        width: isMobile ? 70 : 90,
+                        height: isMobile ? 70 : 90,
+                        repeat: true,
+                      ),
+                    ),
+
+                  if (AttendanceStyles.christmasMode)
+                    Positioned(
+                      top: -18,
+                      right: -12,
+                      child: Lottie.asset(
+                        AttendanceStyles.christmasBellsJson,
+                        width: isMobile ? 70 : 90,
+                        height: isMobile ? 70 : 90,
+                        repeat: true,
+                      ),
+                    ),
+
+                  if (AttendanceStyles.christmasMode)
+                    Positioned(
+                      bottom: -50,
+                      left: -62,
+                      child: Lottie.asset(
+                        AttendanceStyles.giftBoxJson,
+                        width: isMobile ? 145 : 170,
+                        height: isMobile ? 145 : 170,
+                        repeat: true,
+                      ),
+                    ),
+
+                  if (AttendanceStyles.christmasMode)
+                    Positioned(
+                      bottom: -50,
+                      right: -62,
+                      child: Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.identity()..scale(-1.0, 1.0),
+                        child: Lottie.asset(
+                          AttendanceStyles.giftBoxJson,
+                          width: isMobile ? 145 : 170,
+                          height: isMobile ? 145 : 170,
+                          repeat: true,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+class AttendanceSnowPainter extends CustomPainter {
+  final double progress;
+
+  AttendanceSnowPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.lightBlueAccent.withOpacity(0.16)
+      ..strokeWidth = 1.1
+      ..style = PaintingStyle.stroke;
+
+    for (int i = 0; i < 38; i++) {
+      final x = (i * 47.0) % size.width;
+      final y = ((i * 80.0) + (progress * size.height)) % size.height;
+      _snow(canvas, Offset(x, y), paint, 4 + (i % 3).toDouble());
+    }
+  }
+
+  void _snow(Canvas canvas, Offset c, Paint p, double r) {
+    canvas.drawLine(Offset(c.dx - r, c.dy), Offset(c.dx + r, c.dy), p);
+    canvas.drawLine(Offset(c.dx, c.dy - r), Offset(c.dx, c.dy + r), p);
+    canvas.drawLine(
+      Offset(c.dx - r * .7, c.dy - r * .7),
+      Offset(c.dx + r * .7, c.dy + r * .7),
+      p,
+    );
+    canvas.drawLine(
+      Offset(c.dx - r * .7, c.dy + r * .7),
+      Offset(c.dx + r * .7, c.dy - r * .7),
+      p,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant AttendanceSnowPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
+
+class AttendanceChristmasLightsPainter extends CustomPainter {
+  final double progress;
+  final double radius;
+
+  AttendanceChristmasLightsPainter({
+    required this.progress,
+    required this.radius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const inset = 14.0;
+
+    final wirePaint = Paint()
+      ..color = Colors.green.withOpacity(0.45)
+      ..strokeWidth = 1.3
+      ..style = PaintingStyle.stroke;
+
+    final rect = Rect.fromLTWH(
+      inset,
+      inset,
+      size.width - inset * 2,
+      size.height - inset * 2,
+    );
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(radius)),
+      wirePaint,
+    );
+
+    final colors = [
+      Colors.red,
+      Colors.green,
+      Colors.blue,
+      Colors.orange,
+      Colors.yellow,
+    ];
+
+    final points = <Offset>[];
+
+    for (double x = inset + 25; x < size.width - inset - 20; x += 38) {
+      points.add(Offset(x, inset));
+      points.add(Offset(x, size.height - inset));
+    }
+
+    for (double y = inset + 30; y < size.height - inset - 20; y += 38) {
+      points.add(Offset(inset, y));
+      points.add(Offset(size.width - inset, y));
+    }
+
+    for (int i = 0; i < points.length; i++) {
+      final color = colors[i % colors.length];
+
+      canvas.drawCircle(
+        points[i],
+        13,
+        Paint()..color = color.withOpacity(0.22),
+      );
+      canvas.drawCircle(
+        points[i],
+        6,
+        Paint()
+          ..color = color.withOpacity(
+            0.65 + 0.35 * ((progress + i * 0.08) % 1),
+          ),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant AttendanceChristmasLightsPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }

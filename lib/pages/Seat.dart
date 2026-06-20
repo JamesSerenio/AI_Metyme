@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../styles/Seat_styles.dart';
+import 'package:lottie/lottie.dart';
 
 enum SeatStatus { tempAvailable, occupiedTemp, occupied, reserved }
 
@@ -55,8 +56,9 @@ class SeatBlockedRow {
 
 class SeatPage extends StatefulWidget {
   final int pollMs;
+  final String theme;
 
-  const SeatPage({super.key, this.pollMs = 15000});
+  const SeatPage({super.key, this.pollMs = 15000, this.theme = "Regular"});
 
   @override
   State<SeatPage> createState() => _SeatPageState();
@@ -73,6 +75,7 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
   bool loading = true;
 
   late final AnimationController pageController;
+  late final AnimationController christmasController;
   late final Animation<double> fadeAnim;
   late final Animation<Offset> slideAnim;
 
@@ -82,6 +85,7 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    SeatStyles.christmasMode = widget.theme == "Christmas";
 
     pins = [
       const SeatPin(
@@ -221,6 +225,11 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
 
     pageController.forward();
 
+    christmasController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat();
+
     _loadSeatStatuses();
 
     clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -241,6 +250,7 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
     clockTimer?.cancel();
     pollTimer?.cancel();
     pageController.dispose();
+    christmasController.dispose();
     super.dispose();
   }
 
@@ -449,199 +459,358 @@ class _SeatPageState extends State<SeatPage> with TickerProviderStateMixin {
           child: SlideTransition(
             position: slideAnim,
             child: Center(
-              child: Container(
-                width: modalWidth,
-                height: modalHeight,
-                margin: EdgeInsets.all(isMobile ? 10 : 18),
-                padding: EdgeInsets.all(isMobile ? 14 : 20),
-                decoration: SeatStyles.modalCard,
-                child: Column(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(isMobile ? 12 : 16),
-                      decoration: SeatStyles.headerCard,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: isMobile ? 42 : 48,
-                            height: isMobile ? 42 : 48,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: Image.asset(
-                                'assets/study_hub.png',
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) {
-                                  return const Icon(
-                                    Icons.image_not_supported_outlined,
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Seat View', style: SeatStyles.title),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'View live seat availability and reservation status.',
-                                  style: SeatStyles.subtitle,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 7,
-                            ),
-                            decoration: SeatStyles.statusChip,
-                            child: Text('Live Map', style: SeatStyles.chipText),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close_rounded),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(isMobile ? 12 : 18),
-                        decoration: SeatStyles.stageCard,
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  'Seat Map',
-                                  style: SeatStyles.sectionTitle,
-                                ),
-                                const Spacer(),
-                                Text(
-                                  formatDate(now),
-                                  style: SeatStyles.dateText,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Expanded(
-                              child: LayoutBuilder(
-                                builder: (context, constraints) {
-                                  return ClipRRect(
-                                    borderRadius: BorderRadius.circular(18),
-                                    child: Stack(
-                                      children: [
-                                        Positioned.fill(
-                                          child: Center(
-                                            child: Transform.scale(
-                                              scale: isMobile ? 1.0 : 1.0,
-                                              child: Image.asset(
-                                                'assets/seats.png',
-                                                width: constraints.maxWidth,
-                                                height: constraints.maxHeight,
-                                                fit: BoxFit.contain,
-                                                errorBuilder: (_, __, ___) {
-                                                  return const Center(
-                                                    child: Text(
-                                                      'seats.png not found',
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        ...pins.map((pin) {
-                                          return Positioned(
-                                            left:
-                                                constraints.maxWidth *
-                                                (pin.x / 100),
-                                            top:
-                                                constraints.maxHeight *
-                                                (pin.y / 100),
-                                            child: buildPinWidget(
-                                              pin,
-                                              isMobile,
-                                            ),
-                                          );
-                                        }),
-                                        if (loading)
-                                          Positioned.fill(
-                                            child: Container(
-                                              color: Colors.white.withOpacity(
-                                                0.18,
-                                              ),
-                                              child: const Center(
-                                                child:
-                                                    CircularProgressIndicator(),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: modalWidth,
+                    height: modalHeight,
+                    margin: EdgeInsets.all(isMobile ? 10 : 18),
+                    padding: EdgeInsets.all(isMobile ? 14 : 20),
+                    decoration: SeatStyles.modalCard,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(isMobile ? 12 : 16),
+                          decoration: SeatStyles.headerCard,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: isMobile ? 42 : 48,
+                                height: isMobile ? 42 : 48,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.08),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
                                     ),
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(14),
-                              decoration: SeatStyles.legendCard,
-                              child: Wrap(
-                                alignment: WrapAlignment.center,
-                                spacing: 18,
-                                runSpacing: 10,
-                                children: [
-                                  legendItem(SeatStyles.greenSeat, 'Available'),
-                                  legendItem(
-                                    SeatStyles.yellowSeat,
-                                    'Occupied Temporarily',
+                                  ],
+                                ),
+                                child: ClipOval(
+                                  child: Image.asset(
+                                    'assets/study_hub.png',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) {
+                                      return const Icon(
+                                        Icons.image_not_supported_outlined,
+                                      );
+                                    },
                                   ),
-                                  legendItem(SeatStyles.redSeat, 'Occupied'),
-                                  legendItem(SeatStyles.purpleSeat, 'Reserved'),
-                                ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Seat View', style: SeatStyles.title),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'View live seat availability and reservation status.',
+                                      style: SeatStyles.subtitle,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 7,
+                                ),
+                                decoration: SeatStyles.statusChip,
+                                child: Text(
+                                  'Live Map',
+                                  style: SeatStyles.chipText,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: () => Navigator.pop(context),
+                                icon: const Icon(Icons.close_rounded),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Expanded(
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.all(isMobile ? 12 : 18),
+                            decoration: SeatStyles.stageCard,
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Seat Map',
+                                      style: SeatStyles.sectionTitle,
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      formatDate(now),
+                                      style: SeatStyles.dateText,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Expanded(
+                                  child: LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      return ClipRRect(
+                                        borderRadius: BorderRadius.circular(18),
+                                        child: Stack(
+                                          children: [
+                                            Positioned.fill(
+                                              child: Center(
+                                                child: Transform.scale(
+                                                  scale: isMobile ? 1.0 : 1.0,
+                                                  child: Image.asset(
+                                                    'assets/seats.png',
+                                                    width: constraints.maxWidth,
+                                                    height:
+                                                        constraints.maxHeight,
+                                                    fit: BoxFit.contain,
+                                                    errorBuilder: (_, __, ___) {
+                                                      return const Center(
+                                                        child: Text(
+                                                          'seats.png not found',
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            ...pins.map((pin) {
+                                              return Positioned(
+                                                left:
+                                                    constraints.maxWidth *
+                                                    (pin.x / 100),
+                                                top:
+                                                    constraints.maxHeight *
+                                                    (pin.y / 100),
+                                                child: buildPinWidget(
+                                                  pin,
+                                                  isMobile,
+                                                ),
+                                              );
+                                            }),
+                                            if (loading)
+                                              Positioned.fill(
+                                                child: Container(
+                                                  color: Colors.white
+                                                      .withOpacity(0.18),
+                                                  child: const Center(
+                                                    child:
+                                                        CircularProgressIndicator(),
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: SeatStyles.legendCard,
+                                  child: Wrap(
+                                    alignment: WrapAlignment.center,
+                                    spacing: 18,
+                                    runSpacing: 10,
+                                    children: [
+                                      legendItem(
+                                        SeatStyles.greenSeat,
+                                        'Available',
+                                      ),
+                                      legendItem(
+                                        SeatStyles.yellowSeat,
+                                        'Occupied Temporarily',
+                                      ),
+                                      legendItem(
+                                        SeatStyles.redSeat,
+                                        'Occupied',
+                                      ),
+                                      legendItem(
+                                        SeatStyles.purpleSeat,
+                                        'Reserved',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: SeatStyles.secondaryButton,
+                                child: const Text('Close'),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: SeatStyles.secondaryButton,
-                            child: const Text('Close'),
-                          ),
-                        ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  if (SeatStyles.christmasMode)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: christmasController,
+                          builder: (context, child) {
+                            return CustomPaint(
+                              painter: SeatChristmasLightsPainter(
+                                progress: christmasController.value,
+                                radius: 28,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
+                  if (SeatStyles.christmasMode)
+                    Positioned(
+                      top: -18,
+                      left: -12,
+                      child: Lottie.asset(
+                        SeatStyles.christmasBellsJson,
+                        width: isMobile ? 70 : 90,
+                        height: isMobile ? 70 : 90,
+                        repeat: true,
+                      ),
+                    ),
+
+                  if (SeatStyles.christmasMode)
+                    Positioned(
+                      top: -18,
+                      right: -12,
+                      child: Lottie.asset(
+                        SeatStyles.christmasBellsJson,
+                        width: isMobile ? 70 : 90,
+                        height: isMobile ? 70 : 90,
+                        repeat: true,
+                      ),
+                    ),
+
+                  if (SeatStyles.christmasMode)
+                    Positioned(
+                      bottom: -50,
+                      left: -62,
+                      child: Lottie.asset(
+                        SeatStyles.giftBoxJson,
+                        width: isMobile ? 145 : 170,
+                        height: isMobile ? 145 : 170,
+                        repeat: true,
+                      ),
+                    ),
+
+                  if (SeatStyles.christmasMode)
+                    Positioned(
+                      bottom: -50,
+                      right: -62,
+                      child: Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.identity()..scale(-1.0, 1.0),
+                        child: Lottie.asset(
+                          SeatStyles.giftBoxJson,
+                          width: isMobile ? 145 : 170,
+                          height: isMobile ? 145 : 170,
+                          repeat: true,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+class SeatChristmasLightsPainter extends CustomPainter {
+  final double progress;
+  final double radius;
+
+  SeatChristmasLightsPainter({required this.progress, required this.radius});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const inset = 14.0;
+
+    final wirePaint = Paint()
+      ..color = Colors.green.withOpacity(0.45)
+      ..strokeWidth = 1.3
+      ..style = PaintingStyle.stroke;
+
+    final rect = Rect.fromLTWH(
+      inset,
+      inset,
+      size.width - inset * 2,
+      size.height - inset * 2,
+    );
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(radius)),
+      wirePaint,
+    );
+
+    final colors = [
+      Colors.red,
+      Colors.green,
+      Colors.blue,
+      Colors.orange,
+      Colors.yellow,
+    ];
+
+    final points = <Offset>[];
+
+    for (double x = inset + 25; x < size.width - inset - 20; x += 38) {
+      points.add(Offset(x, inset));
+      points.add(Offset(x, size.height - inset));
+    }
+
+    for (double y = inset + 30; y < size.height - inset - 20; y += 38) {
+      points.add(Offset(inset, y));
+      points.add(Offset(size.width - inset, y));
+    }
+
+    for (int i = 0; i < points.length; i++) {
+      final color = colors[i % colors.length];
+
+      canvas.drawCircle(
+        points[i],
+        13,
+        Paint()..color = color.withOpacity(0.22),
+      );
+
+      canvas.drawCircle(
+        points[i],
+        6,
+        Paint()
+          ..color = color.withOpacity(
+            0.65 + 0.35 * ((progress + i * 0.08) % 1),
+          ),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant SeatChristmasLightsPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
