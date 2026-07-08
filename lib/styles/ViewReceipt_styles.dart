@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 
 class ViewReceiptStyles {
+  static bool christmasMode = false;
+
+  static const String christmasBellsJson = 'assets/lottie/Christmas Bells.json';
+  static const String giftBoxJson = 'assets/lottie/Gift box.json';
+
+  static const Color christmasRed = Color(0xFFD32F2F);
+  static const Color christmasGold = Color(0xFFFFC857);
+  static const Color christmasCream = Color(0xFFFFF8EC);
   static const Color bgColor = Color(0xFFF3F1EC);
   static const Color cardBg = Color(0xFFF4EBD9);
   static const Color cardBorder = Color(0xFFE7DBC6);
@@ -15,14 +23,19 @@ class ViewReceiptStyles {
   static const BoxDecoration pageBackground = BoxDecoration(color: bgColor);
 
   static BoxDecoration get mainCard => BoxDecoration(
-    color: cardBg,
+    color: christmasMode ? christmasCream.withOpacity(0.98) : cardBg,
     borderRadius: BorderRadius.circular(30),
-    border: Border.all(color: cardBorder, width: 1.2),
+    border: Border.all(
+      color: christmasMode ? christmasGold.withOpacity(0.65) : cardBorder,
+      width: christmasMode ? 1.4 : 1.2,
+    ),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withOpacity(0.06),
-        blurRadius: 18,
-        offset: const Offset(0, 10),
+        color: christmasMode
+            ? christmasRed.withOpacity(0.16)
+            : Colors.black.withOpacity(0.06),
+        blurRadius: 30,
+        offset: const Offset(0, 16),
       ),
     ],
   );

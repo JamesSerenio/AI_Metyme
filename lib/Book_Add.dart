@@ -3,6 +3,7 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'styles/Book_Add_styles.dart';
 import 'pages/Booking.dart';
 import 'pages/Promo.dart';
@@ -44,11 +45,22 @@ class _BookAddPageState extends State<BookAddPage>
   late final PageController displayPageController;
   Timer? autoSlideTimer;
 
-  late final List<String> displayImages;
+  late List<String> displayImages;
 
   static const int _loopStartPage = 10000;
   int currentAbsolutePage = _loopStartPage;
   int currentDisplayIndex = 0;
+
+  String selectedTheme = "Regular";
+
+  final Map<String, List<String>> themeImages = {
+    "Regular": List.generate(20, (index) => 'assets/${index + 1}.png'),
+    "Christmas": List.generate(20, (index) => 'assets/${index + 1}.png'),
+    "Halloween": List.generate(20, (index) => 'assets/${index + 1}.png'),
+    "Valentine": List.generate(20, (index) => 'assets/${index + 1}.png'),
+    "Summer": List.generate(20, (index) => 'assets/${index + 1}.png'),
+    "Fiesta": List.generate(20, (index) => 'assets/${index + 1}.png'),
+  };
 
   static final List<String> _allDisplayImages = List.generate(
     20,
@@ -140,8 +152,8 @@ class _BookAddPageState extends State<BookAddPage>
 
       displayPageController.animateToPage(
         currentAbsolutePage,
-        duration: const Duration(milliseconds: 1200),
-        curve: Curves.easeInOutCubic,
+        duration: const Duration(milliseconds: 2800),
+        curve: Curves.easeInOutExpo,
       );
     });
   }
@@ -151,11 +163,7 @@ class _BookAddPageState extends State<BookAddPage>
 
     setState(() {
       started = true;
-      messages.add({
-        "isAI": true,
-        "text":
-            "Welcome to Me Tyme Lounge! ✨\n\nPlease choose one of the following options:\n\n1. Booking\n2. Promo\n3. Add-Ons\n4. Seat View\n5. Attendance for Reservation and Promo\n6. View Receipt",
-      });
+      messages.clear();
     });
 
     _scrollToBottom();
@@ -197,7 +205,7 @@ class _BookAddPageState extends State<BookAddPage>
 
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const BookingModalPage()),
+      MaterialPageRoute(builder: (_) => BookingModalPage(theme: selectedTheme)),
     );
 
     if (!mounted) return;
@@ -234,7 +242,7 @@ class _BookAddPageState extends State<BookAddPage>
 
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const PromoModalPage()),
+      MaterialPageRoute(builder: (_) => PromoModalPage(theme: selectedTheme)),
     );
 
     if (!mounted) return;
@@ -271,7 +279,7 @@ class _BookAddPageState extends State<BookAddPage>
 
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const AddOnsPage()),
+      MaterialPageRoute(builder: (_) => AddOnsPage(theme: selectedTheme)),
     );
 
     if (!mounted) return;
@@ -308,7 +316,7 @@ class _BookAddPageState extends State<BookAddPage>
 
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const SeatPage()),
+      MaterialPageRoute(builder: (_) => SeatPage(theme: selectedTheme)),
     );
 
     if (!mounted) return;
@@ -345,7 +353,7 @@ class _BookAddPageState extends State<BookAddPage>
 
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const AttendancePage()),
+      MaterialPageRoute(builder: (_) => AttendancePage(theme: selectedTheme)),
     );
 
     if (!mounted) return;
@@ -381,7 +389,7 @@ class _BookAddPageState extends State<BookAddPage>
 
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ViewReceipt()),
+      MaterialPageRoute(builder: (_) => ViewReceipt(theme: selectedTheme)),
     );
 
     if (!mounted) return;
@@ -464,37 +472,239 @@ class _BookAddPageState extends State<BookAddPage>
   }
 
   Widget _buildLogo(double size) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return PopupMenuButton<String>(
+      tooltip: "Change Theme",
+      offset: Offset(0, size - 8),
+      position: PopupMenuPosition.under,
+      color: const Color(0xFFF8F4EC),
+      elevation: 12,
+      shape: BookAddStyles.themeMenuShape,
+      onSelected: (value) {
+        setState(() {
+          selectedTheme = value;
+          displayImages = List<String>.from(themeImages[value]!)
+            ..shuffle(Random());
+          currentDisplayIndex = 0;
+          currentAbsolutePage = _loopStartPage;
+        });
+
+        if (displayPageController.hasClients) {
+          displayPageController.jumpToPage(_loopStartPage);
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: "Regular",
+          child: Container(
+            decoration: selectedTheme == "Regular"
+                ? BookAddStyles.themeMenuSelected
+                : BookAddStyles.themeMenuNormal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              "🌿 Regular",
+              style: selectedTheme == "Regular"
+                  ? BookAddStyles.themeMenuSelectedText
+                  : BookAddStyles.themeMenuNormalText,
+            ),
           ),
-        ],
-      ),
-      child: ClipOval(
-        child: Image.asset(
-          'assets/study_hub.png',
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return const Icon(Icons.image_not_supported_outlined);
-          },
+        ),
+        PopupMenuItem(
+          value: "Christmas",
+          child: Container(
+            decoration: selectedTheme == "Christmas"
+                ? BookAddStyles.themeMenuSelected
+                : BookAddStyles.themeMenuNormal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              "🎄 Christmas",
+              style: selectedTheme == "Christmas"
+                  ? BookAddStyles.themeMenuSelectedText
+                  : BookAddStyles.themeMenuNormalText,
+            ),
+          ),
+        ),
+
+        PopupMenuItem(
+          value: "Halloween",
+          child: Container(
+            decoration: selectedTheme == "Halloween"
+                ? BookAddStyles.themeMenuSelected
+                : BookAddStyles.themeMenuNormal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              "🎃 Halloween",
+              style: selectedTheme == "Halloween"
+                  ? BookAddStyles.themeMenuSelectedText
+                  : BookAddStyles.themeMenuNormalText,
+            ),
+          ),
+        ),
+
+        PopupMenuItem(
+          value: "Valentine",
+          child: Container(
+            decoration: selectedTheme == "Valentine"
+                ? BookAddStyles.themeMenuSelected
+                : BookAddStyles.themeMenuNormal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              "💘 Valentine",
+              style: selectedTheme == "Valentine"
+                  ? BookAddStyles.themeMenuSelectedText
+                  : BookAddStyles.themeMenuNormalText,
+            ),
+          ),
+        ),
+
+        PopupMenuItem(
+          value: "Summer",
+          child: Container(
+            decoration: selectedTheme == "Summer"
+                ? BookAddStyles.themeMenuSelected
+                : BookAddStyles.themeMenuNormal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              "☀️ Summer",
+              style: selectedTheme == "Summer"
+                  ? BookAddStyles.themeMenuSelectedText
+                  : BookAddStyles.themeMenuNormalText,
+            ),
+          ),
+        ),
+
+        PopupMenuItem(
+          value: "Fiesta",
+          child: Container(
+            decoration: selectedTheme == "Fiesta"
+                ? BookAddStyles.themeMenuSelected
+                : BookAddStyles.themeMenuNormal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              "🎉 Fiesta",
+              style: selectedTheme == "Fiesta"
+                  ? BookAddStyles.themeMenuSelectedText
+                  : BookAddStyles.themeMenuNormalText,
+            ),
+          ),
+        ),
+      ],
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipOval(
+          child: Image.asset(
+            'assets/study_hub.png',
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return const Icon(Icons.image_not_supported_outlined);
+            },
+          ),
         ),
       ),
     );
   }
 
-  Widget _leafInside({
-    required double width,
-    required double angle,
-    required bool invertY,
-  }) {
+  Widget _cornerDecor({required double width, required String position}) {
+    final bool isChristmas = selectedTheme == "Christmas";
+
+    if (!isChristmas) {
+      return _leafInsideRegular(width: width, position: position);
+    }
+
+    String asset;
+    double size;
+    Alignment align;
+    Offset offset;
+
+    switch (position) {
+      case "topLeft":
+        asset = BookAddStyles.christmasBellsJson;
+        size = width * 0.52;
+        align = Alignment.topLeft;
+        offset = const Offset(8, 8);
+        break;
+
+      case "topRight":
+        asset = BookAddStyles.christmasBellsJson;
+        size = width * 0.52;
+        align = Alignment.topRight;
+        offset = const Offset(-8, 8);
+        break;
+
+      case "bottomLeft":
+        asset = BookAddStyles.christmasBellsJson;
+        size = width * 0.52;
+        align = Alignment.bottomLeft;
+        offset = const Offset(8, -8);
+        break;
+
+      default:
+        asset = BookAddStyles.christmasBellsJson;
+        size = width * 0.52;
+        align = Alignment.bottomRight;
+        offset = const Offset(-8, -8);
+    }
+
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: leafFloatAnim,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(offset.dx, offset.dy + leafFloatAnim.value * 0.12),
+            child: child,
+          );
+        },
+        child: SizedBox(
+          width: width,
+          height: width,
+          child: Align(
+            alignment: align,
+            child: Lottie.asset(
+              asset,
+              width: size,
+              height: size,
+              repeat: true,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _leafInsideRegular({required double width, required String position}) {
+    double angle;
+    bool invertY;
+
+    switch (position) {
+      case "topLeft":
+        angle = 0;
+        invertY = true;
+        break;
+      case "topRight":
+        angle = 3.14159;
+        invertY = false;
+        break;
+      case "bottomLeft":
+        angle = 0;
+        invertY = false;
+        break;
+      default:
+        angle = -1.5708;
+        invertY = false;
+    }
+
     return IgnorePointer(
       child: AnimatedBuilder(
         animation: leafFloatAnim,
@@ -510,16 +720,10 @@ class _BookAddPageState extends State<BookAddPage>
             ),
           );
         },
-        child: Opacity(
-          opacity: 0.95,
-          child: Image.asset(
-            'assets/leave.png',
-            width: width,
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return const SizedBox.shrink();
-            },
-          ),
+        child: Image.asset(
+          'assets/leave.png',
+          width: width,
+          fit: BoxFit.contain,
         ),
       ),
     );
@@ -568,6 +772,7 @@ class _BookAddPageState extends State<BookAddPage>
         children: [
           PageView.builder(
             controller: displayPageController,
+            physics: const NeverScrollableScrollPhysics(),
             onPageChanged: (index) {
               setState(() {
                 currentAbsolutePage = index;
@@ -579,19 +784,43 @@ class _BookAddPageState extends State<BookAddPage>
                   displayImages[index % displayImages.length];
 
               return AnimatedBuilder(
-                animation: ambientFloatAnim,
+                animation: displayPageController,
                 builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(ambientFloatAnim.value * 0.9, 0),
+                  double page = currentAbsolutePage.toDouble();
+
+                  if (displayPageController.hasClients &&
+                      displayPageController.position.haveDimensions) {
+                    page =
+                        displayPageController.page ??
+                        currentAbsolutePage.toDouble();
+                  }
+
+                  final double diff = (page - index).abs().clamp(0.0, 1.0);
+
+                  final double scale = lerpDouble(1.25, 1.0, 1 - diff)!;
+
+                  final double rotate = lerpDouble(0.06, 0.0, 1 - diff)!;
+
+                  final double slideX = (page - index) * 140;
+
+                  final double slideY = sin((page - index) * pi) * 25;
+
+                  return Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.identity()
+                      ..translate(slideX, slideY)
+                      ..scale(scale)
+                      ..rotateZ(rotate),
                     child: child,
                   );
                 },
                 child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 1.10, end: 1.0),
-                  duration: const Duration(milliseconds: 1400),
+                  key: ValueKey(imagePath),
+                  tween: Tween(begin: 1.18, end: 1.0),
+                  duration: const Duration(seconds: 4),
                   curve: Curves.easeOutCubic,
-                  builder: (context, scale, child) {
-                    return Transform.scale(scale: scale, child: child);
+                  builder: (context, zoom, child) {
+                    return Transform.scale(scale: zoom, child: child);
                   },
                   child: Image.asset(
                     imagePath,
@@ -622,9 +851,9 @@ class _BookAddPageState extends State<BookAddPage>
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.white.withOpacity(0.36),
-                  Colors.white.withOpacity(0.16),
-                  Colors.white.withOpacity(0.34),
+                  Colors.white.withOpacity(0.08),
+                  Colors.white.withOpacity(0.02),
+                  Colors.white.withOpacity(0.08),
                 ],
               ),
             ),
@@ -635,9 +864,9 @@ class _BookAddPageState extends State<BookAddPage>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  const Color(0xFFF7EEDB).withOpacity(0.58),
-                  const Color(0xFFF7EEDB).withOpacity(0.25),
-                  const Color(0xFFF2E7D3).withOpacity(0.56),
+                  const Color(0xFFF7EEDB).withOpacity(0.12),
+                  const Color(0xFFF7EEDB).withOpacity(0.04),
+                  const Color(0xFFF2E7D3).withOpacity(0.12),
                 ],
                 stops: const [0.0, 0.45, 1.0],
               ),
@@ -648,10 +877,7 @@ class _BookAddPageState extends State<BookAddPage>
               gradient: RadialGradient(
                 center: const Alignment(0, 0.02),
                 radius: 0.88,
-                colors: [
-                  Colors.white.withOpacity(0.04),
-                  Colors.black.withOpacity(0.08),
-                ],
+                colors: [Colors.transparent, Colors.black.withOpacity(0.03)],
               ),
             ),
           ),
@@ -684,7 +910,7 @@ class _BookAddPageState extends State<BookAddPage>
           width: double.infinity,
           padding: EdgeInsets.symmetric(
             horizontal: isMobile ? 18 : 28,
-            vertical: isMobile ? 18 : 24,
+            vertical: isMobile ? 12 : 16,
           ),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.20),
@@ -708,8 +934,8 @@ class _BookAddPageState extends State<BookAddPage>
                 textAlign: TextAlign.center,
                 style:
                     (isMobile
-                            ? BookAddStyles.bigTitle.copyWith(fontSize: 26)
-                            : BookAddStyles.bigTitle)
+                            ? BookAddStyles.bigTitle.copyWith(fontSize: 22)
+                            : BookAddStyles.bigTitle.copyWith(fontSize: 28))
                         .copyWith(
                           color: const Color(0xFF1A1A1A),
                           fontWeight: FontWeight.w800,
@@ -775,11 +1001,20 @@ class _BookAddPageState extends State<BookAddPage>
               decoration: isAI
                   ? BookAddStyles.chatBubbleAI
                   : BookAddStyles.chatBubbleUser,
-              child: Text(
-                msg["text"]?.toString() ?? "",
-                style: isAI
-                    ? BookAddStyles.chatTextAI
-                    : BookAddStyles.chatTextUser,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    msg["text"]?.toString() ?? "",
+                    style: isAI
+                        ? BookAddStyles.chatTextAI
+                        : BookAddStyles.chatTextUser,
+                  ),
+                  if (msg["showOptions"] == true) ...[
+                    const SizedBox(height: 14),
+                    _buildChatOptionGrid(isMobile),
+                  ],
+                ],
               ),
             ),
           ),
@@ -801,10 +1036,10 @@ class _BookAddPageState extends State<BookAddPage>
         : 700;
 
     final double cardHeight = isMobile
-        ? screen.height * 0.80
+        ? screen.height * 0.88
         : isTablet
-        ? 500
-        : 520;
+        ? 560
+        : 600;
 
     final double leafWidth = isMobile
         ? 100
@@ -831,13 +1066,81 @@ class _BookAddPageState extends State<BookAddPage>
                       Positioned.fill(
                         child: Container(
                           margin: EdgeInsets.all(isMobile ? 10 : 8),
-                          decoration: BookAddStyles.mainCard,
+                          decoration: selectedTheme == "Christmas"
+                              ? BookAddStyles.christmasMainCard
+                              : BookAddStyles.mainCard,
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(32),
                             child: Stack(
                               fit: StackFit.expand,
                               children: [
                                 _buildDisplayBackground(isMobile),
+
+                                if (selectedTheme == "Christmas")
+                                  Positioned.fill(
+                                    child: IgnorePointer(
+                                      child: AnimatedBuilder(
+                                        animation: ambientController,
+                                        builder: (context, child) {
+                                          return CustomPaint(
+                                            painter:
+                                                ChristmasLightsBorderPainter(
+                                                  progress:
+                                                      ambientController.value,
+                                                  radius: 32,
+                                                ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+
+                                if (selectedTheme == "Christmas") ...[
+                                  Positioned(
+                                    top: screen.width < 500
+                                        ? 18
+                                        : screen.width < 1100
+                                        ? -8
+                                        : 20,
+                                    left: 0,
+                                    right: 0,
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: isMobile
+                                            ? 240
+                                            : isTablet
+                                            ? 320
+                                            : 420,
+
+                                        height: isMobile
+                                            ? 70
+                                            : isTablet
+                                            ? 90
+                                            : 120,
+                                        child: Lottie.asset(
+                                          BookAddStyles.christmasSleighJson,
+                                          repeat: true,
+                                          fit: BoxFit.contain,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned.fill(
+                                    child: IgnorePointer(
+                                      child: AnimatedBuilder(
+                                        animation: ambientController,
+                                        builder: (context, child) {
+                                          return CustomPaint(
+                                            painter: ChristmasSnowPainter(
+                                              progress: ambientController.value,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
+
                                 Container(
                                   decoration:
                                       BookAddStyles.mainCardGlassOverlay,
@@ -859,39 +1162,35 @@ class _BookAddPageState extends State<BookAddPage>
                         ),
                       ),
                       Positioned(
-                        top: isMobile ? -8 : -10,
-                        left: isMobile ? -6 : -10,
-                        child: _leafInside(
+                        top: isMobile ? -5 : -8,
+                        left: isMobile ? -5 : -8,
+                        child: _cornerDecor(
                           width: leafWidth,
-                          angle: 0,
-                          invertY: true,
+                          position: "topLeft",
                         ),
                       ),
                       Positioned(
-                        top: isMobile ? -8 : -10,
-                        right: isMobile ? -6 : -10,
-                        child: _leafInside(
+                        top: isMobile ? -5 : -8,
+                        right: isMobile ? -5 : -8,
+                        child: _cornerDecor(
                           width: leafWidth,
-                          angle: 3.14159,
-                          invertY: false,
+                          position: "topRight",
                         ),
                       ),
                       Positioned(
-                        bottom: isMobile ? -8 : -10,
-                        left: isMobile ? -6 : -10,
-                        child: _leafInside(
+                        bottom: isMobile ? -5 : -8,
+                        left: isMobile ? -5 : -8,
+                        child: _cornerDecor(
                           width: leafWidth,
-                          angle: 0,
-                          invertY: false,
+                          position: "bottomLeft",
                         ),
                       ),
                       Positioned(
-                        bottom: isMobile ? -8 : -10,
-                        right: isMobile ? -6 : -10,
-                        child: _leafInside(
+                        bottom: isMobile ? -5 : -8,
+                        right: isMobile ? -5 : -8,
+                        child: _cornerDecor(
                           width: leafWidth,
-                          angle: -1.5708,
-                          invertY: false,
+                          position: "bottomRight",
                         ),
                       ),
                     ],
@@ -905,6 +1204,133 @@ class _BookAddPageState extends State<BookAddPage>
     );
   }
 
+  Widget _buildLotusAnimation(bool isMobile) {
+    final double size = isMobile ? 80 : 105;
+
+    return SizedBox(
+      width: size + 90,
+      height: size + 45,
+      child: AnimatedBuilder(
+        animation: Listenable.merge([leafController, ambientController]),
+        builder: (context, child) {
+          final double t = leafController.value * 2 * pi;
+          final double a = ambientController.value * 2 * pi;
+
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              // soft glow
+              Container(
+                width: size + 20,
+                height: size + 20,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      BookAddStyles.primary.withOpacity(0.20),
+                      Colors.white.withOpacity(0.04),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+
+              // floating leaves
+              _floatingMiniLeaf(
+                dx: -65 + sin(t) * 8,
+                dy: -8 + cos(t) * 8,
+                angle: -0.8 + sin(t) * 0.2,
+                size: isMobile ? 24 : 30,
+                opacity: 0.85,
+              ),
+              _floatingMiniLeaf(
+                dx: 65 + cos(t) * 7,
+                dy: -15 + sin(t) * 7,
+                angle: 0.8 + cos(t) * 0.2,
+                size: isMobile ? 24 : 30,
+                opacity: 0.85,
+              ),
+              _floatingMiniLeaf(
+                dx: -38 + cos(t) * 5,
+                dy: 42 + sin(t) * 5,
+                angle: 0.4,
+                size: isMobile ? 18 : 23,
+                opacity: 0.75,
+              ),
+              _floatingMiniLeaf(
+                dx: 38 + sin(t) * 5,
+                dy: 42 + cos(t) * 5,
+                angle: -0.4,
+                size: isMobile ? 18 : 23,
+                opacity: 0.75,
+              ),
+
+              // sparkles
+              _sparkle(dx: -50, dy: -40, opacity: 0.35 + sin(a) * 0.25),
+              _sparkle(dx: 50, dy: -35, opacity: 0.35 + cos(a) * 0.25),
+              _sparkle(dx: 0, dy: -58, opacity: 0.45 + sin(a) * 0.20),
+
+              // lotus icon
+              Transform.translate(
+                offset: Offset(0, sin(t) * 4),
+                child: Lottie.asset(
+                  selectedTheme == "Christmas"
+                      ? BookAddStyles.christmasCardJson
+                      : 'assets/lottie/flower.json',
+                  width: size,
+                  height: size,
+                  repeat: true,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _floatingMiniLeaf({
+    required double dx,
+    required double dy,
+    required double angle,
+    required double size,
+    required double opacity,
+  }) {
+    return Transform.translate(
+      offset: Offset(dx, dy),
+      child: Transform.rotate(
+        angle: angle,
+        child: Opacity(
+          opacity: opacity,
+          child: Icon(
+            Icons.eco_rounded,
+            size: size,
+            color: const Color(0xFF5C9F4A),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sparkle({
+    required double dx,
+    required double dy,
+    required double opacity,
+  }) {
+    return Transform.translate(
+      offset: Offset(dx, dy),
+      child: Opacity(
+        opacity: opacity.clamp(0.0, 1.0),
+        child: const Icon(
+          Icons.auto_awesome_rounded,
+          size: 16,
+          color: Color(0xFFE8D8A8),
+        ),
+      ),
+    );
+  }
+
   Widget _buildStartState(bool isMobile) {
     return Column(
       key: const ValueKey("start-state"),
@@ -912,7 +1338,9 @@ class _BookAddPageState extends State<BookAddPage>
       children: [
         Container(
           padding: EdgeInsets.all(isMobile ? 12 : 16),
-          decoration: BookAddStyles.headerCard,
+          decoration: selectedTheme == "Christmas"
+              ? BookAddStyles.christmasHeaderCard
+              : BookAddStyles.headerCard,
           child: Row(
             children: [
               _buildLogo(isMobile ? 46 : 52),
@@ -922,7 +1350,9 @@ class _BookAddPageState extends State<BookAddPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Welcome to Me Tyme Lounge!",
+                      selectedTheme == "Christmas"
+                          ? "Merry Christmas, Me Tyme Lounge!"
+                          : "Welcome to Me Tyme Lounge!",
                       style: BookAddStyles.title.copyWith(
                         color: const Color(0xFF232323),
                         shadows: [
@@ -951,7 +1381,9 @@ class _BookAddPageState extends State<BookAddPage>
                     horizontal: 14,
                     vertical: 8,
                   ),
-                  decoration: BookAddStyles.readyChip,
+                  decoration: selectedTheme == "Christmas"
+                      ? BookAddStyles.christmasReadyChip
+                      : BookAddStyles.readyChip,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -964,16 +1396,29 @@ class _BookAddPageState extends State<BookAddPage>
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text("Ready for booking", style: BookAddStyles.readyText),
+                      Text(
+                        selectedTheme == "Christmas"
+                            ? "Christmas booking"
+                            : "Ready for booking",
+                        style: selectedTheme == "Christmas"
+                            ? BookAddStyles.christmasReadyText
+                            : BookAddStyles.readyText,
+                      ),
                     ],
                   ),
                 ),
             ],
           ),
         ),
-        SizedBox(height: isMobile ? 34 : 46),
+        SizedBox(height: isMobile ? 10 : 14),
+
+        _buildLotusAnimation(isMobile),
+
+        SizedBox(height: isMobile ? 8 : 10),
+
         _buildHeroPanel(isMobile),
-        SizedBox(height: isMobile ? 26 : 34),
+
+        SizedBox(height: isMobile ? 14 : 18),
         TweenAnimationBuilder<double>(
           tween: Tween(begin: 0.95, end: 1),
           duration: const Duration(milliseconds: 800),
@@ -983,103 +1428,395 @@ class _BookAddPageState extends State<BookAddPage>
           },
           child: ElevatedButton(
             onPressed: startChat,
-            style: BookAddStyles.primaryButton,
-            child: const Text("Start"),
+            style: selectedTheme == "Christmas"
+                ? BookAddStyles.christmasPrimaryButton
+                : BookAddStyles.primaryButton,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                selectedTheme == "Christmas"
+                    ? SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: Lottie.asset(
+                          BookAddStyles.snowGlobeJson,
+                          repeat: true,
+                          fit: BoxFit.contain,
+                        ),
+                      )
+                    : const Icon(Icons.spa_rounded, size: 20),
+                SizedBox(width: 10),
+                Text("Start Booking"),
+                SizedBox(width: 10),
+                Icon(Icons.arrow_forward_rounded, size: 22),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildChatState(bool isMobile) {
-    return Column(
-      key: const ValueKey("chat-state"),
-      children: [
-        Container(
-          padding: EdgeInsets.all(isMobile ? 12 : 16),
-          decoration: BookAddStyles.headerCard,
-          child: Row(
-            children: [
-              _buildLogo(isMobile ? 40 : 46),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("AI Assistant", style: BookAddStyles.title),
-                    const SizedBox(height: 2),
-                    Text(
-                      isBusy
-                          ? "Opening your selected view..."
-                          : "Reply with 1 to 6 to continue.",
-                      style: BookAddStyles.helperText,
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
-                decoration: BookAddStyles.onlineChip,
-                child: Text(
-                  isBusy ? "Loading" : "Online",
-                  style: BookAddStyles.onlineText,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        Expanded(
-          child: Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(isMobile ? 12 : 18),
-            decoration: BookAddStyles.chatContainer,
-            child: ListView.builder(
-              controller: scrollController,
-              padding: const EdgeInsets.only(bottom: 10),
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                return chatBubble(messages[index], isMobile);
-              },
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+  Widget _buildChatOptionGrid(bool isMobile) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double gap = isMobile ? 8 : 14;
+        final double itemWidth = (constraints.maxWidth - (gap * 2)) / 3;
+        final double itemHeight = isMobile ? 112 : 126;
+
+        return Wrap(
+          alignment: WrapAlignment.center,
+          spacing: gap,
+          runSpacing: gap,
           children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                minLines: 1,
-                maxLines: 4,
-                enabled: !isBusy,
-                textInputAction: TextInputAction.send,
-                onSubmitted: sendMessage,
-                style: BookAddStyles.inputText,
-                decoration: BookAddStyles.inputDecoration(
-                  hintText: isBusy
-                      ? "Opening your selected view..."
-                      : "Type 1-6...",
-                ),
-              ),
+            _chatOption(
+              Icons.event_available_rounded,
+              "Booking",
+              _openBookingFlow,
+              itemWidth,
+              itemHeight,
+              isMobile,
             ),
-            const SizedBox(width: 10),
-            SizedBox(
-              height: 56,
-              width: 56,
-              child: ElevatedButton(
-                onPressed: isBusy ? null : () => sendMessage(controller.text),
-                style: BookAddStyles.sendButton,
-                child: const Icon(Icons.send_rounded),
-              ),
+            _chatOption(
+              Icons.local_offer_rounded,
+              "Promo",
+              _openPromoFlow,
+              itemWidth,
+              itemHeight,
+              isMobile,
+            ),
+            _chatOption(
+              Icons.add_circle_rounded,
+              "Add-Ons",
+              _openAddOnsFlow,
+              itemWidth,
+              itemHeight,
+              isMobile,
+            ),
+            _chatOption(
+              Icons.weekend_rounded,
+              "Seat View",
+              _openSeatFlow,
+              itemWidth,
+              itemHeight,
+              isMobile,
+            ),
+            _chatOption(
+              Icons.fact_check_rounded,
+              "Attendance",
+              _openAttendanceFlow,
+              itemWidth,
+              itemHeight,
+              isMobile,
+            ),
+            _chatOption(
+              Icons.receipt_long_rounded,
+              "Receipt",
+              _openReceiptFlow,
+              itemWidth,
+              itemHeight,
+              isMobile,
             ),
           ],
-        ),
-      ],
+        );
+      },
     );
+  }
+
+  Widget _chatOption(
+    IconData icon,
+    String label,
+    VoidCallback onTap,
+    double width,
+    double height,
+    bool isMobile,
+  ) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      onTap: isBusy ? null : onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            width: width,
+            height: height,
+            decoration: selectedTheme == "Christmas"
+                ? BookAddStyles.christmasOptionCard
+                : BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    color: Colors.white.withOpacity(0.48),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.70),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.13),
+                        blurRadius: 16,
+                        offset: const Offset(0, 7),
+                      ),
+                    ],
+                  ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: isMobile ? 54 : 62,
+                  height: isMobile ? 54 : 62,
+                  decoration: selectedTheme == "Christmas"
+                      ? BookAddStyles.christmasOptionIcon
+                      : BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF6EDC6F),
+                              Color(0xFF35A853),
+                              Color(0xFF176B2C),
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF35A853).withOpacity(0.42),
+                              blurRadius: 18,
+                              offset: const Offset(0, 7),
+                            ),
+                          ],
+                        ),
+                  child: Icon(
+                    icon,
+                    color: Colors.white,
+                    size: isMobile ? 29 : 34,
+                  ),
+                ),
+                SizedBox(height: isMobile ? 7 : 9),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: selectedTheme == "Christmas"
+                      ? BookAddStyles.christmasOptionText.copyWith(
+                          fontSize: isMobile ? 11.5 : 13,
+                        )
+                      : TextStyle(
+                          fontSize: isMobile ? 11.5 : 13,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF173B1C),
+                          letterSpacing: 0.1,
+                          shadows: const [
+                            Shadow(
+                              color: Colors.white,
+                              blurRadius: 8,
+                              offset: Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChatState(bool isMobile) {
+    return Center(
+      key: const ValueKey("chat-state"),
+      child: Container(
+        width: isMobile ? double.infinity : 580,
+        padding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 18 : 30,
+          vertical: isMobile ? 10 : 24,
+        ),
+        decoration: const BoxDecoration(color: Colors.transparent),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: () {
+                setState(() {
+                  started = false;
+                  messages.clear();
+                });
+              },
+              child: Lottie.asset(
+                selectedTheme == "Christmas"
+                    ? BookAddStyles.christmasTreeJson
+                    : 'assets/lottie/flower.json',
+                width: isMobile ? 72 : 88,
+                height: isMobile ? 72 : 88,
+                repeat: true,
+                fit: BoxFit.contain,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              "Welcome to Me Tyme Lounge",
+              textAlign: TextAlign.center,
+              style: BookAddStyles.bigTitle.copyWith(
+                fontSize: isMobile ? 24 : 30,
+                fontWeight: FontWeight.w900,
+                color: const Color(0xFF21351F),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Please choose an option below",
+              textAlign: TextAlign.center,
+              style: BookAddStyles.subtitle.copyWith(
+                color: Colors.black.withOpacity(0.62),
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildChatOptionGrid(isMobile),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ChristmasLightsBorderPainter extends CustomPainter {
+  final double progress;
+  final double radius;
+
+  ChristmasLightsBorderPainter({required this.progress, required this.radius});
+
+  final List<Color> bulbColors = const [
+    Color(0xFFE53935), // red
+    Color(0xFF43A047), // green
+    Color(0xFFFFC107), // gold
+    Color(0xFF1E88E5), // blue
+    Color(0xFFFF7043), // orange
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(radius),
+    );
+
+    final borderPaint = Paint()
+      ..color = const Color(0xFFFFD166).withOpacity(0.45)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    canvas.drawRRect(rect.deflate(1.5), borderPaint);
+
+    final bulbPaint = Paint()..style = PaintingStyle.fill;
+    const double gap = 34;
+    const double bulbSize = 4.8;
+
+    void drawBulb(double x, double y, int index) {
+      final color =
+          bulbColors[(index + (progress * 10).floor()) % bulbColors.length];
+      final glow = 0.45 + (sin((progress * 6.28) + index) * 0.25);
+
+      bulbPaint.color = color.withOpacity(0.95);
+
+      final glowPaint = Paint()
+        ..color = color.withOpacity(glow)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
+
+      canvas.drawCircle(Offset(x, y), bulbSize + 3, glowPaint);
+      canvas.drawCircle(Offset(x, y), bulbSize, bulbPaint);
+    }
+
+    int i = 0;
+
+    for (double x = 28; x < size.width - 28; x += gap) {
+      drawBulb(x, 4, i++);
+      drawBulb(x, size.height - 4, i++);
+    }
+
+    for (double y = 28; y < size.height - 28; y += gap) {
+      drawBulb(4, y, i++);
+      drawBulb(size.width - 4, y, i++);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant ChristmasLightsBorderPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
+
+class ChristmasSnowPainter extends CustomPainter {
+  final double progress;
+
+  ChristmasSnowPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.18)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    const spacingX = 90.0;
+    const spacingY = 70.0;
+
+    int index = 0;
+
+    for (double x = 20; x < size.width; x += spacingX) {
+      for (double y = 0; y < size.height; y += spacingY) {
+        final offsetY = ((progress * (30 + (index % 5) * 8)) + y) % size.height;
+
+        final offsetX = x + sin(progress * 6.28 + index) * 6;
+
+        _drawSnowflake(
+          canvas,
+          Offset(offsetX, offsetY),
+          paint,
+          3 + (index % 3),
+        );
+
+        index++;
+      }
+    }
+  }
+
+  void _drawSnowflake(
+    Canvas canvas,
+    Offset center,
+    Paint paint,
+    double radius,
+  ) {
+    canvas.drawLine(
+      Offset(center.dx - radius, center.dy),
+      Offset(center.dx + radius, center.dy),
+      paint,
+    );
+
+    canvas.drawLine(
+      Offset(center.dx, center.dy - radius),
+      Offset(center.dx, center.dy + radius),
+      paint,
+    );
+
+    canvas.drawLine(
+      Offset(center.dx - radius * .7, center.dy - radius * .7),
+      Offset(center.dx + radius * .7, center.dy + radius * .7),
+      paint,
+    );
+
+    canvas.drawLine(
+      Offset(center.dx - radius * .7, center.dy + radius * .7),
+      Offset(center.dx + radius * .7, center.dy - radius * .7),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant ChristmasSnowPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }

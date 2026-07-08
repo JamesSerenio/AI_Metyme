@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
 
 class PromoModalStyles {
+  static bool christmasMode = false;
+
+  static const String christmasBellsJson = 'assets/lottie/Christmas Bells.json';
+  static const String giftBoxJson = 'assets/lottie/Gift box.json';
+
+  static const Color christmasRed = Color(0xFFD32F2F);
+  static const Color christmasGold = Color(0xFFFFC857);
+  static const Color christmasGreen = Color(0xFF2E7D32);
+  static const Color christmasCream = Color(0xFFFFF8EC);
   static const Color pageBg = Color(0xFFF4F2EC);
   static const Color cardBg = Color(0xFFF5EEDC);
   static const Color panelBg = Color(0xFFFFFBF4);
@@ -12,22 +21,43 @@ class PromoModalStyles {
   static const Color textMuted = Color(0xFF666666);
   static const Color error = Color(0xFFD32F2F);
 
-  static BoxDecoration modalCard = BoxDecoration(
-    color: cardBg,
-    borderRadius: BorderRadius.circular(24),
-    border: Border.all(color: Colors.black.withOpacity(0.06)),
+  static BoxDecoration get modalCard => BoxDecoration(
+    color: christmasMode ? christmasCream.withOpacity(0.98) : cardBg,
+    borderRadius: BorderRadius.circular(28),
+    border: Border.all(
+      color: christmasMode
+          ? christmasGold.withOpacity(0.65)
+          : Colors.black.withOpacity(0.06),
+      width: christmasMode ? 1.4 : 1,
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: christmasMode
+            ? christmasRed.withOpacity(0.16)
+            : Colors.black.withOpacity(0.10),
+        blurRadius: 30,
+        offset: const Offset(0, 16),
+      ),
+    ],
   );
 
   static BoxDecoration headerCard = BoxDecoration(
-    color: Colors.white.withOpacity(0.40),
-    borderRadius: BorderRadius.circular(18),
-    border: Border.all(color: Colors.black.withOpacity(0.06)),
+    color: Colors.white.withOpacity(0.55),
+    borderRadius: BorderRadius.circular(22),
+    border: Border.all(color: christmasGold.withOpacity(0.35), width: 1),
+    boxShadow: [
+      BoxShadow(
+        color: christmasGold.withOpacity(0.12),
+        blurRadius: 14,
+        offset: const Offset(0, 5),
+      ),
+    ],
   );
 
   static BoxDecoration chatArea = BoxDecoration(
-    color: Colors.white.withOpacity(0.25),
-    borderRadius: BorderRadius.circular(20),
-    border: Border.all(color: Colors.black.withOpacity(0.06)),
+    color: Colors.white.withOpacity(0.30),
+    borderRadius: BorderRadius.circular(24),
+    border: Border.all(color: christmasGold.withOpacity(0.25), width: 1),
   );
 
   static BoxDecoration formCard = BoxDecoration(
@@ -49,17 +79,32 @@ class PromoModalStyles {
     ).copyWith(topLeft: const Radius.circular(8)),
   );
 
-  static BoxDecoration successBubble = BoxDecoration(
-    color: primary,
+  static BoxDecoration get successBubble => BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: christmasMode
+          ? const [Color(0xFFE53935), Color(0xFFB71C1C)]
+          : const [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+    ),
     borderRadius: BorderRadius.circular(
       20,
     ).copyWith(topRight: const Radius.circular(8)),
+    boxShadow: [
+      BoxShadow(
+        color: christmasMode
+            ? christmasRed.withOpacity(0.24)
+            : primary.withOpacity(0.22),
+        blurRadius: 14,
+        offset: const Offset(0, 6),
+      ),
+    ],
   );
 
   static BoxDecoration statusChip = BoxDecoration(
-    color: primary.withOpacity(0.15),
+    color: christmasGreen.withOpacity(0.12),
     borderRadius: BorderRadius.circular(999),
-    border: Border.all(color: primary.withOpacity(0.18)),
+    border: Border.all(color: christmasGreen.withOpacity(0.22)),
   );
 
   static BoxDecoration seatGroupCard = BoxDecoration(

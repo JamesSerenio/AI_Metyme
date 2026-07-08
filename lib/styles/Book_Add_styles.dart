@@ -52,48 +52,15 @@ class BookAddStyles {
     ),
   );
 
-  static BoxDecoration displayImageWash = BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [
-        Colors.white.withOpacity(0.15),
-        Colors.white.withOpacity(0.04),
-        Colors.white.withOpacity(0.16),
-      ],
-    ),
-  );
-
-  static BoxDecoration displayImageTint = BoxDecoration(
-    gradient: LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [
-        const Color(0xFFF8EFDF).withOpacity(0.70),
-        const Color(0xFFF8EFDF).withOpacity(0.42),
-        const Color(0xFFF3EBDD).withOpacity(0.66),
-      ],
-      stops: const [0.0, 0.45, 1.0],
-    ),
-  );
-
   static BoxDecoration headerCard = BoxDecoration(
-    color: Colors.white.withOpacity(0.48),
-    borderRadius: BorderRadius.circular(22),
-    border: Border.all(
-      color: const Color(0xFFD8CCB3).withOpacity(0.78),
-      width: 1,
-    ),
+    color: Colors.white.withOpacity(0.54),
+    borderRadius: BorderRadius.circular(28),
+    border: Border.all(color: Colors.white.withOpacity(0.48), width: 1.2),
     boxShadow: [
       BoxShadow(
-        color: Colors.white.withOpacity(0.14),
-        blurRadius: 8,
-        offset: const Offset(0, -1),
-      ),
-      BoxShadow(
-        color: Colors.black.withOpacity(0.03),
-        blurRadius: 10,
-        offset: const Offset(0, 5),
+        color: Colors.black.withOpacity(0.045),
+        blurRadius: 18,
+        offset: const Offset(0, 8),
       ),
     ],
   );
@@ -156,7 +123,7 @@ class BookAddStyles {
     border: Border.all(color: primary.withOpacity(0.22), width: 1),
   );
 
-  static InputDecoration inputDecoration({String hintText = "Type 1-5..."}) {
+  static InputDecoration inputDecoration({String hintText = "Type 1-6..."}) {
     return InputDecoration(
       hintText: hintText,
       hintStyle: TextStyle(
@@ -185,34 +152,26 @@ class BookAddStyles {
     );
   }
 
-  static ButtonStyle primaryButton =
-      ElevatedButton.styleFrom(
-        backgroundColor: primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 42, vertical: 18),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        textStyle: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.2,
-        ),
-      ).copyWith(
-        shadowColor: WidgetStateProperty.all(primary.withOpacity(0.20)),
-        elevation: WidgetStateProperty.all(4),
-      );
+  static ButtonStyle primaryButton = ElevatedButton.styleFrom(
+    backgroundColor: primaryDark,
+    foregroundColor: Colors.white,
+    elevation: 5,
+    padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+    textStyle: const TextStyle(
+      fontSize: 18,
+      fontWeight: FontWeight.w800,
+      letterSpacing: 0.2,
+    ),
+  );
 
-  static ButtonStyle sendButton =
-      ElevatedButton.styleFrom(
-        backgroundColor: primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        padding: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ).copyWith(
-        shadowColor: WidgetStateProperty.all(primary.withOpacity(0.22)),
-        elevation: WidgetStateProperty.all(4),
-      );
+  static ButtonStyle sendButton = ElevatedButton.styleFrom(
+    backgroundColor: primary,
+    foregroundColor: Colors.white,
+    elevation: 4,
+    padding: EdgeInsets.zero,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+  );
 
   static const TextStyle title = TextStyle(
     fontWeight: FontWeight.w800,
@@ -222,8 +181,8 @@ class BookAddStyles {
   );
 
   static const TextStyle bigTitle = TextStyle(
-    fontWeight: FontWeight.w800,
-    fontSize: 32,
+    fontWeight: FontWeight.w900,
+    fontSize: 34,
     color: textDark,
     height: 1.15,
     letterSpacing: 0.2,
@@ -272,5 +231,195 @@ class BookAddStyles {
     fontSize: 12,
     color: primaryDark,
     fontWeight: FontWeight.w700,
+  );
+
+  static ShapeBorder themeMenuShape = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(18),
+    side: BorderSide(color: Colors.white.withOpacity(0.65), width: 1),
+  );
+
+  static const TextStyle themeMenuText = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: Color(0xFF24351F),
+  );
+
+  static PopupMenuThemeData themePopupMenu = PopupMenuThemeData(
+    color: Color(0xFFF8F4EC),
+    elevation: 10,
+    shape: themeMenuShape,
+    textStyle: themeMenuText,
+  );
+  // ================= THEME DROPDOWN =================
+
+  static const Color themeMenuBg = Color(0xFFF8F4EC);
+
+  static BoxDecoration themeMenuSelected = BoxDecoration(
+    borderRadius: BorderRadius.circular(14),
+    gradient: const LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      colors: [Color(0xFFE8F6E8), Color(0xFFD7F0D7)],
+    ),
+    border: Border.all(color: Color(0xFF43A047), width: 1),
+  );
+
+  static BoxDecoration themeMenuNormal = BoxDecoration(
+    borderRadius: BorderRadius.circular(14),
+  );
+
+  static const TextStyle themeMenuSelectedText = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w800,
+    color: Color(0xFF2E7D32),
+  );
+
+  static const TextStyle themeMenuNormalText = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: Color(0xFF24351F),
+  );
+
+  // ================= CHRISTMAS THEME =================
+
+  // ================= CHRISTMAS THEME =================
+
+  static const String christmasTreeJson = 'assets/lottie/Christmas Tree.json';
+  static const String christmasBallJson = 'assets/lottie/Christmas Ball.json';
+  static const String christmasBallsJson = 'assets/lottie/Christmas Balls.json';
+  static const String christmasLightsJson =
+      'assets/lottie/Christmas Light Bulbs.json';
+  static const String christmasOrnamentJson =
+      'assets/lottie/Christmas Ornament.json';
+  static const String christmasCardJson =
+      'assets/lottie/Merry Christmas Lottie Animation.json';
+
+  static const String christmasBellsJson = 'assets/lottie/Christmas Bells.json';
+
+  static const String christmasBellsAltJson =
+      'assets/lottie/Christmas bells1.json';
+
+  static const String snowflakesJson = 'assets/lottie/Snowflakes.json';
+
+  static const String christmasSleighJson =
+      'assets/lottie/Christmas Sleigh.json';
+
+  static const String jumpingGiftBoxesJson =
+      'assets/lottie/Jumping gift boxes.json';
+
+  static const String snowGlobeJson = 'assets/lottie/Snow Globe.json';
+
+  static const Color christmasRed = Color(0xFFD32F2F);
+  static const Color christmasGreen = Color(0xFF1B5E20);
+  static const Color christmasGold = Color(0xFFFFC857);
+
+  static BoxDecoration christmasMainCard = BoxDecoration(
+    color: const Color(0xFFFFF7EA).withOpacity(0.78),
+    borderRadius: BorderRadius.circular(32),
+    border: Border.all(color: Colors.white.withOpacity(0.35), width: 1.1),
+    boxShadow: [
+      BoxShadow(
+        color: christmasRed.withOpacity(0.22),
+        blurRadius: 42,
+        spreadRadius: 3,
+        offset: const Offset(0, 16),
+      ),
+      BoxShadow(
+        color: christmasGold.withOpacity(0.32),
+        blurRadius: 24,
+        spreadRadius: 1,
+        offset: const Offset(0, -4),
+      ),
+    ],
+  );
+
+  static BoxDecoration christmasHeaderCard = BoxDecoration(
+    color: Colors.white.withOpacity(0.62),
+    borderRadius: BorderRadius.circular(28),
+    border: Border.all(color: christmasGold.withOpacity(0.70), width: 1.3),
+    boxShadow: [
+      BoxShadow(
+        color: christmasRed.withOpacity(0.14),
+        blurRadius: 20,
+        offset: const Offset(0, 8),
+      ),
+    ],
+  );
+
+  static BoxDecoration christmasReadyChip = BoxDecoration(
+    color: const Color(0xFFFFF3F3).withOpacity(0.96),
+    borderRadius: BorderRadius.circular(999),
+    border: Border.all(color: christmasRed.withOpacity(0.40), width: 1),
+  );
+
+  static const TextStyle christmasReadyText = TextStyle(
+    fontSize: 12,
+    color: christmasRed,
+    fontWeight: FontWeight.w900,
+  );
+
+  static ButtonStyle christmasPrimaryButton = ElevatedButton.styleFrom(
+    backgroundColor: christmasRed,
+    foregroundColor: Colors.white,
+    elevation: 7,
+    padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+    textStyle: const TextStyle(
+      fontSize: 18,
+      fontWeight: FontWeight.w900,
+      letterSpacing: 0.2,
+    ),
+  );
+
+  static TextStyle christmasTitleText(double fontSize) {
+    return TextStyle(
+      fontSize: fontSize,
+      fontWeight: FontWeight.w900,
+      color: christmasGreen,
+      shadows: [
+        Shadow(
+          color: christmasGold.withOpacity(0.55),
+          blurRadius: 10,
+          offset: const Offset(0, 1),
+        ),
+      ],
+    );
+  }
+
+  static BoxDecoration christmasOptionCard = BoxDecoration(
+    borderRadius: BorderRadius.circular(24),
+    color: Colors.white.withOpacity(0.52),
+    border: Border.all(color: christmasGold.withOpacity(0.85), width: 1.4),
+    boxShadow: [
+      BoxShadow(
+        color: christmasRed.withOpacity(0.18),
+        blurRadius: 18,
+        offset: const Offset(0, 8),
+      ),
+    ],
+  );
+
+  static BoxDecoration christmasOptionIcon = BoxDecoration(
+    shape: BoxShape.circle,
+    gradient: const LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFFFFD166), Color(0xFFE53935), Color(0xFF8B0000)],
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: christmasRed.withOpacity(0.35),
+        blurRadius: 18,
+        offset: const Offset(0, 7),
+      ),
+    ],
+  );
+
+  static const TextStyle christmasOptionText = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w900,
+    color: Color(0xFF7A1515),
+    letterSpacing: 0.1,
+    shadows: [Shadow(color: Colors.white, blurRadius: 8, offset: Offset(0, 1))],
   );
 }
