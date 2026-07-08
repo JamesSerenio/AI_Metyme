@@ -24,27 +24,27 @@ class SeatStyles {
   static const Color redSeat = Color(0xFFE53935);
   static const Color purpleSeat = Color(0xFFB55CFF);
 
-  static BoxDecoration get modalCard => BoxDecoration(
+static BoxDecoration get modalCard => BoxDecoration(
+  color: christmasMode
+      ? christmasCream.withOpacity(0.98)
+      : cardBg.withOpacity(0.98),
+  borderRadius: BorderRadius.circular(28),
+  border: Border.all(
     color: christmasMode
-        ? christmasCream.withOpacity(0.98)
-        : cardBg.withOpacity(0.98),
-    borderRadius: BorderRadius.circular(28),
-    border: Border.all(
+        ? christmasGold.withOpacity(0.65)
+        : Colors.black.withOpacity(0.08),
+    width: christmasMode ? 1.4 : 1,
+  ),
+  boxShadow: [
+    BoxShadow(
       color: christmasMode
-          ? christmasGold.withOpacity(0.65)
-          : Colors.black.withOpacity(0.08),
-      width: christmasMode ? 1.4 : 1,
+          ? christmasRed.withOpacity(0.16)
+          : Colors.black.withOpacity(0.14),
+      blurRadius: 30,
+      offset: const Offset(0, 16),
     ),
-    boxShadow: [
-      BoxShadow(
-        color: christmasMode
-            ? christmasRed.withOpacity(0.16)
-            : Colors.black.withOpacity(0.14),
-        blurRadius: 30,
-        offset: const Offset(0, 16),
-      ),
-    ],
-  );
+  ],
+);
 
   static BoxDecoration headerCard = BoxDecoration(
     color: Colors.white.withOpacity(0.34),
