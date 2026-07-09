@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lottie/lottie.dart';
 import '../styles/AddOns_styles.dart';
@@ -1644,9 +1645,12 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
                     height: 48,
                     alignment: Alignment.center,
                     decoration: AddOnsStyles.formCard,
-                    child: Text(
-                      '${row.quantity}',
-                      style: AddOnsStyles.sectionTitle,
+                    child: _QtyInput(
+                      key: ValueKey('qty-$index-${item.id}'),
+                      quantity: row.quantity,
+                      maxQty: item.stocks,
+                      enabled: !formLocked,
+                      onChanged: (qty) => changeQty(index, qty),
                     ),
                   ),
                 ),
@@ -2057,6 +2061,115 @@ class _AddOnsPageState extends State<AddOnsPage> with TickerProviderStateMixin {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _QtyInput extends StatefulWidget {
+  final int quantity;
+  final int maxQty;
+  final bool enabled;
+  final ValueChanged<int> onChanged;
+
+  const _QtyInput({
+    super.key,
+    required this.quantity,
+    required this.maxQty,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  @override
+  State<_QtyInput> createState() => _QtyInputState();
+}
+
+class _QtyInputState extends State<_QtyInput> {
+  late final TextEditingController controller;
+  final FocusNode focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+
+    controller = TextEditingController(text: '${widget.quantity}');
+
+    focusNode.addListener(() {
+      if (!focusNode.hasFocus) {
+        _commitOrRestore();
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _QtyInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (!focusNode.hasFocus) {
+      final newText = '${widget.quantity}';
+
+      if (controller.text != newText) {
+        controller.text = newText;
+        controller.selection = TextSelection.collapsed(
+          offset: controller.text.length,
+        );
+      }
+    }
+  }
+
+  int _safeQty(int value) {
+    if (value < 1) return 1;
+    if (value > widget.maxQty) return widget.maxQty;
+    return value;
+  }
+
+  void _commitOrRestore() {
+    final qty = int.tryParse(controller.text.trim());
+    final safeQty = qty == null ? widget.quantity : _safeQty(qty);
+
+    controller.text = '$safeQty';
+    controller.selection = TextSelection.collapsed(
+      offset: controller.text.length,
+    );
+
+    widget.onChanged(safeQty);
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      focusNode: focusNode,
+      enabled: widget.enabled,
+      textAlign: TextAlign.center,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      style: AddOnsStyles.sectionTitle,
+      decoration: const InputDecoration(
+        border: InputBorder.none,
+        isDense: true,
+        contentPadding: EdgeInsets.symmetric(vertical: 14),
+      ),
+      onTap: () {
+        controller.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: controller.text.length,
+        );
+      },
+      onChanged: (value) {
+        final qty = int.tryParse(value);
+        if (qty == null) return;
+
+        widget.onChanged(_safeQty(qty));
+      },
+      onSubmitted: (_) => _commitOrRestore(),
+      onEditingComplete: _commitOrRestore,
     );
   }
 }
