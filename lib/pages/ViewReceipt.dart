@@ -2764,40 +2764,26 @@ class _ViewReceiptState extends State<ViewReceipt>
                                       ),
                                     ),
 
-                                    if (_receipt == null) ...[
-                                      const SizedBox(height: 16),
-                                      for (final message in _chatMessages) ...[
-                                        Align(
-                                          alignment: message.isAI
-                                              ? Alignment.centerLeft
-                                              : Alignment.centerRight,
-                                          child: message.isAI
-                                              ? _buildAiBubble(message.text)
-                                              : _buildUserBubble(message.text),
-                                        ),
-                                        const SizedBox(height: 6),
-                                      ],
+                                    const SizedBox(height: 16),
+
+                                    for (final message in _chatMessages) ...[
+                                      Align(
+                                        alignment: message.isAI
+                                            ? Alignment.centerLeft
+                                            : Alignment.centerRight,
+                                        child: message.isAI
+                                            ? _buildAiBubble(message.text)
+                                            : _buildUserBubble(message.text),
+                                      ),
+                                      const SizedBox(height: 6),
                                     ],
 
                                     if (_receipt != null) ...[
-                                      const SizedBox(height: 18),
+                                      const SizedBox(height: 12),
 
                                       _loadedReceipts.length > 1
                                           ? _buildCombinedReceiptCard()
                                           : _buildReceiptCard(_receipt!),
-
-                                      const SizedBox(height: 16),
-                                      for (final message in _chatMessages) ...[
-                                        Align(
-                                          alignment: message.isAI
-                                              ? Alignment.centerLeft
-                                              : Alignment.centerRight,
-                                          child: message.isAI
-                                              ? _buildAiBubble(message.text)
-                                              : _buildUserBubble(message.text),
-                                        ),
-                                        const SizedBox(height: 6),
-                                      ],
                                     ],
                                   ],
                                 ),
