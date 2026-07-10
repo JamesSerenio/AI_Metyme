@@ -829,9 +829,12 @@ class _ViewReceiptState extends State<ViewReceipt>
 
     double orderDisplayTotal = 0;
 
+    // ✅ If naa nay order from addon_orders / consignment_orders,
+    // ayaw na kuhaa ang old fallback tables para dili madoble.
+    bool hasNewOrderTableLines = false;
+
     // ✅ Base sa Product Item Lists: add_ons.name + add_ons.image_url
     final addonImageMap = await _loadAddonImageMap();
-
     if (bookingCode.isNotEmpty) {
       try {
         final addonOrdersRes = await supabase
@@ -864,6 +867,10 @@ class _ViewReceiptState extends State<ViewReceipt>
         for (final raw in (addonOrdersRes as List<dynamic>)) {
           final map = Map<String, dynamic>.from(raw as Map);
           final items = (map['addon_order_items'] as List<dynamic>? ?? []);
+
+          if (items.isNotEmpty) {
+            hasNewOrderTableLines = true;
+          }
 
           for (final itemRaw in items) {
             final item = Map<String, dynamic>.from(itemRaw as Map);
@@ -956,6 +963,10 @@ class _ViewReceiptState extends State<ViewReceipt>
           final items =
               (map['consignment_order_items'] as List<dynamic>? ?? []);
 
+          if (items.isNotEmpty) {
+            hasNewOrderTableLines = true;
+          }
+
           for (final itemRaw in items) {
             final item = Map<String, dynamic>.from(itemRaw as Map);
             final consignmentRaw = item['consignment'];
@@ -1005,10 +1016,11 @@ class _ViewReceiptState extends State<ViewReceipt>
       } catch (_) {}
 
       // fallback + merge para siguradong lahat ng consignment lines makita
-      try {
-        final fallbackConsignment = await supabase
-            .from('customer_session_consignment')
-            .select('''
+      if (!hasNewOrderTableLines) {
+        try {
+          final fallbackConsignment = await supabase
+              .from('customer_session_consignment')
+              .select('''
       id,
       quantity,
       price,
@@ -1022,65 +1034,65 @@ class _ViewReceiptState extends State<ViewReceipt>
         image_url
       )
     ''')
-            .eq('full_name', receipt.fullName)
-            .eq('seat_number', receipt.seatNumber)
-            .eq('voided', false);
+              .eq('full_name', receipt.fullName)
+              .eq('seat_number', receipt.seatNumber)
+              .eq('voided', false);
 
-        for (final raw in (fallbackConsignment as List<dynamic>)) {
-          final map = Map<String, dynamic>.from(raw as Map);
-          final consignmentRaw = map['consignment'];
-          Map<String, dynamic>? consignment;
+          for (final raw in (fallbackConsignment as List<dynamic>)) {
+            final map = Map<String, dynamic>.from(raw as Map);
+            final consignmentRaw = map['consignment'];
+            Map<String, dynamic>? consignment;
 
-          if (consignmentRaw is List && consignmentRaw.isNotEmpty) {
-            consignment = Map<String, dynamic>.from(
-              consignmentRaw.first as Map,
+            if (consignmentRaw is List && consignmentRaw.isNotEmpty) {
+              consignment = Map<String, dynamic>.from(
+                consignmentRaw.first as Map,
+              );
+            } else if (consignmentRaw is Map) {
+              consignment = Map<String, dynamic>.from(consignmentRaw);
+            }
+
+            final qty = _toInt(map['quantity']);
+            final price = _toDouble(map['price']);
+            final subtotal = _toDouble(map['total']) > 0
+                ? _toDouble(map['total'])
+                : qty * price;
+
+            final itemName = _toText(consignment?['item_name']).isNotEmpty
+                ? _toText(consignment?['item_name'])
+                : 'Consignment Item';
+
+            final alreadyExists = orderLines.any(
+              (e) =>
+                  e.source == OrderSource.consignment &&
+                  e.qty == qty &&
+                  (e.price - price).abs() < 0.01 &&
+                  (e.subtotal - subtotal).abs() < 0.01,
             );
-          } else if (consignmentRaw is Map) {
-            consignment = Map<String, dynamic>.from(consignmentRaw);
+
+            if (alreadyExists) continue;
+
+            orderLines.add(
+              OrderLine(
+                source: OrderSource.consignment,
+                name: itemName,
+                qty: qty,
+                price: price,
+                subtotal: subtotal,
+                category: _toText(consignment?['category']),
+                size: _toText(consignment?['size']).isEmpty
+                    ? null
+                    : _toText(consignment?['size']),
+                imageUrl:
+                    _resolveBucketImage(
+                      consignment?['image_url'],
+                      bucket: 'consignment',
+                    ) ??
+                    await _getConsignmentImageUrlById(map['consignment_id']),
+              ),
+            );
           }
-
-          final qty = _toInt(map['quantity']);
-          final price = _toDouble(map['price']);
-          final subtotal = _toDouble(map['total']) > 0
-              ? _toDouble(map['total'])
-              : qty * price;
-
-          final itemName = _toText(consignment?['item_name']).isNotEmpty
-              ? _toText(consignment?['item_name'])
-              : 'Consignment Item';
-
-          final alreadyExists = orderLines.any(
-            (e) =>
-                e.source == OrderSource.consignment &&
-                e.name.trim().toLowerCase() == itemName.trim().toLowerCase() &&
-                e.qty == qty &&
-                e.price == price &&
-                e.subtotal == subtotal,
-          );
-
-          if (alreadyExists) continue;
-
-          orderLines.add(
-            OrderLine(
-              source: OrderSource.consignment,
-              name: itemName,
-              qty: qty,
-              price: price,
-              subtotal: subtotal,
-              category: _toText(consignment?['category']),
-              size: _toText(consignment?['size']).isEmpty
-                  ? null
-                  : _toText(consignment?['size']),
-              imageUrl:
-                  _resolveBucketImage(
-                    consignment?['image_url'],
-                    bucket: 'consignment',
-                  ) ??
-                  await _getConsignmentImageUrlById(map['consignment_id']),
-            ),
-          );
-        }
-      } catch (_) {}
+        } catch (_) {}
+      }
 
       // fallback + merge para siguradong lahat ng add-on lines makita
       try {
@@ -1128,10 +1140,9 @@ class _ViewReceiptState extends State<ViewReceipt>
           final alreadyExists = orderLines.any(
             (e) =>
                 e.source == OrderSource.addon &&
-                e.name.trim().toLowerCase() == itemName.trim().toLowerCase() &&
                 e.qty == qty &&
-                e.price == price &&
-                e.subtotal == subtotal,
+                (e.price - price).abs() < 0.01 &&
+                (e.subtotal - subtotal).abs() < 0.01,
           );
 
           if (alreadyExists) continue;
@@ -1433,6 +1444,7 @@ class _ViewReceiptState extends State<ViewReceipt>
     if (_receipt == null) return;
 
     final receipt = _receipt!;
+
     final unpaidOrderRows = [
       ..._addOnRows,
       ..._consignmentRows,
@@ -1441,29 +1453,37 @@ class _ViewReceiptState extends State<ViewReceipt>
     final existingOrderPayment = await _getExistingOrderPaymentRow(
       receipt.code,
     );
+
     final double computedOrderTotal = _orderLines.fold(
       0.0,
       (sum, line) => sum + line.subtotal,
     );
+
     final double storedOrderTotal = existingOrderPayment?.orderTotal ?? 0;
 
-    // ✅ Current order items total ang susundin, hindi lumang stored order_total
     final double effectiveOrderTotal = computedOrderTotal > 0
         ? computedOrderTotal
         : storedOrderTotal;
 
-    final double existingOrderPaid = existingOrderPayment?.totalPaid ?? 0;
+    final double existingOrderPaid =
+        existingOrderPayment?.totalPaid ?? receipt.orderPaidTotal;
 
-    final double systemDue = receipt.systemBalance;
+    final double systemDue = math.max(0.0, receipt.systemBalance);
+
     final double orderDue = math.max(
-      0,
+      0.0,
       effectiveOrderTotal - existingOrderPaid,
     );
 
-    final systemGcashController = TextEditingController(text: '0');
-    final systemCashController = TextEditingController(text: '0');
-    final orderGcashController = TextEditingController(text: '0');
-    final orderCashController = TextEditingController(text: '0');
+    final double totalDue = math.max(0.0, systemDue + orderDue);
+
+    if (totalDue <= 0) {
+      _addAiMessage('This receipt is already fully paid ✅');
+      return;
+    }
+
+    final gcashController = TextEditingController(text: '0');
+    final cashController = TextEditingController(text: '0');
 
     await showDialog(
       context: context,
@@ -1471,40 +1491,83 @@ class _ViewReceiptState extends State<ViewReceipt>
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            Future<void> saveSystemPayment() async {
-              final double gcash = _toDouble(systemGcashController.text);
-              final double cash = _toDouble(systemCashController.text);
-              final double total = gcash + cash;
+            Future<void> submitPayment() async {
+              final double gcash = _toDouble(gcashController.text);
+              final double cash = _toDouble(cashController.text);
+              final double paid = gcash + cash;
 
-              if (systemDue <= 0) {
+              if (paid <= 0) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('System payment is already paid.'),
+                  const SnackBar(content: Text('Enter payment amount.')),
+                );
+                return;
+              }
+
+              if (paid < totalDue) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Insufficient payment. Balance is ${_peso2(totalDue)}.',
+                    ),
                   ),
                 );
                 return;
               }
 
-              if (total <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Enter system payment amount.')),
-                );
-                return;
+              setModalState(() {
+                _isSavingSystem = true;
+                _isSavingOrders = true;
+              });
+
+              double remainingGcash = gcash;
+              double remainingCash = cash;
+
+              double takeFromGcash(double need) {
+                final take = math.min(remainingGcash, need);
+                remainingGcash -= take;
+                return take;
               }
 
-              setModalState(() => _isSavingSystem = true);
+              double takeFromCash(double need) {
+                final take = math.min(remainingCash, need);
+                remainingCash -= take;
+                return take;
+              }
 
               try {
-                await _saveSystemPayment(
-                  receipt: receipt,
-                  addGcash: gcash,
-                  addCash: cash,
-                );
+                if (systemDue > 0) {
+                  final sysGcash = takeFromGcash(systemDue);
+                  final sysCash = takeFromCash(systemDue - sysGcash);
+
+                  await _saveSystemPayment(
+                    receipt: receipt,
+                    addGcash: sysGcash,
+                    addCash: sysCash,
+                  );
+                }
+
+                if (orderDue > 0) {
+                  setState(() {
+                    _receipt = receipt;
+                  });
+
+                  final orderGcash = takeFromGcash(orderDue);
+                  final orderCash = takeFromCash(orderDue - orderGcash);
+
+                  await _saveOrderPayment(
+                    orderRows: unpaidOrderRows,
+                    addGcash: orderGcash,
+                    addCash: orderCash,
+                  );
+                }
 
                 final refreshed = await _findReceiptByCode(receipt.code);
+
                 if (refreshed != null && mounted) {
                   _syncReceiptState(refreshed);
+
                   final composed = _buildComposedReceipt(refreshed);
+
                   await _syncFinalSessionPaidStatus(
                     receipt: composed,
                     systemPaidTotal: composed.systemPaidTotal,
@@ -1517,164 +1580,16 @@ class _ViewReceiptState extends State<ViewReceipt>
                     Navigator.of(dialogContext).pop();
                   }
 
-                  _appendPaymentFeedback(
-                    receipt: composed,
-                    paidSystemNow: true,
-                    paidOrderNow: false,
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Failed to save system payment: $e'),
-                    ),
-                  );
-                }
-              } finally {
-                if (mounted) {
-                  setState(() => _isSavingSystem = false);
-                }
-              }
-            }
+                  final change = math.max(0.0, paid - totalDue);
 
-            Future<void> saveOrderPayment() async {
-              final double gcash = _toDouble(orderGcashController.text);
-              final double cash = _toDouble(orderCashController.text);
-              final double total = gcash + cash;
-
-              if (orderDue <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('No unpaid order payment found.'),
-                  ),
-                );
-                return;
-              }
-
-              if (total <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Enter order payment amount.')),
-                );
-                return;
-              }
-
-              setModalState(() => _isSavingOrders = true);
-
-              try {
-                await _saveOrderPayment(
-                  orderRows: unpaidOrderRows,
-                  addGcash: gcash,
-                  addCash: cash,
-                );
-
-                final refreshed = await _findReceiptByCode(receipt.code);
-                if (refreshed != null && mounted) {
-                  _syncReceiptState(refreshed);
-                  final composed = _buildComposedReceipt(refreshed);
-                  await _syncFinalSessionPaidStatus(
-                    receipt: composed,
-                    systemPaidTotal: composed.systemPaidTotal,
-                    orderPaidTotal: composed.orderPaidTotal,
-                    systemDue: composed.systemTotal,
-                    orderDue: composed.orderTotal,
-                  );
-
-                  if (Navigator.of(dialogContext).canPop()) {
-                    Navigator.of(dialogContext).pop();
-                  }
-
-                  _appendPaymentFeedback(
-                    receipt: composed,
-                    paidSystemNow: false,
-                    paidOrderNow: true,
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to save order payment: $e')),
-                  );
-                }
-              } finally {
-                if (mounted) {
-                  setState(() => _isSavingOrders = false);
-                }
-              }
-            }
-
-            Future<void> saveAllPayments() async {
-              final double systemGcash = _toDouble(systemGcashController.text);
-              final double systemCash = _toDouble(systemCashController.text);
-              final double orderGcash = _toDouble(orderGcashController.text);
-              final double orderCash = _toDouble(orderCashController.text);
-
-              final double totalSystemInput = systemGcash + systemCash;
-              final double totalOrderInput = orderGcash + orderCash;
-
-              if (systemDue > 0 && totalSystemInput <= 0 && orderDue <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Enter payment amount.')),
-                );
-                return;
-              }
-
-              if (orderDue > 0 && totalOrderInput <= 0 && systemDue <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Enter payment amount.')),
-                );
-                return;
-              }
-
-              if (totalSystemInput <= 0 && totalOrderInput <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Enter payment amount.')),
-                );
-                return;
-              }
-
-              setModalState(() {
-                _isSavingSystem = true;
-                _isSavingOrders = true;
-              });
-
-              try {
-                if (systemDue > 0 && totalSystemInput > 0) {
-                  await _saveSystemPayment(
-                    receipt: receipt,
-                    addGcash: systemGcash,
-                    addCash: systemCash,
-                  );
-                }
-
-                if (orderDue > 0 && totalOrderInput > 0) {
-                  await _saveOrderPayment(
-                    orderRows: unpaidOrderRows,
-                    addGcash: orderGcash,
-                    addCash: orderCash,
-                  );
-                }
-
-                final refreshed = await _findReceiptByCode(receipt.code);
-                if (refreshed != null && mounted) {
-                  _syncReceiptState(refreshed);
-                  final composed = _buildComposedReceipt(refreshed);
-                  await _syncFinalSessionPaidStatus(
-                    receipt: composed,
-                    systemPaidTotal: composed.systemPaidTotal,
-                    orderPaidTotal: composed.orderPaidTotal,
-                    systemDue: composed.systemTotal,
-                    orderDue: composed.orderTotal,
-                  );
-
-                  if (Navigator.of(dialogContext).canPop()) {
-                    Navigator.of(dialogContext).pop();
-                  }
-
-                  _appendPaymentFeedback(
-                    receipt: composed,
-                    paidSystemNow: totalSystemInput > 0,
-                    paidOrderNow: totalOrderInput > 0,
+                  _addAiMessage(
+                    'Payment successful ✅\n\n'
+                    'Total Amount Due: ${_peso2(totalDue)}\n'
+                    'GCash: ${_peso2(gcash)}\n'
+                    'Cash: ${_peso2(cash)}\n'
+                    'Total Payment: ${_peso2(paid)}\n'
+                    'Change: ${_peso2(change)}\n\n'
+                    'System and order payment are now updated.',
                   );
                 }
               } catch (e) {
@@ -1695,46 +1610,53 @@ class _ViewReceiptState extends State<ViewReceipt>
 
             return Dialog(
               backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(
-                horizontal: 18,
-                vertical: 18,
-              ),
-              child: Center(
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 520),
-                  padding: const EdgeInsets.all(22),
-                  decoration: ViewReceiptStyles.paymentDialog,
-                  child: SingleChildScrollView(
-                    child: Column(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 460),
+                padding: const EdgeInsets.all(22),
+                decoration: ViewReceiptStyles.paymentDialog,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Pay Receipt',
+                      style: ViewReceiptStyles.paymentTitle,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Full payment required: ${_peso2(totalDue)}',
+                      style: ViewReceiptStyles.paymentDueText,
+                    ),
+                    const SizedBox(height: 18),
+
+                    const Text('GCASH', style: ViewReceiptStyles.paymentLabel),
+                    const SizedBox(height: 8),
+                    _paymentField(gcashController),
+
+                    const SizedBox(height: 14),
+
+                    const Text('CASH', style: ViewReceiptStyles.paymentLabel),
+                    const SizedBox(height: 8),
+                    _paymentField(cashController),
+
+                    const SizedBox(height: 20),
+
+                    Row(
                       children: [
-                        _paymentSection(
-                          title: 'System Payment',
-                          dueText: systemDue > 0
-                              ? 'Balance: ${_peso2(systemDue)}'
-                              : 'Already Paid',
-                          gcashController: systemGcashController,
-                          cashController: systemCashController,
-                          onSave: null,
-                          isSaving: false,
-                        ),
-                        if (orderDue > 0) ...[
-                          const SizedBox(height: 18),
-                          _paymentSection(
-                            title: 'Order Payment',
-                            dueText: 'Balance: ${_peso2(orderDue)}',
-                            gcashController: orderGcashController,
-                            cashController: orderCashController,
-                            onSave: null,
-                            isSaving: false,
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: (_isSavingSystem || _isSavingOrders)
+                                ? null
+                                : () => Navigator.of(dialogContext).pop(),
+                            child: const Text('Cancel'),
                           ),
-                        ],
-                        const SizedBox(height: 18),
-                        SizedBox(
-                          width: double.infinity,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
                           child: ElevatedButton(
                             onPressed: (_isSavingSystem || _isSavingOrders)
                                 ? null
-                                : saveAllPayments,
+                                : submitPayment,
                             style: ViewReceiptStyles.saveButtonStyle,
                             child: (_isSavingSystem || _isSavingOrders)
                                 ? const SizedBox(
@@ -1750,22 +1672,9 @@ class _ViewReceiptState extends State<ViewReceipt>
                                   ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: (_isSavingSystem || _isSavingOrders)
-                                ? null
-                                : () => Navigator.pop(context),
-                            child: const Text(
-                              'Close',
-                              style: ViewReceiptStyles.dialogCloseText,
-                            ),
-                          ),
-                        ),
                       ],
                     ),
-                  ),
+                  ],
                 ),
               ),
             );
@@ -1774,10 +1683,8 @@ class _ViewReceiptState extends State<ViewReceipt>
       },
     );
 
-    systemGcashController.dispose();
-    systemCashController.dispose();
-    orderGcashController.dispose();
-    orderCashController.dispose();
+    gcashController.dispose();
+    cashController.dispose();
   }
 
   Widget _paymentSection({
